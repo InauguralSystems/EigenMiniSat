@@ -90,15 +90,17 @@ adapter-mediated lookup, CDCL-style watch seeding, reconstruction, deletion
 compaction, and synthetic reason remapping. Metadata churn also amplifies
 reference remapping, locked-clause scans, watch rebuilds, and trail replay. The
 CDCL path now uses the clause-store adapter for propagation, conflict analysis,
-learnt insertion, reduction scans, and deleted-clause compaction. The evidence
-is strong that the solver wants clause-reference discipline, but not yet strong
-enough to demand a root arena primitive.
+learnt insertion, reduction scans, and deleted-clause compaction. It also
+reports store-to-list copies, conflict-analysis rebuild literals, and direct
+compaction-copy literals. The evidence is strong that the solver wants
+clause-reference discipline, but not yet strong enough to demand a root arena
+primitive.
 
-Next action: measure remaining reconstruction/copy pressure in conflict
-analysis and learnt compaction before asking EigenScript for root arena
-support. The adapter preserves signed DIMACS literals at the boundary and
-should prove whether arena references simplify conflict analysis and database
-reduction.
+Next action: use the new copy counters on harder conflict cases to decide
+whether conflict analysis needs a store-native learnt builder before asking
+EigenScript for root arena support. The adapter preserves signed DIMACS
+literals at the boundary and should prove whether arena references simplify
+conflict analysis and database reduction.
 
 ### Bitwise Integer Operations
 
@@ -114,8 +116,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
 ## Near-Term EigenMiniSat Work
 
 - Keep benchmarks as the evidence surface, not just performance demos.
-- Measure remaining clause-store reconstruction/copy pressure before promoting
-  arena references to root.
+- Use clause-store copy counters to decide whether learnt construction needs a
+  store-native builder before promoting arena references to root.
 - Expand the checked-in corpus with larger real-shaped CNF cases before relying
   on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local

@@ -40,8 +40,9 @@ variable count, clause count, decisions, propagations, and conflicts. The CDCL
 line also reports learnt clauses, backjumps, conflict-resolution steps, variable
 activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
-Compaction counters show when deleted learnt clauses are removed and watch lists
-are rebuilt.
+Clause-store counters show store-to-list copies, conflict-analysis rebuild
+lists, and direct compaction copies. Compaction counters show when deleted
+learnt clauses are removed and watch lists are rebuilt.
 `--restart-bench` compares the default geometric CDCL restart schedule with a
 Luby schedule on the same generated cases and reports restart budgets, restart
 indexes, cancellations, compaction, and elapsed milliseconds.
@@ -58,8 +59,8 @@ reconstruction, deletion compaction, and reason-reference remapping costs.
 `--metadata-bench` builds synthetic learnt-clause pressure, runs database
 reduction, compacts deleted clauses, then runs repeated learnt-churn waves with
 pinned reason references. It reports allocation, deletion, locked-clause, watch
-rebuild, reason remap, and trail replay counters without needing a larger
-external CNF.
+rebuild, reason remap, direct compaction-copy, and trail replay counters
+without needing a larger external CNF.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--scan-parse-bench` compares the current split/trim parser, a
@@ -109,6 +110,8 @@ Current:
   compaction mapping pressure
 - CDCL propagation, conflict analysis, learnt insertion, reduction, and
   compaction over the solver-local clause-store adapter
+- clause-store copy/rebuild counters for conflict analysis and direct
+  compaction-copy pressure
 - synthetic learnt metadata compaction and churn benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
@@ -125,8 +128,8 @@ Current:
 Next:
 
 - larger heuristic stress cases
-- measure remaining clause-store reconstruction/copy pressure in CDCL conflict
-  analysis and learnt compaction before promoting arena/reference support to
+- use the new copy counters to decide whether conflict analysis needs a
+  store-native learnt builder before promoting arena/reference support to
   EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
@@ -149,6 +152,8 @@ This repo is expected to stress:
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
 - CDCL clause-store propagation and conflict-analysis access patterns
+- store-to-list copy counts, conflict-analysis rebuild literals, and direct
+  compaction-copy literals
 - synthetic learnt-clause allocation, deletion, compaction, and churn pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput

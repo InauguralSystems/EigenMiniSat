@@ -61,9 +61,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   adapter-mediated access.
 - CDCL propagation, conflict analysis, learnt insertion, reduction scans, and
   deleted-clause compaction now operate over the solver-local clause store.
-  Remaining pressure is the list reconstruction still needed for learnt-clause
-  assembly and store compaction, which should be measured before asking
-  EigenScript for root arena/reference primitives.
+  The solver now reports store-to-list copies, conflict-analysis rebuild
+  literals, and direct compaction-copy literals. Remaining pressure is the list
+  reconstruction still needed for learnt-clause assembly, which should be
+  measured before asking EigenScript for root arena/reference primitives.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but
   conversion still uses arithmetic helpers around signed DIMACS literals. If
   encoded-literal churn becomes hot, EigenScript may need cheaper bitwise
@@ -80,10 +81,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   pressure point for struct-like storage, arena-backed clause references, and
   watch-list compaction support.
 - Eager compaction now remaps clause references, rebuilds watch lists, and
-  replays the trail after deleted learnt clauses are removed. The
-  `compact_runs`, `compact_removed`, `watch_rebuilds`, and `compact_replays`
-  counters should guide whether root EigenScript needs better in-place list
-  compaction or arena/reference primitives.
+  replays the trail after deleted learnt clauses are removed. Compaction now
+  copies kept clauses directly between clause stores and reports
+  `compact_clause_copies` and `compact_clause_lits` alongside `compact_runs`,
+  `compact_removed`, `watch_rebuilds`, and `compact_replays`. These counters
+  should guide whether root EigenScript needs better in-place list compaction
+  or arena/reference primitives.
 - The metadata compaction benchmark now creates synthetic learnt clauses,
   reduces the learnt database, and forces compaction without depending on a
   large external CNF. This isolates parallel metadata arrays, clause allocation

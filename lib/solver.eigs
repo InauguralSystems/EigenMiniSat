@@ -235,6 +235,16 @@ define clause_store_clause(store, ci) as:
         append of [out, clause_store_lit of [store, ci, pos]]
     return out
 
+define clause_store_clause_counted(store, ci, stats) as:
+    out is []
+    size is clause_store_size of [store, ci]
+    if stats != null:
+        stats.store_clause_copies += 1
+        stats.store_clause_copy_lits += size
+    for pos in range of size:
+        append of [out, clause_store_lit of [store, ci, pos]]
+    return out
+
 define clause_store_reconstruct(store) as:
     out is []
     for ci in range of (clause_store_len of store):
@@ -285,14 +295,27 @@ define clause_store_seed_watches(nvars, store) as:
         "max_bucket": summary.max_bucket
     }
 
-define clause_store_compact_by_mask(store, delete_mask) as:
+define clause_store_add_store_clause(target, source, ci, stats) as:
+    new_ci is len of target.offsets
+    start is source.offsets[ci]
+    size is source.sizes[ci]
+    append of [target.offsets, len of target.lits]
+    append of [target.sizes, size]
+    if stats != null:
+        stats.compact_clause_copies += 1
+        stats.compact_clause_lits += size
+    for pos in range of size:
+        append of [target.lits, source.lits[start + pos]]
+    return new_ci
+
+define clause_store_compact_by_mask_counted(store, delete_mask, stats) as:
     compact is clause_store_empty of null
     mapping is []
     removed is 0
     for ci in range of (clause_store_len of store):
         if delete_mask[ci] == 0:
             append of [mapping, clause_store_len of compact]
-            clause_store_add_clause of [compact, clause_store_clause of [store, ci]]
+            clause_store_add_store_clause of [compact, store, ci, stats]
         else:
             append of [mapping, -1]
             removed += 1
@@ -301,6 +324,9 @@ define clause_store_compact_by_mask(store, delete_mask) as:
     compact.removed is removed
     compact.kept is clause_store_len of compact
     return compact
+
+define clause_store_compact_by_mask(store, delete_mask) as:
+    return clause_store_compact_by_mask_counted of [store, delete_mask, null]
 
 define enqueue_watched(asg, trail, lit, stats, count_propagation) as:
     v is lit_abs of lit
@@ -817,7 +843,7 @@ define compact_deleted_clauses(nvars, store, state, stats) as:
     if removed == 0:
         return store
 
-    compact_store is clause_store_compact_by_mask of [store, delete_mask]
+    compact_store is clause_store_compact_by_mask_counted of [store, delete_mask, stats]
 
     for v in range of (len of state.reason):
         state.reason[v] is remap_clause_ref of [compact_store.mapping, state.reason[v]]
@@ -1005,7 +1031,7 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
     }
 
     for ci in range of (clause_store_len of store):
-        clause is clause_store_clause of [store, ci]
+        clause is clause_store_clause_counted of [store, ci, stats]
         init_clause_metadata of [state, clause, 0, stats]
         clause_size is clause_store_size of [store, ci]
         if clause_size == 0:
@@ -1122,7 +1148,7 @@ define cdcl_push_level(state) as:
     append of [state.trail_lim, len of state.trail]
     return len of state.trail_lim
 
-define resolve_on_var_store(current, store, reason_ci, pivot_var) as:
+define resolve_on_var_store(current, store, reason_ci, pivot_var, stats) as:
     out is []
     for lit in current:
         if (lit_abs of lit) != pivot_var:
@@ -1131,6 +1157,9 @@ define resolve_on_var_store(current, store, reason_ci, pivot_var) as:
         lit is clause_store_lit of [store, reason_ci, pos]
         if (lit_abs of lit) != pivot_var:
             append_lit_unique of [out, lit]
+    if stats != null:
+        stats.analysis_rebuilds += 1
+        stats.analysis_rebuild_lits += len of out
     return out
 
 define count_clause_level(clause, state, level) as:
@@ -1181,14 +1210,14 @@ define move_lit_first(clause, lit) as:
 
 define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     level is len of state.trail_lim
-    learnt is clause_store_clause of [store, conflict_ci]
+    learnt is clause_store_clause_counted of [store, conflict_ci, stats]
 
     loop while (count_clause_level of [learnt, state, level]) > 1:
         pivot is last_reason_var_in_clause of [learnt, state, level]
         if pivot == 0:
             break
         reason_ci is state.reason[pivot]
-        learnt is resolve_on_var_store of [learnt, store, reason_ci, pivot]
+        learnt is resolve_on_var_store of [learnt, store, reason_ci, pivot, stats]
         stats.resolutions += 1
 
     assert_lit is choose_assert_lit of [learnt, state, level]
@@ -1247,6 +1276,10 @@ define cdcl_result(status, model, stats, state) as:
         "clause_allocs": stats.clause_allocs,
         "learnt_allocs": stats.learnt_allocs,
         "learnt_literals": stats.learnt_literals,
+        "store_clause_copies": stats.store_clause_copies,
+        "store_clause_copy_lits": stats.store_clause_copy_lits,
+        "analysis_rebuilds": stats.analysis_rebuilds,
+        "analysis_rebuild_lits": stats.analysis_rebuild_lits,
         "clause_activity_bumps": stats.clause_activity_bumps,
         "clause_activity_decays": stats.clause_activity_decays,
         "reduce_runs": stats.reduce_runs,
@@ -1258,6 +1291,8 @@ define cdcl_result(status, model, stats, state) as:
         "compact_runs": stats.compact_runs,
         "compact_removed": stats.compact_removed,
         "compact_kept": stats.compact_kept,
+        "compact_clause_copies": stats.compact_clause_copies,
+        "compact_clause_lits": stats.compact_clause_lits,
         "watch_rebuilds": stats.watch_rebuilds,
         "compact_replays": stats.compact_replays,
         "restarts": stats.restarts,
@@ -1288,6 +1323,10 @@ define cdcl_empty_stats() as:
         "clause_allocs": 0,
         "learnt_allocs": 0,
         "learnt_literals": 0,
+        "store_clause_copies": 0,
+        "store_clause_copy_lits": 0,
+        "analysis_rebuilds": 0,
+        "analysis_rebuild_lits": 0,
         "clause_activity_bumps": 0,
         "clause_activity_decays": 0,
         "reduce_runs": 0,
@@ -1299,6 +1338,8 @@ define cdcl_empty_stats() as:
         "compact_runs": 0,
         "compact_removed": 0,
         "compact_kept": 0,
+        "compact_clause_copies": 0,
+        "compact_clause_lits": 0,
         "watch_rebuilds": 0,
         "compact_replays": 0,
         "restarts": 0,

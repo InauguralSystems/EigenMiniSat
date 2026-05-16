@@ -49,7 +49,9 @@ compact vector support. A solver-local clause-store adapter now wraps the flat
 arena with clause length/literal lookup, reconstruction, CDCL-style watch
 seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction now use that
-adapter before asking EigenScript for root arena support.
+adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
+reports store-to-list copies, conflict-analysis rebuild literals, and
+compaction-copy literals before asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -72,9 +74,10 @@ allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-clause-store reconstruction/copy pressure in conflict analysis and learnt
-compaction, plus scanner token-span pressure and a larger third-party CNF
-corpus beyond the checked-in manifest fixtures.
+clause-store reconstruction/copy counters across harder conflict cases, then
+deciding whether conflict analysis needs a store-native learnt builder, plus
+scanner token-span pressure and a larger third-party CNF corpus beyond the
+checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

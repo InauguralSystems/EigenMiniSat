@@ -123,7 +123,9 @@ reduce_stats is {
     "compact_replays": 0,
     "compact_runs": 0,
     "compact_removed": 0,
-    "compact_kept": 0
+    "compact_kept": 0,
+    "compact_clause_copies": 0,
+    "compact_clause_lits": 0
 }
 reduce_clauses is [[1], [1, 2, 3], [1, 0 - 2, 4], [2, 3, 4]]
 reduce_store is clause_store_from_clauses of reduce_clauses
@@ -140,6 +142,8 @@ compact_store is compact_deleted_clauses of [4, reduce_store, reduce_state, redu
 assert_eq of ["learnt compact removes", clause_store_len of compact_store, 3]
 assert_eq of ["learnt compact metadata", len of reduce_state.clause_learnt, 3]
 assert_eq of ["learnt compact runs", reduce_stats.compact_runs, 1]
+assert_eq of ["learnt compact clause copies", reduce_stats.compact_clause_copies, 3]
+assert_true of ["learnt compact copied lits", reduce_stats.compact_clause_lits > 0]
 metadata_churn_test is run_metadata_churn_case of [{
     "name": "metadata-churn-test",
     "nvars": 8,
@@ -153,6 +157,7 @@ assert_eq of ["metadata churn learnts", metadata_churn_test.learnts_added, 24]
 assert_eq of ["metadata churn clause allocs", metadata_churn_test.clause_allocs, 32]
 assert_true of ["metadata churn deleted", metadata_churn_test.learnt_deleted > 0]
 assert_true of ["metadata churn compacts", metadata_churn_test.compact_runs > 0]
+assert_true of ["metadata churn compact copies", metadata_churn_test.compact_clause_copies > 0]
 assert_true of ["metadata churn watch rebuilds", metadata_churn_test.watch_rebuilds > 0]
 assert_true of ["metadata churn locked kept", metadata_churn_test.locked_kept > 0]
 assert_true of ["metadata churn reason refs", metadata_churn_test.reason_active > 0]
@@ -244,6 +249,10 @@ assert_true of ["pigeonhole cdcl heap pops", php_cdcl.order_pops > 0]
 assert_true of ["pigeonhole cdcl heap reinserts", php_cdcl.order_inserts > 0]
 assert_true of ["pigeonhole cdcl clause allocs", php_cdcl.clause_allocs >= (len of php.clauses)]
 assert_eq of ["pigeonhole cdcl learnt allocs", php_cdcl.learnt_allocs, php_cdcl.learnts]
+assert_true of ["pigeonhole cdcl store copies", php_cdcl.store_clause_copies > 0]
+assert_true of ["pigeonhole cdcl store copy lits", php_cdcl.store_clause_copy_lits > 0]
+assert_true of ["pigeonhole cdcl analysis rebuilds", php_cdcl.analysis_rebuilds > 0]
+assert_true of ["pigeonhole cdcl analysis rebuild lits", php_cdcl.analysis_rebuild_lits > 0]
 assert_true of ["pigeonhole cdcl clause bumps", php_cdcl.clause_activity_bumps > 0]
 print of "  pigeonhole UNSAT: ok"
 
@@ -256,6 +265,8 @@ assert_eq of ["pigeonhole 4-3 restart index", php4_cdcl.restart_index, php4_cdcl
 assert_true of ["pigeonhole 4-3 restart cancels", php4_cdcl.restart_cancels > 0]
 assert_true of ["pigeonhole 4-3 phase saves", php4_cdcl.phase_saves > 0]
 assert_true of ["pigeonhole 4-3 compacts", php4_cdcl.compact_runs > 0]
+assert_true of ["pigeonhole 4-3 compact copies", php4_cdcl.compact_clause_copies > 0]
+assert_true of ["pigeonhole 4-3 compact lits", php4_cdcl.compact_clause_lits > 0]
 assert_true of ["pigeonhole 4-3 watch rebuilds", php4_cdcl.watch_rebuilds > 0]
 php4_luby is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"restart_policy": "luby", "restart_first": 1}]
 assert_eq of ["pigeonhole 4-3 luby UNSAT", php4_luby.status, "UNSAT"]
