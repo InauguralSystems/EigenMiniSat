@@ -126,7 +126,8 @@ reduce_stats is {
     "compact_kept": 0
 }
 reduce_clauses is [[1], [1, 2, 3], [1, 0 - 2, 4], [2, 3, 4]]
-assert_eq of ["learnt reduce deletes one", reduce_learnt_db of [reduce_clauses, reduce_state, reduce_stats], 1]
+reduce_store is clause_store_from_clauses of reduce_clauses
+assert_eq of ["learnt reduce deletes one", reduce_learnt_db of [reduce_store, reduce_state, reduce_stats], 1]
 assert_eq of ["learnt reduce low activity", reduce_state.clause_deleted[1], 1]
 assert_eq of ["learnt reduce active count", reduce_stats.active_learnts, 2]
 reduce_state.watches is []
@@ -135,8 +136,8 @@ reduce_state.watch_b is []
 reduce_state.qhead is 0
 reduce_state.trail is []
 reduce_state.conflict is -1
-compact_clauses is compact_deleted_clauses of [4, reduce_clauses, reduce_state, reduce_stats]
-assert_eq of ["learnt compact removes", len of compact_clauses, 3]
+compact_store is compact_deleted_clauses of [4, reduce_store, reduce_state, reduce_stats]
+assert_eq of ["learnt compact removes", clause_store_len of compact_store, 3]
 assert_eq of ["learnt compact metadata", len of reduce_state.clause_learnt, 3]
 assert_eq of ["learnt compact runs", reduce_stats.compact_runs, 1]
 metadata_churn_test is run_metadata_churn_case of [{

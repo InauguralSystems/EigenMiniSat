@@ -838,9 +838,10 @@ define metadata_pin_reason_refs(state, refs, nvars, wave, pin_count) as:
 
 define run_metadata_churn_case(churn_cfg, emit_lines) as:
     churn_clauses is metadata_pressure_base_clauses of churn_cfg.nvars
+    churn_store is clause_store_from_clauses of churn_clauses
     churn_stats is cdcl_empty_stats of null
     churn_asg is make_assignment of churn_cfg.nvars
-    churn_state is build_cdcl_state of [churn_cfg.nvars, churn_clauses, churn_asg, churn_stats, null]
+    churn_state is build_cdcl_state of [churn_cfg.nvars, churn_store, churn_asg, churn_stats, null]
     assert of [churn_state.ok != 0, "metadata churn build failed"]
     churn_state.learnt_limit is floor of (churn_cfg.wave_learnts / 3)
     if churn_state.learnt_limit < 1:
@@ -857,7 +858,7 @@ define run_metadata_churn_case(churn_cfg, emit_lines) as:
         add_t0 is monotonic_ns of null
         for i in range of churn_cfg.wave_learnts:
             clause is metadata_pressure_learnt of [churn_cfg.nvars, churn_global_idx, churn_cfg.width]
-            ci is add_cdcl_clause of [churn_clauses, churn_state, clause, 1, churn_stats]
+            ci is add_cdcl_clause of [churn_store, churn_state, clause, 1, churn_stats]
             state_activity is ((churn_global_idx + (wave * 7)) % 29) / 29
             churn_state.clause_activity[ci] is state_activity
             churn_stats.learnts += 1
@@ -870,14 +871,14 @@ define run_metadata_churn_case(churn_cfg, emit_lines) as:
         total_add_ms += add_ms
 
         reduce_t0 is monotonic_ns of null
-        removed is reduce_learnt_db of [churn_clauses, churn_state, churn_stats]
+        removed is reduce_learnt_db of [churn_store, churn_state, churn_stats]
         reduce_t1 is monotonic_ns of null
         reduce_ms is (reduce_t1 - reduce_t0) / 1000000
         total_reduce_ms += reduce_ms
 
         compact_t0 is monotonic_ns of null
         if removed > 0:
-            churn_clauses is compact_deleted_clauses of [churn_cfg.nvars, churn_clauses, churn_state, churn_stats]
+            churn_store is compact_deleted_clauses of [churn_cfg.nvars, churn_store, churn_state, churn_stats]
         compact_t1 is monotonic_ns of null
         compact_ms is (compact_t1 - compact_t0) / 1000000
         total_compact_ms += compact_ms
@@ -885,9 +886,9 @@ define run_metadata_churn_case(churn_cfg, emit_lines) as:
         active is count_active_learnts of churn_state
         reason_summary is ref_list_summary of churn_state.reason
         assert of [active == churn_stats.active_learnts, f"metadata churn active mismatch wave {wave}"]
-        assert of [(len of churn_clauses) == (len of churn_state.clause_learnt), f"metadata churn metadata length mismatch wave {wave}"]
+        assert of [(clause_store_len of churn_store) == (len of churn_state.clause_learnt), f"metadata churn metadata length mismatch wave {wave}"]
         if emit_lines != 0:
-            print of f"metadata churn wave {churn_cfg.name}-{wave + 1}: added={churn_cfg.wave_learnts} removed={removed} clauses={len of churn_clauses} active_learnts={active} pinned={pinned} reason_active={reason_summary.active} reason_checksum={reason_summary.checksum} add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
+            print of f"metadata churn wave {churn_cfg.name}-{wave + 1}: added={churn_cfg.wave_learnts} removed={removed} clauses={clause_store_len of churn_store} active_learnts={active} pinned={pinned} reason_active={reason_summary.active} reason_checksum={reason_summary.checksum} add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
 
     final_active is count_active_learnts of churn_state
     final_reason_summary is ref_list_summary of churn_state.reason
@@ -914,11 +915,12 @@ define run_metadata_churn_case(churn_cfg, emit_lines) as:
 define run_metadata_benchmarks(size) as:
     metadata_cfg is metadata_pressure_config of size
     clauses is metadata_pressure_base_clauses of metadata_cfg.nvars
+    store is clause_store_from_clauses of clauses
     stats is cdcl_empty_stats of null
     asg is make_assignment of metadata_cfg.nvars
 
     t0 is monotonic_ns of null
-    state is build_cdcl_state of [metadata_cfg.nvars, clauses, asg, stats, null]
+    state is build_cdcl_state of [metadata_cfg.nvars, store, asg, stats, null]
     assert of [state.ok != 0, "metadata pressure build failed"]
     state.learnt_limit is floor of (metadata_cfg.learnts / 4)
     if state.learnt_limit < 1:
@@ -926,7 +928,7 @@ define run_metadata_benchmarks(size) as:
 
     for i in range of metadata_cfg.learnts:
         clause is metadata_pressure_learnt of [metadata_cfg.nvars, i, metadata_cfg.width]
-        ci is add_cdcl_clause of [clauses, state, clause, 1, stats]
+        ci is add_cdcl_clause of [store, state, clause, 1, stats]
         state.clause_activity[ci] is (i % 17) / 17
         stats.learnts += 1
 
@@ -934,13 +936,13 @@ define run_metadata_benchmarks(size) as:
     add_ms is (t1 - t0) / 1000000
 
     rt0 is monotonic_ns of null
-    removed_learnts is reduce_learnt_db of [clauses, state, stats]
+    removed_learnts is reduce_learnt_db of [store, state, stats]
     rt1 is monotonic_ns of null
     reduce_ms is (rt1 - rt0) / 1000000
 
     ct0 is monotonic_ns of null
     if removed_learnts > 0:
-        clauses is compact_deleted_clauses of [metadata_cfg.nvars, clauses, state, stats]
+        store is compact_deleted_clauses of [metadata_cfg.nvars, store, state, stats]
     ct1 is monotonic_ns of null
     compact_ms is (ct1 - ct0) / 1000000
 
@@ -948,7 +950,7 @@ define run_metadata_benchmarks(size) as:
     assert of [active == stats.active_learnts, "metadata active learnt mismatch"]
     assert of [stats.learnt_deleted == removed_learnts, "metadata deleted mismatch"]
     assert of [stats.compact_removed == removed_learnts, "metadata compact removed mismatch"]
-    print of f"metadata compaction {metadata_cfg.name}: vars={metadata_cfg.nvars} base={metadata_cfg.nvars} learnts_added={metadata_cfg.learnts} clauses_after={len of clauses} active_learnts={active} clause_allocs={stats.clause_allocs} learnt_allocs={stats.learnt_allocs} learnt_lits={stats.learnt_literals} reduce_runs={stats.reduce_runs} reduce_scans={stats.reduce_scans} learnt_deleted={stats.learnt_deleted} compact_runs={stats.compact_runs} compact_removed={stats.compact_removed} compact_kept={stats.compact_kept} watch_rebuilds={stats.watch_rebuilds} compact_replays={stats.compact_replays} build_add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
+    print of f"metadata compaction {metadata_cfg.name}: vars={metadata_cfg.nvars} base={metadata_cfg.nvars} learnts_added={metadata_cfg.learnts} clauses_after={clause_store_len of store} active_learnts={active} clause_allocs={stats.clause_allocs} learnt_allocs={stats.learnt_allocs} learnt_lits={stats.learnt_literals} reduce_runs={stats.reduce_runs} reduce_scans={stats.reduce_scans} learnt_deleted={stats.learnt_deleted} compact_runs={stats.compact_runs} compact_removed={stats.compact_removed} compact_kept={stats.compact_kept} watch_rebuilds={stats.watch_rebuilds} compact_replays={stats.compact_replays} build_add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
     churn_summary is run_metadata_churn_case of [metadata_churn_config of size, 1]
     assert of [churn_summary.compact_runs > 0, "metadata churn did not compact"]
     return 1

@@ -741,13 +741,13 @@ define count_active_learnts(state) as:
                 active += 1
     return active
 
-define find_low_activity_learnt(clauses, state, stats) as:
+define find_low_activity_learnt(store, state, stats) as:
     best is -1
     best_activity is 1000000000
-    for ci in range of (len of clauses):
+    for ci in range of (clause_store_len of store):
         if state.clause_learnt[ci] != 0:
             if state.clause_deleted[ci] == 0:
-                if (len of clauses[ci]) > 2:
+                if (clause_store_size of [store, ci]) > 2:
                     if (clause_locked of [state, ci]) != 0:
                         stats.learnt_kept_locked += 1
                     elif state.clause_activity[ci] < best_activity:
@@ -756,7 +756,7 @@ define find_low_activity_learnt(clauses, state, stats) as:
     stats.reduce_scans += 1
     return best
 
-define reduce_learnt_db(clauses, state, stats) as:
+define reduce_learnt_db(store, state, stats) as:
     active is count_active_learnts of state
     if active <= state.learnt_limit:
         stats.active_learnts is active
@@ -766,7 +766,7 @@ define reduce_learnt_db(clauses, state, stats) as:
     target_delete is floor of (active / 2)
     deleted is 0
     loop while deleted < target_delete:
-        victim is find_low_activity_learnt of [clauses, state, stats]
+        victim is find_low_activity_learnt of [store, state, stats]
         if victim < 0:
             break
         state.clause_deleted[victim] is 1
@@ -784,68 +784,55 @@ define remap_clause_ref(mapping, ci) as:
         return -1
     return mapping[ci]
 
-define rebuild_watches(nvars, clauses, state, stats) as:
-    state.watches is make_watch_table of nvars
-    state.watch_a is []
-    state.watch_b is []
-
-    for ci in range of (len of clauses):
-        clause is clauses[ci]
-        if (len of clause) == 0:
-            append of [state.watch_a, 0]
-            append of [state.watch_b, 0]
-        elif (len of clause) == 1:
-            append of [state.watch_a, 0]
-            append of [state.watch_b, 0]
-        else:
-            append of [state.watch_a, 0]
-            append of [state.watch_b, 1]
-            watch_add of [state.watches, clause[0], ci]
-            watch_add of [state.watches, clause[1], ci]
+define rebuild_watches(nvars, store, state, stats) as:
+    seeded is clause_store_seed_watches of [nvars, store]
+    state.watches is seeded.watches
+    state.watch_a is seeded.watch_a
+    state.watch_b is seeded.watch_b
 
     state.qhead is 0
     stats.watch_rebuilds += 1
     stats.compact_replays += len of state.trail
     return null
 
-define compact_deleted_clauses(nvars, clauses, state, stats) as:
-    mapping is []
-    new_clauses is []
+define compact_deleted_clauses(nvars, store, state, stats) as:
+    delete_mask is []
     new_learnt is []
     new_deleted is []
     new_activity is []
     new_lbd is []
     removed is 0
 
-    for ci in range of (len of clauses):
+    for ci in range of (clause_store_len of store):
         if state.clause_deleted[ci] == 0:
-            append of [mapping, len of new_clauses]
-            append of [new_clauses, clauses[ci]]
+            append of [delete_mask, 0]
             append of [new_learnt, state.clause_learnt[ci]]
             append of [new_deleted, 0]
             append of [new_activity, state.clause_activity[ci]]
             append of [new_lbd, state.clause_lbd[ci]]
         else:
-            append of [mapping, -1]
+            append of [delete_mask, 1]
             removed += 1
 
     if removed == 0:
-        return clauses
+        return store
+
+    compact_store is clause_store_compact_by_mask of [store, delete_mask]
 
     for v in range of (len of state.reason):
-        state.reason[v] is remap_clause_ref of [mapping, state.reason[v]]
-    state.conflict is remap_clause_ref of [mapping, state.conflict]
+        state.reason[v] is remap_clause_ref of [compact_store.mapping, state.reason[v]]
+    state.conflict is remap_clause_ref of [compact_store.mapping, state.conflict]
 
     state.clause_learnt is new_learnt
     state.clause_deleted is new_deleted
     state.clause_activity is new_activity
     state.clause_lbd is new_lbd
-    rebuild_watches of [nvars, new_clauses, state, stats]
+    rebuild_watches of [nvars, compact_store, state, stats]
 
     stats.compact_runs += 1
     stats.compact_removed += removed
-    stats.compact_kept += len of new_clauses
-    return new_clauses
+    stats.compact_kept += clause_store_len of compact_store
+    return compact_store
 
 define save_phase_cdcl(state, v, wanted, stats) as:
     if v >= (len of state.phase):
@@ -980,7 +967,7 @@ define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagat
     state.conflict is reason_clause
     return 0
 
-define build_cdcl_state(nvars, clauses, asg, stats, opts) as:
+define build_cdcl_state(nvars, store, asg, stats, opts) as:
     cdcl_opts is cdcl_merge_options of opts
     state is {
         "ok": 1,
@@ -1017,31 +1004,32 @@ define build_cdcl_state(nvars, clauses, asg, stats, opts) as:
         "conflict": -1
     }
 
-    for ci in range of (len of clauses):
-        clause is clauses[ci]
+    for ci in range of (clause_store_len of store):
+        clause is clause_store_clause of [store, ci]
         init_clause_metadata of [state, clause, 0, stats]
-        if (len of clause) == 0:
+        clause_size is clause_store_size of [store, ci]
+        if clause_size == 0:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
             stats.conflicts += 1
             state.conflict is ci
             state.ok is 0
-        elif (len of clause) == 1:
+        elif clause_size == 1:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
-            if (enqueue_cdcl of [asg, state, clause[0], ci, 0, stats, 1]) == 0:
+            if (enqueue_cdcl of [asg, state, clause_store_lit of [store, ci, 0], ci, 0, stats, 1]) == 0:
                 state.conflict is ci
                 state.ok is 0
         else:
             append of [state.watch_a, 0]
             append of [state.watch_b, 1]
-            watch_add of [state.watches, clause[0], ci]
-            watch_add of [state.watches, clause[1], ci]
+            watch_add of [state.watches, clause_store_lit of [store, ci, 0], ci]
+            watch_add of [state.watches, clause_store_lit of [store, ci, 1], ci]
 
     init_order_heap of [nvars, asg, state]
     return state
 
-define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
+define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
     level is len of state.trail_lim
     loop while state.qhead < (len of state.trail):
         p is state.trail[state.qhead]
@@ -1056,32 +1044,31 @@ define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
                 stats.deleted_watch_skips += 1
                 continue
 
-            clause is clauses[ci]
             wa is state.watch_a[ci]
             wb is state.watch_b[ci]
 
             false_pos is -1
             other_pos is -1
-            if clause[wa] == false_lit:
+            if (clause_store_lit of [store, ci, wa]) == false_lit:
                 false_pos is wa
                 other_pos is wb
-            elif clause[wb] == false_lit:
+            elif (clause_store_lit of [store, ci, wb]) == false_lit:
                 false_pos is wb
                 other_pos is wa
             else:
                 append of [kept, ci]
                 continue
 
-            other_lit is clause[other_pos]
+            other_lit is clause_store_lit of [store, ci, other_pos]
             other_val is lit_value of [other_lit, asg]
             if other_val == 1:
                 append of [kept, ci]
                 continue
 
             found is 0
-            for k in range of (len of clause):
+            for k in range of (clause_store_size of [store, ci]):
                 if k != false_pos and k != other_pos:
-                    candidate is clause[k]
+                    candidate is clause_store_lit of [store, ci, k]
                     if (lit_value of [candidate, asg]) != -1:
                         if state.watch_a[ci] == false_pos:
                             state.watch_a[ci] is k
@@ -1135,12 +1122,13 @@ define cdcl_push_level(state) as:
     append of [state.trail_lim, len of state.trail]
     return len of state.trail_lim
 
-define resolve_on_var(current, reason_clause, pivot_var) as:
+define resolve_on_var_store(current, store, reason_ci, pivot_var) as:
     out is []
     for lit in current:
         if (lit_abs of lit) != pivot_var:
             append_lit_unique of [out, lit]
-    for lit in reason_clause:
+    for pos in range of (clause_store_size of [store, reason_ci]):
+        lit is clause_store_lit of [store, reason_ci, pos]
         if (lit_abs of lit) != pivot_var:
             append_lit_unique of [out, lit]
     return out
@@ -1191,16 +1179,16 @@ define move_lit_first(clause, lit) as:
             append of [out, item]
     return out
 
-define analyze_conflict_cdcl(clauses, state, conflict_ci, stats) as:
+define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     level is len of state.trail_lim
-    learnt is copy_clause of clauses[conflict_ci]
+    learnt is clause_store_clause of [store, conflict_ci]
 
     loop while (count_clause_level of [learnt, state, level]) > 1:
         pivot is last_reason_var_in_clause of [learnt, state, level]
         if pivot == 0:
             break
         reason_ci is state.reason[pivot]
-        learnt is resolve_on_var of [learnt, clauses[reason_ci], pivot]
+        learnt is resolve_on_var_store of [learnt, store, reason_ci, pivot]
         stats.resolutions += 1
 
     assert_lit is choose_assert_lit of [learnt, state, level]
@@ -1212,9 +1200,8 @@ define analyze_conflict_cdcl(clauses, state, conflict_ci, stats) as:
         "backtrack": backtrack
     }
 
-define add_cdcl_clause(clauses, state, clause, learnt, stats) as:
-    ci is len of clauses
-    append of [clauses, clause]
+define add_cdcl_clause(store, state, clause, learnt, stats) as:
+    ci is clause_store_add_clause of [store, clause]
     init_clause_metadata of [state, clause, learnt, stats]
     state.clause_lbd[ci] is clause_level_span of [clause, state]
     if (len of clause) == 0:
@@ -1326,29 +1313,29 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
     return solve_cnf_cdcl_with_options of [nvars, input_clauses, null]
 
 define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
-    clauses is copy_clauses of input_clauses
+    store is clause_store_from_clauses of input_clauses
     stats is cdcl_empty_stats of null
     asg is make_assignment of nvars
-    state is build_cdcl_state of [nvars, clauses, asg, stats, opts]
+    state is build_cdcl_state of [nvars, store, asg, stats, opts]
 
     if state.ok == 0:
         return cdcl_result of ["UNSAT", null, stats, state]
 
     loop while 1:
-        if (run_watched_queue_cdcl of [nvars, clauses, asg, state, stats]) == 0:
+        if (run_watched_queue_cdcl of [nvars, store, asg, state, stats]) == 0:
             if (len of state.trail_lim) == 0:
                 return cdcl_result of ["UNSAT", null, stats, state]
 
             bump_clause_db_activity of [state, state.conflict, stats]
             decay_clause_activity of [state, stats]
             state.conflicts_since_restart += 1
-            analysis is analyze_conflict_cdcl of [clauses, state, state.conflict, stats]
+            analysis is analyze_conflict_cdcl of [store, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
                 return cdcl_result of ["UNSAT", null, stats, state]
 
             bump_clause_activity of [state, analysis.clause, stats]
             decay_var_activity of [state, stats]
-            learned_ci is add_cdcl_clause of [clauses, state, analysis.clause, 1, stats]
+            learned_ci is add_cdcl_clause of [store, state, analysis.clause, 1, stats]
             bump_clause_db_activity of [state, learned_ci, stats]
             stats.learnts += 1
             cdcl_cancel_until of [state, asg, analysis.backtrack, stats]
@@ -1356,9 +1343,9 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
-            removed_learnts is reduce_learnt_db of [clauses, state, stats]
+            removed_learnts is reduce_learnt_db of [store, state, stats]
             if removed_learnts > 0:
-                clauses is compact_deleted_clauses of [nvars, clauses, state, stats]
+                store is compact_deleted_clauses of [nvars, store, state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 
