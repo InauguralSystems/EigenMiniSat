@@ -9,6 +9,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Priority queue / binary heap as a standard library candidate.
+- Heap-backed CDCL decisions now rebuild list prefixes for pop/truncate and
+  reinsert variables on backjump. The `heap_pops`, `heap_inserts`, and
+  `heap_skips` counters are useful evidence for whether EigenScript needs
+  compact mutable vector or priority-queue library support.
 - Arena-like allocation for clauses and learnt-clause churn.
 - Persistent mutable solver state is now implemented, and the benchmarks show
   rollback/list-truncation overhead on unit-chain cases. Compact mutable vectors

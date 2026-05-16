@@ -18,7 +18,8 @@
 
 Status: initial watched propagation exists as a correctness/benchmark path, and
 the persistent path keeps watch state across recursive DPLL nodes with trail
-marks for backtracking.
+marks for backtracking. CDCL decisions now use a MiniSat-style variable
+activity array and binary heap/order structure.
 
 ## Milestone 3: CDCL
 
@@ -30,8 +31,9 @@ marks for backtracking.
 
 Status: a first CDCL path exists with reason arrays, assignment levels,
 conflict-clause resolution, learnt clauses, and non-chronological backjumping.
-It is still intentionally pre-VSIDS, pre-restart, and pre-database-reduction.
-The next target is MiniSat-style variable activity and a heap/order structure.
+Variable activity bump/decay and a heap-backed decision order are in place. It
+is still intentionally pre-restart and pre-database-reduction. The next target
+is clause allocator pressure and learnt-clause database management.
 
 ## Milestone 4: EigenScript Feedback
 

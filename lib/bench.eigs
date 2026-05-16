@@ -106,5 +106,5 @@ define run_benchmarks(size) as:
         cdcl is solve_cnf_cdcl of [c.nvars, c.clauses]
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
-        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} ms={cms}"
+        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} ms={cms}"
     return len of cases

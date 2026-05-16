@@ -20,6 +20,18 @@ define assert_true(label, cond) as:
 
 print of "=== EigenMiniSat solver tests ==="
 
+heap_state is {
+    "activity": [0, 1, 5, 5],
+    "order_heap": [],
+    "order_pos": filled_list of [4, -1]
+}
+order_insert of [heap_state, 1, null]
+order_insert of [heap_state, 2, null]
+order_insert of [heap_state, 3, null]
+assert_eq of ["activity heap first", order_pop_best of [heap_state, null], 2]
+assert_eq of ["activity heap tie", order_pop_best of [heap_state, null], 3]
+print of "  activity heap: ok"
+
 simple is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"
 assert_eq of ["simple nvars", simple.nvars, 3]
 assert_eq of ["simple clauses", len of simple.clauses, 3]
@@ -59,6 +71,9 @@ assert_eq of ["pigeonhole persistent UNSAT", php_persistent.status, "UNSAT"]
 php_cdcl is solve_cnf_cdcl of [php.nvars, php.clauses]
 assert_eq of ["pigeonhole cdcl UNSAT", php_cdcl.status, "UNSAT"]
 assert_true of ["pigeonhole cdcl learns", php_cdcl.learnts > 0]
+assert_true of ["pigeonhole cdcl bumps", php_cdcl.activity_bumps > 0]
+assert_true of ["pigeonhole cdcl heap pops", php_cdcl.order_pops > 0]
+assert_true of ["pigeonhole cdcl heap reinserts", php_cdcl.order_inserts > 0]
 print of "  pigeonhole UNSAT: ok"
 
 chain_sat is chain_case of [12, 0]

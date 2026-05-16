@@ -65,4 +65,7 @@ else:
         print of "s SATISFIABLE"
     else:
         print of "s UNSATISFIABLE"
-    print of f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
+    counters is f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts}"
+    if cfg.solver == "cdcl":
+        counters is counters + f" learnts={result.learnts} backjumps={result.backjumps} resolutions={result.resolutions} bumps={result.activity_bumps} decays={result.activity_decays} heap_pops={result.order_pops} heap_inserts={result.order_inserts} heap_skips={result.order_skips}"
+    print of counters + f" ms={ms}"
