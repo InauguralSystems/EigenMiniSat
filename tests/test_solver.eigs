@@ -105,6 +105,29 @@ for heuristic_policy in heuristic_policies:
     assert_true of [f"heuristic policy model {heuristic_policy.name}", model_satisfies of [heuristic_phase_case.nvars, heuristic_phase_case.clauses, heuristic_result.model]]
 print of "  heuristic stress helpers: ok"
 
+copy_cases is copy_pressure_cases of 1
+copy_policies is copy_pressure_policies of null
+assert_eq of ["copy pressure case count", len of copy_cases, 3]
+assert_eq of ["copy pressure policy count", len of copy_policies, 2]
+copy_case is copy_cases[0]
+copy_policy is copy_policies[0]
+copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
+    "restart_policy": copy_policy.restart_policy,
+    "restart_first": copy_policy.restart_first,
+    "restart_growth": copy_policy.restart_growth,
+    "phase_policy": copy_policy.phase_policy
+}]
+assert_eq of ["copy pressure expected", copy_case.expected, "UNSAT"]
+assert_eq of ["copy pressure result", copy_result.status, "UNSAT"]
+assert_true of ["copy pressure conflicts", copy_result.conflicts > 0]
+assert_true of ["copy pressure store copies", copy_result.store_clause_copies > 0]
+assert_true of ["copy pressure store copy lits", copy_result.store_clause_copy_lits > 0]
+assert_true of ["copy pressure analysis rebuilds", copy_result.analysis_rebuilds > 0]
+assert_true of ["copy pressure analysis rebuild lits", copy_result.analysis_rebuild_lits > 0]
+assert_true of ["copy pressure compacts", copy_result.compact_runs > 0]
+assert_true of ["copy pressure compact lits", copy_result.compact_clause_lits > 0]
+print of "  copy pressure helpers: ok"
+
 reduce_state is {
     "clause_learnt": [0, 1, 1, 1],
     "clause_deleted": [0, 0, 0, 0],

@@ -22,6 +22,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --copy-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
@@ -52,6 +53,10 @@ positive/negative decision counters.
 `--heuristic-bench` sweeps combined restart and polarity policies across
 pigeonhole, complete-graph coloring, and XOR pressure cases, then prints
 per-policy counters plus per-case decision/conflict/restart ranges.
+`--copy-bench` runs conflict-heavy generated cases through tight restart and
+polarity policies, then reports store-to-list copy, conflict-analysis rebuild,
+and direct compaction-copy counters for deciding whether learnt construction
+needs a store-native builder.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
@@ -83,9 +88,9 @@ For each case it compares split/trim parsing, character scanning, and the
 C-backed `scan_ints` path before solving with CDCL.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
-solver tests, metadata compaction, scan parser comparison, and the manifest
-corpus plus clause storage pressure; the `full` profile runs every benchmark
-mode.
+solver tests, metadata compaction, copy pressure, scan parser comparison, and
+the manifest corpus plus clause storage pressure; the `full` profile runs every
+benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.
@@ -104,6 +109,7 @@ Current:
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
 - combined restart/polarity heuristic stress benchmarks
+- conflict-copy pressure benchmarks over clause-store CDCL counters
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - flat clause arena benchmark for compact clause/vector storage pressure
 - solver-local clause-store adapter for clause references, watch seeding, and
@@ -127,10 +133,10 @@ Current:
 
 Next:
 
-- larger heuristic stress cases
-- use the new copy counters to decide whether conflict analysis needs a
-  store-native learnt builder before promoting arena/reference support to
-  EigenScript root
+- larger heuristic and copy-pressure stress cases
+- prototype a store-native learnt builder only if copy pressure keeps
+  conflict-analysis rebuild literals hot before promoting arena/reference
+  support to EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure
@@ -147,6 +153,7 @@ This repo is expected to stress:
 - phase-saving and fixed-polarity decision churn across CDCL cases
 - restart cancellation and phase-saving churn across repeated backtracking
 - combined restart/polarity option sweeps across branch-heavy cases
+- conflict-heavy copy pressure across tight restart and polarity policies
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure

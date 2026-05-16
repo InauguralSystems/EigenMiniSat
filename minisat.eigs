@@ -20,6 +20,8 @@ define parse_args() as:
             cfg.mode is "phase_bench"
         elif arg == "--heuristic-bench":
             cfg.mode is "heuristic_bench"
+        elif arg == "--copy-bench":
+            cfg.mode is "copy_bench"
         elif arg == "--storage-bench":
             cfg.mode is "storage_bench"
         elif arg == "--metadata-bench":
@@ -64,6 +66,7 @@ define print_help() as:
     print of "  eigenscript minisat.eigs --restart-bench --size N"
     print of "  eigenscript minisat.eigs --phase-bench --size N"
     print of "  eigenscript minisat.eigs --heuristic-bench --size N"
+    print of "  eigenscript minisat.eigs --copy-bench --size N"
     print of "  eigenscript minisat.eigs --storage-bench --size N"
     print of "  eigenscript minisat.eigs --metadata-bench --size N"
     print of "  eigenscript minisat.eigs --parse-bench --size N"
@@ -85,6 +88,8 @@ elif cfg.mode == "phase_bench":
     run_phase_benchmarks of cfg.size
 elif cfg.mode == "heuristic_bench":
     run_heuristic_benchmarks of cfg.size
+elif cfg.mode == "copy_bench":
+    run_copy_benchmarks of cfg.size
 elif cfg.mode == "storage_bench":
     run_storage_benchmarks of cfg.size
 elif cfg.mode == "metadata_bench":
