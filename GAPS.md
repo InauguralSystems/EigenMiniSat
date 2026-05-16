@@ -30,6 +30,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   extraction.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
+- Watch-list slots now use MiniSat-style encoded literal indexes, but
+  conversion still uses arithmetic helpers around signed DIMACS literals. If
+  encoded-literal churn becomes hot, EigenScript may need cheaper bitwise
+  operations or compact integer arrays before this should be pushed further
+  into local solver representation.
 - Priority queue / binary heap as a standard library candidate.
 - Heap-backed CDCL decisions now rebuild list prefixes for pop/truncate and
   reinsert variables on backjump. The `heap_pops`, `heap_inserts`, and

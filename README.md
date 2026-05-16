@@ -57,6 +57,7 @@ Current:
 
 - DIMACS CNF parsing
 - DPLL with unit propagation
+- MiniSat-style literal encoding for watch-list indexing
 - watched-literal propagation path for correctness and benchmark comparison
 - persistent watched trail/backtracking path
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
@@ -84,6 +85,7 @@ Next:
 This repo is expected to stress:
 
 - hot integer/list loops
+- signed DIMACS literal conversion to MiniSat-style encoded literal indexes
 - mutable list and dict state
 - recursive search and backtracking
 - parser/string throughput for DIMACS
