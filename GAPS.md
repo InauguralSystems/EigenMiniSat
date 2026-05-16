@@ -37,7 +37,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   committing machine-local logs. This should make regressions easier to compare
   while keeping the constrained dev machine's output explicit and local. The
   `evidence` profile now defaults to bounded larger-case pressure and includes
-  malformed diagnostics without running every benchmark mode.
+  malformed diagnostics without running every benchmark mode. Its summary
+  collapses copy, metadata, storage, parser, diagnostic, and corpus output into
+  decision flags for the root-vs-library-vs-local ledger.
 - A character-scanning DIMACS parser now matches the split/trim parser's
   diagnostics and clauses, but repeated `substr` and token string concatenation
   are often slower than split/trim on these fixtures. EigenScript now exposes

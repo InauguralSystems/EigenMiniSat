@@ -21,8 +21,13 @@ Profiles:
   benchmark.
 - `evidence`: quick profile coverage plus malformed-DIMACS diagnostics, with
   default size `2` for bounded larger-case pressure. It appends a compact
-  evidence summary with copy-delta totals and decision flags.
+  evidence summary with copy, metadata, storage, parser, diagnostic, and corpus
+  totals plus decision flags.
 - `full`: solver tests plus every benchmark mode, including malformed-DIMACS
   diagnostics.
 
 Use `EIGENSCRIPT_BIN=/path/to/eigenscript` to override the interpreter.
+
+The summary flags are evidence markers, not automatic root decisions. They are
+intended to keep the next EigenMiniSat-vs-EigenScript decision grounded in
+small repeatable counters instead of full raw logs.

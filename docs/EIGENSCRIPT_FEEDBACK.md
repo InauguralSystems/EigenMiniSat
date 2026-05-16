@@ -128,6 +128,16 @@ scans. That keeps both `physical_compaction_pressure` and `lazy_debt_pressure`
 active; this is still evidence for a solver/storage decision, not yet a root
 EigenScript arena request.
 
+The same checkpoint also keeps the other pressure surfaces visible: generated
+parse totals are `split=36.006ms`, `scan=45.676ms`, `scan_ints=5.328ms`;
+corpus parse totals are `split=26.689ms`, `scan=37.823ms`,
+`scan_ints=4.708ms`; diagnostic scan is slower than split/trim on 20 malformed
+errors; storage adapter scans total `9.816ms` versus `5.849ms` flat scans; and
+metadata churn reports 996 compacted literals, 5 watch rebuilds, 227 watch
+detaches, and 168 trail replays. These activate diagnostic-tokenizer,
+validated-scan, storage-adapter, and compact-vector pressure flags without
+turning them into final root requests.
+
 ### Bitwise Integer Operations
 
 Classification: root runtime candidate, lower priority.

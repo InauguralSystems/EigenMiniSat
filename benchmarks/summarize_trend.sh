@@ -70,8 +70,87 @@ stop != 0 {
     }
 }
 
+/^metadata compaction / {
+    metadata_compact_clause_lits += field_value("compact_clause_lits")
+    metadata_watch_rebuilds += field_value("watch_rebuilds")
+    metadata_watch_detaches += field_value("watch_detaches")
+    metadata_compact_replays += field_value("compact_replays")
+    metadata_rows += 1
+}
+
+/^metadata churn summary / {
+    metadata_compact_clause_lits += field_value("compact_clause_lits")
+    metadata_watch_rebuilds += field_value("watch_rebuilds")
+    metadata_watch_detaches += field_value("watch_detaches")
+    metadata_compact_replays += field_value("compact_replays")
+    metadata_locked_kept += field_value("locked_kept")
+    metadata_rows += 1
+}
+
+/^storage arena / {
+    storage_list_scan_ms += field_value("list_scan_ms")
+    storage_flat_scan_ms += field_value("flat_scan_ms")
+    storage_arena_build_ms += field_value("build_ms")
+    storage_reconstruct_ms += field_value("reconstruct_ms")
+    storage_rows += 1
+}
+
+/^storage adapter / {
+    storage_adapter_scan_ms += field_value("adapter_scan_ms")
+    storage_adapter_watch_seed_ms += field_value("adapter_watch_seed_ms")
+}
+
+/^storage compact / {
+    storage_list_compact_ms += field_value("list_compact_ms")
+    storage_flat_compact_ms += field_value("flat_compact_ms")
+    storage_remap_ms += field_value("remap_ms")
+}
+
+/^storage adapter compact / {
+    storage_adapter_compact_ms += field_value("adapter_compact_ms")
+}
+
+/^parse split / {
+    parse_split_ms += field_value("ms")
+    parse_rows += 1
+}
+
+/^parse scan / {
+    parse_scan_ms += field_value("ms")
+}
+
+/^parse ints / {
+    parse_ints_ms += field_value("ms")
+}
+
+/^diagnostic split / {
+    diagnostic_split_ms += field_value("ms")
+    diagnostic_errors += field_value("errors")
+    diagnostic_rows += 1
+}
+
+/^diagnostic scan / {
+    diagnostic_scan_ms += field_value("ms")
+}
+
+/^corpus parse split / {
+    corpus_split_ms += field_value("ms")
+    corpus_rows += 1
+}
+
+/^corpus parse scan / {
+    corpus_scan_ms += field_value("ms")
+}
+
+/^corpus parse ints / {
+    corpus_ints_ms += field_value("ms")
+}
+
 END {
     printf "copy_delta_totals cases=%d compact_lit_savings=%d watch_rebuild_savings=%d replay_savings=%d pending_deleted_debt=%d watch_detach_scan_debt=%d\n", cases, compact_lit_savings, watch_rebuild_savings, replay_savings, pending_deleted_debt, watch_detach_scan_debt
+    printf "metadata_totals rows=%d compact_clause_lits=%d watch_rebuilds=%d watch_detaches=%d compact_replays=%d locked_kept=%d\n", metadata_rows, metadata_compact_clause_lits, metadata_watch_rebuilds, metadata_watch_detaches, metadata_compact_replays, metadata_locked_kept
+    printf "storage_totals rows=%d list_scan_ms=%.3f flat_scan_ms=%.3f adapter_scan_ms=%.3f arena_build_ms=%.3f reconstruct_ms=%.3f list_compact_ms=%.3f flat_compact_ms=%.3f adapter_compact_ms=%.3f remap_ms=%.3f\n", storage_rows, storage_list_scan_ms, storage_flat_scan_ms, storage_adapter_scan_ms, storage_arena_build_ms, storage_reconstruct_ms, storage_list_compact_ms, storage_flat_compact_ms, storage_adapter_compact_ms, storage_remap_ms
+    printf "parse_totals generated_cases=%d split_ms=%.3f scan_ms=%.3f ints_ms=%.3f diagnostic_cases=%d diagnostic_errors=%d diagnostic_split_ms=%.3f diagnostic_scan_ms=%.3f corpus_cases=%d corpus_split_ms=%.3f corpus_scan_ms=%.3f corpus_ints_ms=%.3f\n", parse_rows, parse_split_ms, parse_scan_ms, parse_ints_ms, diagnostic_rows, diagnostic_errors, diagnostic_split_ms, diagnostic_scan_ms, corpus_rows, corpus_split_ms, corpus_scan_ms, corpus_ints_ms
     if (compact_lit_savings > 0 || watch_rebuild_savings > 0 || replay_savings > 0) {
         physical_compaction_pressure = 1
     } else {
@@ -82,6 +161,26 @@ END {
     } else {
         lazy_debt_pressure = 0
     }
-    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d\n", physical_compaction_pressure, lazy_debt_pressure
+    if (diagnostic_scan_ms > diagnostic_split_ms) {
+        diagnostic_tokenizer_pressure = 1
+    } else {
+        diagnostic_tokenizer_pressure = 0
+    }
+    if ((parse_ints_ms > 0 && parse_ints_ms < parse_split_ms) || (corpus_ints_ms > 0 && corpus_ints_ms < corpus_split_ms)) {
+        validated_scan_ints_win = 1
+    } else {
+        validated_scan_ints_win = 0
+    }
+    if (storage_adapter_scan_ms > storage_flat_scan_ms) {
+        storage_adapter_pressure = 1
+    } else {
+        storage_adapter_pressure = 0
+    }
+    if (metadata_compact_clause_lits > 0 || storage_flat_compact_ms > storage_list_compact_ms) {
+        compact_vector_pressure = 1
+    } else {
+        compact_vector_pressure = 0
+    }
+    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure
 }
 ' "$LOG"
