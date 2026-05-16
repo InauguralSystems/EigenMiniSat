@@ -27,6 +27,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 tests/run_smoke.sh
+benchmarks/run_trends.sh quick 1
 ```
 
 The CLI prints MiniSat-like `s SATISFIABLE` or `s UNSATISFIABLE` lines for CNF
@@ -63,6 +64,10 @@ The default corpus covers comments, multiline clauses, multi-clause lines,
 graph coloring, pigeonhole, wide clauses, and parity/XOR SAT/UNSAT instances.
 For each case it compares split/trim parsing, character scanning, and the
 C-backed `scan_ints` path before solving with CDCL.
+`benchmarks/run_trends.sh` records selected pressure outputs to ignored
+timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
+solver tests, metadata compaction, scan parser comparison, and the manifest
+corpus; the `full` profile runs every benchmark mode.
 
 ## Scope
 
@@ -82,6 +87,7 @@ Current:
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - manifest-driven DIMACS corpus fixtures for real file-shape coverage
+- lightweight trend runner for repeatable pressure snapshots
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
 - C-backed `scan_ints` DIMACS parser comparison path
@@ -114,6 +120,7 @@ This repo is expected to stress:
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants
 - manifest parsing and corpus-family metadata plumbing
+- repeatable trend-log capture without committing machine-local run output
 - parser diagnostic overhead while validating larger CNF input
 - character-at-a-time scanner overhead versus split/trim tokenization
 - C-backed integer scan throughput versus EigenScript-side clause assembly
