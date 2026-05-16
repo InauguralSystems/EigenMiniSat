@@ -21,6 +21,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
@@ -43,6 +44,9 @@ indexes, cancellations, compaction, and elapsed milliseconds.
 `--phase-bench` compares saved phase decisions with fixed positive and fixed
 negative polarity on the same generated cases, reporting phase save/flip and
 positive/negative decision counters.
+`--metadata-bench` builds synthetic learnt-clause pressure, runs database
+reduction, compacts deleted clauses, and reports allocation, deletion, watch
+rebuild, and trail replay counters without needing a larger external CNF.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--scan-parse-bench` compares the current split/trim parser, a
@@ -73,6 +77,7 @@ Current:
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
+- synthetic learnt metadata and compaction benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - checked-in DIMACS corpus fixtures for real file-shape coverage
@@ -84,7 +89,7 @@ Current:
 
 Next:
 
-- larger polarity and restart-schedule stress cases
+- larger polarity, restart-schedule, and metadata stress cases
 - compact clause/vector storage if metadata and lazy deletion pressure grows
 - larger external CNF corpus once parser throughput is stable
 
@@ -103,6 +108,7 @@ This repo is expected to stress:
 - restart cancellation and phase-saving churn across repeated backtracking
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
+- synthetic learnt-clause allocation, deletion, and compaction pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants

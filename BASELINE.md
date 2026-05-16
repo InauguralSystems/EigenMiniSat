@@ -89,6 +89,18 @@ phase positive xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propag
 phase negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=17 conflicts=4 learnts=4 restarts=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 ms=6.19751
 ```
 
+Metadata compaction benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 2
+```
+
+Result:
+
+```text
+metadata compaction metadata-2: vars=40 base=40 learnts_added=160 clauses_after=120 active_learnts=80 clause_allocs=200 learnt_allocs=160 learnt_lits=480 reduce_runs=1 reduce_scans=80 learnt_deleted=80 compact_runs=1 compact_removed=80 compact_kept=120 watch_rebuilds=1 compact_replays=40 build_add_ms=13.019 reduce_ms=195.196 compact_ms=3.49531
+```
+
 Parse benchmark command:
 
 ```bash

@@ -50,9 +50,12 @@ Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 fixed-polarity comparison, geometric restarts, and a Luby restart comparison
 path are in place. Deleted learnt clauses are now eagerly compacted by
-remapping clause references and rebuilding watch lists. The next target is
-larger polarity/restart stress cases, scanner diagnostic/token-span pressure,
-and expanding the CNF corpus beyond small checked-in fixtures.
+remapping clause references and rebuilding watch lists. A synthetic metadata
+benchmark now isolates learnt allocation, database reduction, compaction,
+watch rebuild, and trail replay pressure without requiring a larger CNF corpus.
+The next target is larger polarity/restart/metadata stress cases, scanner
+diagnostic/token-span pressure, and expanding the CNF corpus beyond small
+checked-in fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
