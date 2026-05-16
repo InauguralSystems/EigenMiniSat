@@ -20,6 +20,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 tests/run_smoke.sh
 ```
 
@@ -34,6 +35,9 @@ Compaction counters show when deleted learnt clauses are removed and watch lists
 are rebuilt.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
+`--file-bench` writes the same generated fixtures through EigenScript temp-file
+I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
+the parsed clauses with CDCL.
 
 ## Scope
 
@@ -49,6 +53,7 @@ Current:
 - saved phase/polarity decisions and geometric restart policy
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - larger generated DIMACS fixture families for parser and scale pressure
+- file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - fixture correctness tests
 - generated benchmark families
 
@@ -71,3 +76,4 @@ This repo is expected to stress:
 - restart cancellation and phase-saving churn across repeated backtracking
 - clause compaction and watch rebuild/replay overhead
 - generated DIMACS string throughput and parse-token allocation
+- temp-file write/read/remove overhead around parser throughput

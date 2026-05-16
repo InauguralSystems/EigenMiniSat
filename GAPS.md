@@ -10,6 +10,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   current path builds strings by repeated concatenation and tokenizes each line
   through split/trim/num conversion, so larger fixtures should tell us whether
   EigenScript needs string-builder or streaming-tokenizer support.
+- File-backed DIMACS fixtures now add `mktemp`, `write_text`, `read_text`
+  through `parse_dimacs_file`, and `rm` pressure. This separates parser cost
+  from file I/O cost and may expose whether EigenScript needs streaming file
+  parsing or buffered write helpers for larger CNF corpora.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Priority queue / binary heap as a standard library candidate.
