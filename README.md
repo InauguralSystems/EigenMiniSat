@@ -85,6 +85,9 @@ timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, scan parser comparison, and the manifest
 corpus plus clause storage pressure; the `full` profile runs every benchmark
 mode.
+`docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
+look like EigenScript root/runtime candidates, standard-library candidates, or
+EigenMiniSat-local work.
 
 ## Scope
 
@@ -107,6 +110,7 @@ Current:
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - manifest-driven DIMACS corpus fixtures for real file-shape coverage
 - lightweight trend runner for repeatable pressure snapshots
+- root-pressure feedback ledger for EigenScript/std-lib/local decisions
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
 - malformed DIMACS diagnostic benchmark pressure
@@ -117,8 +121,8 @@ Current:
 Next:
 
 - larger heuristic stress cases
-- decide whether flat clause/vector storage belongs in EigenScript root support
-  or in EigenMiniSat-local solver internals
+- prototype EigenMiniSat-local clause storage before promoting arena/reference
+  support to EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure

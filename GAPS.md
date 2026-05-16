@@ -6,6 +6,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 ## Open Watchlist
 
 - Hot function-call overhead in propagation loops.
+- `docs/EIGENSCRIPT_FEEDBACK.md` now classifies current pressure into
+  EigenScript root/runtime candidates, standard-library candidates, and
+  EigenMiniSat-local work. The current direction is local-only binding and
+  diagnostic token spans as root candidates, string builders and priority
+  queues as standard-library candidates, compact integer vectors as root-vs
+  stdlib pressure, and clause arenas as an EigenMiniSat-local prototype first.
 - DIMACS parser throughput is now measured with generated text fixtures. The
   current path builds strings by repeated concatenation and tokenizes each line
   through split/trim/num conversion, so larger fixtures should tell us whether

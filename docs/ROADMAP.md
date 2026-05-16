@@ -67,11 +67,10 @@ and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
 allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
-and repeated reason remapping. The next target is using the new storage and
-metadata data to decide between EigenScript root compact vector/arena support
-and an EigenMiniSat-local clause storage rewrite, plus scanner token-span
-pressure and a larger third-party CNF corpus beyond the checked-in manifest
-fixtures.
+and repeated reason remapping. The next target is an EigenMiniSat-local clause
+storage prototype before promoting arena/reference support to EigenScript root,
+plus scanner token-span pressure and a larger third-party CNF corpus beyond the
+checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
@@ -80,3 +79,10 @@ Each benchmark regression should become one of:
 - root EigenScript runtime/compiler issue
 - EigenScript standard library candidate
 - EigenMiniSat-local algorithmic correction
+
+Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
+ledger. Local-only binding and diagnostic token spans are root/runtime
+candidates, string builders and priority queues are standard-library
+candidates, compact integer vectors are still root-vs-stdlib pressure, and
+clause arenas should be prototyped locally in EigenMiniSat before asking for a
+root primitive.
