@@ -58,8 +58,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 - A solver-local clause-store adapter now wraps the flat arena with length,
   literal lookup, clause reconstruction, CDCL-style watch seeding, and
   compaction mapping. The benchmark compares direct flat-array scans against
-  adapter-mediated access before moving real CDCL propagation and conflict
-  analysis onto the adapter.
+  adapter-mediated access.
+- CDCL propagation, conflict analysis, learnt insertion, reduction scans, and
+  deleted-clause compaction now operate over the solver-local clause store.
+  Remaining pressure is the list reconstruction still needed for learnt-clause
+  assembly and store compaction, which should be measured before asking
+  EigenScript for root arena/reference primitives.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but
   conversion still uses arithmetic helpers around signed DIMACS literals. If
   encoded-literal churn becomes hot, EigenScript may need cheaper bitwise
@@ -89,7 +93,7 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   waves with pinned reason references. This amplifies locked-clause scans,
   reason-reference remapping, watch rebuilds, and trail replay counters before
   deciding whether EigenScript needs root arena/reference primitives beyond the
-  EigenMiniSat-local clause-store prototype.
+  active EigenMiniSat-local clause-store prototype.
 - CDCL option handling exposed a real EigenScript scoping hazard: generic local
   names such as `cfg` can mutate an outer binding through the language's
   outward assignment semantics. That behavior is intentional today, but solver

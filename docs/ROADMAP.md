@@ -47,8 +47,9 @@ reconstruction. It also measures deleted-clause compaction and synthetic reason
 reference remapping before committing to a solver storage rewrite or root
 compact vector support. A solver-local clause-store adapter now wraps the flat
 arena with clause length/literal lookup, reconstruction, CDCL-style watch
-seeding, and deletion-compaction mapping so real propagation can move behind
-that API before asking EigenScript for root arena support.
+seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
+learnt insertion, reduction scans, and deleted-clause compaction now use that
+adapter before asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -70,10 +71,10 @@ and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
 allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
-and repeated reason remapping. The next target is migrating CDCL propagation
-and conflict analysis onto the clause-store adapter, plus scanner token-span
-pressure and a larger third-party CNF corpus beyond the checked-in manifest
-fixtures.
+and repeated reason remapping. The next target is measuring remaining
+clause-store reconstruction/copy pressure in conflict analysis and learnt
+compaction, plus scanner token-span pressure and a larger third-party CNF
+corpus beyond the checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

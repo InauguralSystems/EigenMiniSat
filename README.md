@@ -107,6 +107,8 @@ Current:
 - flat clause arena benchmark for compact clause/vector storage pressure
 - solver-local clause-store adapter for clause references, watch seeding, and
   compaction mapping pressure
+- CDCL propagation, conflict analysis, learnt insertion, reduction, and
+  compaction over the solver-local clause-store adapter
 - synthetic learnt metadata compaction and churn benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
@@ -123,9 +125,9 @@ Current:
 Next:
 
 - larger heuristic stress cases
-- migrate CDCL propagation/conflict analysis onto the solver-local
-  clause-store adapter before promoting arena/reference support to EigenScript
-  root
+- measure remaining clause-store reconstruction/copy pressure in CDCL conflict
+  analysis and learnt compaction before promoting arena/reference support to
+  EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure
@@ -146,6 +148,7 @@ This repo is expected to stress:
 - clause compaction and watch rebuild/replay overhead
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
+- CDCL clause-store propagation and conflict-analysis access patterns
 - synthetic learnt-clause allocation, deletion, compaction, and churn pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
