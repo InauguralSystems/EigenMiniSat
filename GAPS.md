@@ -69,6 +69,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   large external CNF. This isolates parallel metadata arrays, clause allocation
   churn, deleted-clause filtering, reason remapping, watch rebuilds, and trail
   replay cost as their own benchmark surface.
+- Metadata churn now adds repeated learnt-clause allocation/reduction/compaction
+  waves with pinned reason references. This amplifies locked-clause scans,
+  reason-reference remapping, watch rebuilds, and trail replay counters before
+  deciding whether EigenScript needs root arena/reference primitives or whether
+  EigenMiniSat should first rewrite local clause storage.
 - CDCL option handling exposed a real EigenScript scoping hazard: generic local
   names such as `cfg` can mutate an outer binding through the language's
   outward assignment semantics. That behavior is intentional today, but solver

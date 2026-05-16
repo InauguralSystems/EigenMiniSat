@@ -127,7 +127,12 @@ Metadata compaction benchmark command:
 Result:
 
 ```text
-metadata compaction metadata-2: vars=40 base=40 learnts_added=160 clauses_after=120 active_learnts=80 clause_allocs=200 learnt_allocs=160 learnt_lits=480 reduce_runs=1 reduce_scans=80 learnt_deleted=80 compact_runs=1 compact_removed=80 compact_kept=120 watch_rebuilds=1 compact_replays=40 build_add_ms=13.019 reduce_ms=195.196 compact_ms=3.49531
+metadata compaction metadata-2: vars=40 base=40 learnts_added=160 clauses_after=120 active_learnts=80 clause_allocs=200 learnt_allocs=160 learnt_lits=480 reduce_runs=1 reduce_scans=80 learnt_deleted=80 compact_runs=1 compact_removed=80 compact_kept=120 watch_rebuilds=1 compact_replays=40 build_add_ms=13.8469 reduce_ms=194.865 compact_ms=2.4923
+metadata churn wave metadata-churn-2-1: added=48 removed=24 clauses=56 active_learnts=24 pinned=8 reason_active=32 reason_checksum=14216 add_ms=3.46191 reduce_ms=16.0484 compact_ms=1.26204
+metadata churn wave metadata-churn-2-2: added=48 removed=36 clauses=68 active_learnts=36 pinned=8 reason_active=32 reason_checksum=18500 add_ms=4.41714 reduce_ms=27.7529 compact_ms=1.31407
+metadata churn wave metadata-churn-2-3: added=48 removed=42 clauses=74 active_learnts=42 pinned=8 reason_active=32 reason_checksum=23732 add_ms=3.5092 reduce_ms=34.9333 compact_ms=1.53554
+metadata churn wave metadata-churn-2-4: added=48 removed=45 clauses=77 active_learnts=45 pinned=8 reason_active=32 reason_checksum=25736 add_ms=3.5423 reduce_ms=45.7503 compact_ms=1.67704
+metadata churn summary metadata-churn-2: waves=4 vars=32 learnts_added=192 active_learnts=45 total_pinned=32 clause_allocs=224 learnt_deleted=147 locked_kept=2901 compact_runs=4 compact_removed=147 compact_kept=275 watch_rebuilds=4 compact_replays=128 reason_active=32 reason_checksum=25736 add_ms=14.9305 reduce_ms=124.485 compact_ms=5.78869
 ```
 
 Storage benchmark command:
