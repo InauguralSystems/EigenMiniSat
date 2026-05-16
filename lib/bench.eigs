@@ -1,0 +1,92 @@
+# ============================================================
+# Generated benchmark families
+# ============================================================
+
+define chain_case(n, contradictory) as:
+    clauses is []
+    append of [clauses, [1]]
+    for i in range of (n - 1):
+        v is i + 1
+        append of [clauses, [0 - v, v + 1]]
+    if contradictory != 0:
+        append of [clauses, [0 - n]]
+    else:
+        append of [clauses, [n]]
+    label is f"chain-sat-{n}"
+    if contradictory != 0:
+        label is f"chain-unsat-{n}"
+    return {
+        "name": label,
+        "nvars": n,
+        "clauses": clauses
+    }
+
+define pigeon_var(pigeon, hole, holes) as:
+    return (pigeon * holes) + hole + 1
+
+define pigeonhole_case(pigeons, holes) as:
+    clauses is []
+
+    for p in range of pigeons:
+        atleast is []
+        for h in range of holes:
+            append of [atleast, pigeon_var of [p, h, holes]]
+        append of [clauses, atleast]
+
+    for p in range of pigeons:
+        for h1 in range of holes:
+            h2 is h1 + 1
+            loop while h2 < holes:
+                append of [clauses, [0 - (pigeon_var of [p, h1, holes]), 0 - (pigeon_var of [p, h2, holes])]]
+                h2 += 1
+
+    for h in range of holes:
+        for p1 in range of pigeons:
+            p2 is p1 + 1
+            loop while p2 < pigeons:
+                append of [clauses, [0 - (pigeon_var of [p1, h, holes]), 0 - (pigeon_var of [p2, h, holes])]]
+                p2 += 1
+
+    return {
+        "name": f"pigeonhole-{pigeons}-{holes}",
+        "nvars": pigeons * holes,
+        "clauses": clauses
+    }
+
+define xor_triangle_case(repeats) as:
+    clauses is []
+    for r in range of repeats:
+        base is (r * 3)
+        a is base + 1
+        b is base + 2
+        c is base + 3
+        append of [clauses, [a, b, c]]
+        append of [clauses, [0 - a, b, c]]
+        append of [clauses, [a, 0 - b, c]]
+        append of [clauses, [a, b, 0 - c]]
+    return {
+        "name": f"xor-triangle-{repeats}",
+        "nvars": repeats * 3,
+        "clauses": clauses
+    }
+
+define benchmark_cases(size) as:
+    if size < 1:
+        size is 1
+    cases is []
+    append of [cases, chain_case of [20 * size, 0]]
+    append of [cases, chain_case of [20 * size, 1]]
+    append of [cases, pigeonhole_case of [size + 2, size + 1]]
+    tri_repeats is size + 2
+    append of [cases, xor_triangle_case of tri_repeats]
+    return cases
+
+define run_benchmarks(size) as:
+    cases is benchmark_cases of size
+    for c in cases:
+        t0 is monotonic_ns of null
+        result is solve_cnf of [c.nvars, c.clauses]
+        t1 is monotonic_ns of null
+        ms is (t1 - t0) / 1000000
+        print of f"bench {c.name}: status={result.status} vars={c.nvars} clauses={len of c.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
+    return len of cases

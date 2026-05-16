@@ -1,0 +1,57 @@
+# ============================================================
+# EigenMiniSat CLI
+# ============================================================
+
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+define parse_args() as:
+    argv is args of null
+    cfg is {"mode": "solve", "path": "", "size": 1}
+    i is 0
+    loop while i < (len of argv):
+        arg is argv[i]
+        if arg == "--bench":
+            cfg.mode is "bench"
+        elif arg == "--size":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.size is floor of (num of argv[i])
+                if cfg.size < 1:
+                    cfg.size is 1
+        elif arg == "--help" or arg == "-h":
+            cfg.mode is "help"
+        else:
+            cfg.path is arg
+        i += 1
+    return cfg
+
+define print_help() as:
+    print of "Usage:"
+    print of "  eigenscript minisat.eigs <file.cnf>"
+    print of "  eigenscript minisat.eigs --bench --size N"
+    return null
+
+cfg is parse_args of null
+
+if cfg.mode == "help":
+    print_help of null
+elif cfg.mode == "bench":
+    run_benchmarks of cfg.size
+elif cfg.path == "":
+    print_help of null
+    assert of [0, "missing DIMACS path"]
+else:
+    parsed is parse_dimacs_file of cfg.path
+    t0 is monotonic_ns of null
+    result is solve_cnf of [parsed.nvars, parsed.clauses]
+    t1 is monotonic_ns of null
+    ms is (t1 - t0) / 1000000
+
+    if result.status == "SAT":
+        print of "s SATISFIABLE"
+    else:
+        print of "s UNSATISFIABLE"
+    print of f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
+

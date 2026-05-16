@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+EIGS="${EIGENSCRIPT_BIN:-/home/jon/EigenScript/src/eigenscript}"
+
+cd "$ROOT"
+"$EIGS" tests/test_solver.eigs
+"$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
+"$EIGS" minisat.eigs tests/fixtures/unit_unsat.cnf
+"$EIGS" minisat.eigs --bench --size "${1:-1}"
+

@@ -1,0 +1,76 @@
+# ============================================================
+# DIMACS CNF parser
+# ============================================================
+
+define _is_comment_or_empty(line) as:
+    line is trim of line
+    if line == "":
+        return 1
+    first is substr of [line, 0, 1]
+    if first == "c":
+        return 1
+    return 0
+
+define _tokens(line) as:
+    cleaned is str_replace of [line, "\t", " "]
+    raw is split of [cleaned, " "]
+    out is []
+    for part in raw:
+        item is trim of part
+        if item != "":
+            append of [out, item]
+    return out
+
+define parse_dimacs_text(text) as:
+    lines is split of [text, "\n"]
+    clauses is []
+    current is []
+    declared_vars is 0
+    declared_clauses is 0
+    max_var is 0
+
+    for line in lines:
+        if (_is_comment_or_empty of line) != 0:
+            continue
+
+        parts is _tokens of line
+        if (len of parts) == 0:
+            continue
+
+        if parts[0] == "p":
+            if (len of parts) >= 4:
+                declared_vars is floor of (num of parts[2])
+                declared_clauses is floor of (num of parts[3])
+            continue
+
+        for tok in parts:
+            lit is floor of (num of tok)
+            if lit == 0:
+                append of [clauses, current]
+                current is []
+            else:
+                append of [current, lit]
+                v is lit
+                if v < 0:
+                    v is 0 - v
+                if v > max_var:
+                    max_var is v
+
+    if (len of current) > 0:
+        append of [clauses, current]
+
+    nvars is declared_vars
+    if max_var > nvars:
+        nvars is max_var
+
+    return {
+        "nvars": nvars,
+        "clauses": clauses,
+        "declared_vars": declared_vars,
+        "declared_clauses": declared_clauses
+    }
+
+define parse_dimacs_file(path) as:
+    text is read_text of path
+    return parse_dimacs_text of text
+

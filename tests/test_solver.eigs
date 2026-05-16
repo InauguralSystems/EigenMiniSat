@@ -1,0 +1,55 @@
+# ============================================================
+# EigenMiniSat solver tests
+# ============================================================
+
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+define assert_eq(label, actual, expected) as:
+    if actual != expected:
+        print of f"ASSERT {label}: got {actual}, expected {expected}"
+        assert of [0, label]
+    return 1
+
+define assert_true(label, cond) as:
+    if not cond:
+        print of f"ASSERT {label}: condition was false"
+        assert of [0, label]
+    return 1
+
+print of "=== EigenMiniSat solver tests ==="
+
+simple is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"
+assert_eq of ["simple nvars", simple.nvars, 3]
+assert_eq of ["simple clauses", len of simple.clauses, 3]
+simple_result is solve_cnf of [simple.nvars, simple.clauses]
+assert_eq of ["simple SAT", simple_result.status, "SAT"]
+assert_true of ["simple model satisfies", model_satisfies of [simple.nvars, simple.clauses, simple_result.model]]
+print of "  simple SAT: ok"
+
+unit_unsat is parse_dimacs_file of "tests/fixtures/unit_unsat.cnf"
+unit_result is solve_cnf of [unit_unsat.nvars, unit_unsat.clauses]
+assert_eq of ["unit UNSAT", unit_result.status, "UNSAT"]
+assert_true of ["unit conflict counted", unit_result.conflicts > 0]
+print of "  unit UNSAT: ok"
+
+php is parse_dimacs_file of "tests/fixtures/pigeonhole_3_2.cnf"
+php_result is solve_cnf of [php.nvars, php.clauses]
+assert_eq of ["pigeonhole UNSAT", php_result.status, "UNSAT"]
+print of "  pigeonhole UNSAT: ok"
+
+chain_sat is chain_case of [12, 0]
+chain_sat_result is solve_cnf of [chain_sat.nvars, chain_sat.clauses]
+assert_eq of ["chain SAT", chain_sat_result.status, "SAT"]
+assert_true of ["chain SAT propagates", chain_sat_result.propagations >= 12]
+print of "  generated chain SAT: ok"
+
+chain_unsat is chain_case of [12, 1]
+chain_unsat_result is solve_cnf of [chain_unsat.nvars, chain_unsat.clauses]
+assert_eq of ["chain UNSAT", chain_unsat_result.status, "UNSAT"]
+assert_true of ["chain UNSAT conflict", chain_unsat_result.conflicts > 0]
+print of "  generated chain UNSAT: ok"
+
+print of "\n=== All EigenMiniSat solver tests passed ==="
+
