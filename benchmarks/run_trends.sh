@@ -54,6 +54,7 @@ if [[ "$PROFILE" == "full" ]]; then
     run_cmd "$EIGS" minisat.eigs --bench --size "$SIZE"
     run_cmd "$EIGS" minisat.eigs --restart-bench --size "$SIZE"
     run_cmd "$EIGS" minisat.eigs --phase-bench --size "$SIZE"
+    run_cmd "$EIGS" minisat.eigs --heuristic-bench --size "$SIZE"
 fi
 
 run_cmd "$EIGS" minisat.eigs --metadata-bench --size "$SIZE"

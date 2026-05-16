@@ -21,6 +21,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
@@ -46,6 +47,9 @@ indexes, cancellations, compaction, and elapsed milliseconds.
 `--phase-bench` compares saved phase decisions with fixed positive and fixed
 negative polarity on the same generated cases, reporting phase save/flip and
 positive/negative decision counters.
+`--heuristic-bench` sweeps combined restart and polarity policies across
+pigeonhole, complete-graph coloring, and XOR pressure cases, then prints
+per-policy counters plus per-case decision/conflict/restart ranges.
 `--storage-bench` builds a flat clause arena beside the existing list-of-lists
 representation and compares list scanning, arena build, flat scanning, watch
 seeding, reconstruction, deletion compaction, and reason-reference remapping
@@ -88,6 +92,7 @@ Current:
 - MiniSat-style variable activity and a binary heap order structure for CDCL
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
+- combined restart/polarity heuristic stress benchmarks
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - flat clause arena benchmark for compact clause/vector storage pressure
 - synthetic learnt metadata and compaction benchmark pressure
@@ -103,7 +108,7 @@ Current:
 
 Next:
 
-- larger polarity, restart-schedule, and metadata stress cases
+- larger metadata and heuristic stress cases
 - decide whether flat clause/vector storage belongs in EigenScript root support
   or in EigenMiniSat-local solver internals
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
@@ -121,6 +126,7 @@ This repo is expected to stress:
 - allocator behavior under clause metadata, learnt churn, and lazy deletion
 - phase-saving and fixed-polarity decision churn across CDCL cases
 - restart cancellation and phase-saving churn across repeated backtracking
+- combined restart/polarity option sweeps across branch-heavy cases
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure

@@ -117,6 +117,41 @@ define wide_clause_case(nvars, width, groups) as:
         "clauses": clauses
     }
 
+define graph_color_var(node, color, colors) as:
+    return (node * colors) + color + 1
+
+define complete_graph_color_case(nodes, colors) as:
+    clauses is []
+    for node in range of nodes:
+        atleast is []
+        for color in range of colors:
+            append of [atleast, graph_color_var of [node, color, colors]]
+        append of [clauses, atleast]
+
+        for color_a in range of colors:
+            color_b is color_a + 1
+            loop while color_b < colors:
+                append of [clauses, [0 - (graph_color_var of [node, color_a, colors]), 0 - (graph_color_var of [node, color_b, colors])]]
+                color_b += 1
+
+    for left in range of nodes:
+        right is left + 1
+        loop while right < nodes:
+            for color in range of colors:
+                append of [clauses, [0 - (graph_color_var of [left, color, colors]), 0 - (graph_color_var of [right, color, colors])]]
+            right += 1
+
+    expected_status is "SAT"
+    if nodes > colors:
+        expected_status is "UNSAT"
+
+    return {
+        "name": f"k{nodes}-{colors}color",
+        "nvars": nodes * colors,
+        "clauses": clauses,
+        "expected": expected_status
+    }
+
 define benchmark_cases(size) as:
     if size < 1:
         size is 1
@@ -127,6 +162,54 @@ define benchmark_cases(size) as:
     tri_repeats is size + 2
     append of [cases, xor_triangle_case of tri_repeats]
     return cases
+
+define heuristic_pressure_cases(size) as:
+    if size < 1:
+        size is 1
+    heuristic_cases is []
+    append of [heuristic_cases, pigeonhole_case of [size + 3, size + 2]]
+    append of [heuristic_cases, complete_graph_color_case of [size + 4, size + 2]]
+    append of [heuristic_cases, xor_triangle_case of (size + 3)]
+    return heuristic_cases
+
+define heuristic_policy_options() as:
+    heuristic_policies is []
+    append of [heuristic_policies, {
+        "name": "geom-saved",
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "saved"
+    }]
+    append of [heuristic_policies, {
+        "name": "luby-saved",
+        "restart_policy": "luby",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "saved"
+    }]
+    append of [heuristic_policies, {
+        "name": "geom-positive",
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "positive"
+    }]
+    append of [heuristic_policies, {
+        "name": "geom-negative",
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "negative"
+    }]
+    append of [heuristic_policies, {
+        "name": "luby-negative",
+        "restart_policy": "luby",
+        "restart_first": 2,
+        "restart_growth": 2,
+        "phase_policy": "negative"
+    }]
+    return heuristic_policies
 
 define large_fixture_cases(size) as:
     if size < 1:
@@ -302,6 +385,57 @@ define run_phase_benchmarks(size) as:
         print of f"phase positive {c.name}: status={positive.status} vars={c.nvars} clauses={len of c.clauses} decisions={positive.decisions} propagations={positive.propagations} conflicts={positive.conflicts} learnts={positive.learnts} restarts={positive.restarts} phase_saves={positive.phase_saves} phase_flips={positive.phase_flips} phase_pos={positive.phase_pos_decisions} phase_neg={positive.phase_neg_decisions} ms={pms}"
         print of f"phase negative {c.name}: status={negative.status} vars={c.nvars} clauses={len of c.clauses} decisions={negative.decisions} propagations={negative.propagations} conflicts={negative.conflicts} learnts={negative.learnts} restarts={negative.restarts} phase_saves={negative.phase_saves} phase_flips={negative.phase_flips} phase_pos={negative.phase_pos_decisions} phase_neg={negative.phase_neg_decisions} ms={nms}"
     return len of cases
+
+define run_heuristic_benchmarks(size) as:
+    heuristic_cases_to_run is heuristic_pressure_cases of size
+    heuristic_policies_to_run is heuristic_policy_options of null
+    for heuristic_case in heuristic_cases_to_run:
+        heuristic_expected_status is ""
+        heuristic_min_decisions is -1
+        heuristic_max_decisions is 0
+        heuristic_min_conflicts is -1
+        heuristic_max_conflicts is 0
+        heuristic_max_restarts is 0
+        heuristic_max_compacts is 0
+
+        for heuristic_policy in heuristic_policies_to_run:
+            heuristic_options is {
+                "restart_policy": heuristic_policy.restart_policy,
+                "restart_first": heuristic_policy.restart_first,
+                "restart_growth": heuristic_policy.restart_growth,
+                "phase_policy": heuristic_policy.phase_policy
+            }
+
+            ht0 is monotonic_ns of null
+            heuristic_result is solve_cnf_cdcl_with_options of [heuristic_case.nvars, heuristic_case.clauses, heuristic_options]
+            ht1 is monotonic_ns of null
+            hms is (ht1 - ht0) / 1000000
+
+            if heuristic_expected_status == "":
+                heuristic_expected_status is heuristic_result.status
+            else:
+                assert of [heuristic_result.status == heuristic_expected_status, f"heuristic status mismatch {heuristic_case.name} {heuristic_policy.name}"]
+
+            if heuristic_result.status == "SAT":
+                assert of [model_satisfies of [heuristic_case.nvars, heuristic_case.clauses, heuristic_result.model], f"heuristic model mismatch {heuristic_case.name} {heuristic_policy.name}"]
+
+            if heuristic_min_decisions < 0 or heuristic_result.decisions < heuristic_min_decisions:
+                heuristic_min_decisions is heuristic_result.decisions
+            if heuristic_result.decisions > heuristic_max_decisions:
+                heuristic_max_decisions is heuristic_result.decisions
+            if heuristic_min_conflicts < 0 or heuristic_result.conflicts < heuristic_min_conflicts:
+                heuristic_min_conflicts is heuristic_result.conflicts
+            if heuristic_result.conflicts > heuristic_max_conflicts:
+                heuristic_max_conflicts is heuristic_result.conflicts
+            if heuristic_result.restarts > heuristic_max_restarts:
+                heuristic_max_restarts is heuristic_result.restarts
+            if heuristic_result.compact_runs > heuristic_max_compacts:
+                heuristic_max_compacts is heuristic_result.compact_runs
+
+            print of f"heuristic {heuristic_policy.name} {heuristic_case.name}: status={heuristic_result.status} vars={heuristic_case.nvars} clauses={len of heuristic_case.clauses} decisions={heuristic_result.decisions} propagations={heuristic_result.propagations} conflicts={heuristic_result.conflicts} learnts={heuristic_result.learnts} restarts={heuristic_result.restarts} restart_budget={heuristic_result.restart_budget} restart_index={heuristic_result.restart_index} phase_saves={heuristic_result.phase_saves} phase_flips={heuristic_result.phase_flips} phase_pos={heuristic_result.phase_pos_decisions} phase_neg={heuristic_result.phase_neg_decisions} heap_pops={heuristic_result.order_pops} heap_inserts={heuristic_result.order_inserts} compact_runs={heuristic_result.compact_runs} compact_removed={heuristic_result.compact_removed} ms={hms}"
+
+        print of f"heuristic summary {heuristic_case.name}: policies={len of heuristic_policies_to_run} status={heuristic_expected_status} min_decisions={heuristic_min_decisions} max_decisions={heuristic_max_decisions} min_conflicts={heuristic_min_conflicts} max_conflicts={heuristic_max_conflicts} max_restarts={heuristic_max_restarts} max_compact_runs={heuristic_max_compacts}"
+    return len of heuristic_cases_to_run
 
 define storage_pressure_cases(size) as:
     if size < 1:

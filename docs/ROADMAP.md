@@ -57,15 +57,16 @@ conflict-clause resolution, learnt clauses, and non-chronological backjumping.
 Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 fixed-polarity comparison, geometric restarts, and a Luby restart comparison
-path are in place. Deleted learnt clauses are now eagerly compacted by
-remapping clause references and rebuilding watch lists. A synthetic metadata
-benchmark now isolates learnt allocation, database reduction, compaction,
-watch rebuild, and trail replay pressure without requiring a larger CNF corpus.
-The next target is using the new storage data to decide between EigenScript root
-compact vector/arena support and an EigenMiniSat-local clause storage rewrite,
-plus larger polarity/restart/metadata stress cases, scanner diagnostic/token
-span pressure, and a larger third-party CNF corpus beyond the checked-in
-manifest fixtures.
+path are in place. A combined heuristic benchmark now sweeps restart and phase
+policies over pigeonhole, complete-graph coloring, and XOR pressure cases.
+Deleted learnt clauses are now eagerly compacted by remapping clause references
+and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
+allocation, database reduction, compaction, watch rebuild, and trail replay
+pressure without requiring a larger CNF corpus. The next target is using the
+new storage data to decide between EigenScript root compact vector/arena support
+and an EigenMiniSat-local clause storage rewrite, plus larger metadata stress
+cases, scanner diagnostic/token span pressure, and a larger third-party CNF
+corpus beyond the checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
