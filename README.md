@@ -21,6 +21,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
@@ -45,6 +46,9 @@ indexes, cancellations, compaction, and elapsed milliseconds.
 `--phase-bench` compares saved phase decisions with fixed positive and fixed
 negative polarity on the same generated cases, reporting phase save/flip and
 positive/negative decision counters.
+`--storage-bench` builds a flat clause arena beside the existing list-of-lists
+representation and compares list scanning, arena build, flat scanning, watch
+seeding, and reconstruction costs.
 `--metadata-bench` builds synthetic learnt-clause pressure, runs database
 reduction, compacts deleted clauses, and reports allocation, deletion, watch
 rebuild, and trail replay counters without needing a larger external CNF.
@@ -67,7 +71,8 @@ C-backed `scan_ints` path before solving with CDCL.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, scan parser comparison, and the manifest
-corpus; the `full` profile runs every benchmark mode.
+corpus plus clause storage pressure; the `full` profile runs every benchmark
+mode.
 
 ## Scope
 
@@ -83,6 +88,7 @@ Current:
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
+- flat clause arena benchmark for compact clause/vector storage pressure
 - synthetic learnt metadata and compaction benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
@@ -97,7 +103,8 @@ Current:
 Next:
 
 - larger polarity, restart-schedule, and metadata stress cases
-- compact clause/vector storage if metadata and lazy deletion pressure grows
+- decide whether flat clause/vector storage belongs in EigenScript root support
+  or in EigenMiniSat-local solver internals
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure
@@ -115,6 +122,7 @@ This repo is expected to stress:
 - restart cancellation and phase-saving churn across repeated backtracking
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
+- flat clause arena build/scan/reconstruct/watch-seeding pressure
 - synthetic learnt-clause allocation, deletion, and compaction pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput

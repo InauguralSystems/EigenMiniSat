@@ -38,7 +38,10 @@ encoding internally while keeping signed DIMACS literals at the parser/CLI
 boundary. Initial watched propagation exists as a correctness/benchmark path,
 and the persistent path keeps watch state across recursive DPLL nodes with
 trail marks for backtracking. CDCL decisions now use a MiniSat-style variable
-activity array and binary heap/order structure.
+activity array and binary heap/order structure. A flat clause arena benchmark
+now measures list scanning, arena build, flat scanning, watch seeding, and
+reconstruction before committing to a solver storage rewrite or root compact
+vector support.
 
 ## Milestone 3: CDCL
 
@@ -57,9 +60,11 @@ path are in place. Deleted learnt clauses are now eagerly compacted by
 remapping clause references and rebuilding watch lists. A synthetic metadata
 benchmark now isolates learnt allocation, database reduction, compaction,
 watch rebuild, and trail replay pressure without requiring a larger CNF corpus.
-The next target is larger polarity/restart/metadata stress cases,
-scanner diagnostic/token-span pressure, compact clause storage pressure, and a
-larger third-party CNF corpus beyond the checked-in manifest fixtures.
+The next target is using the new storage data to decide between EigenScript root
+compact vector/arena support and an EigenMiniSat-local clause storage rewrite,
+plus larger polarity/restart/metadata stress cases, scanner diagnostic/token
+span pressure, and a larger third-party CNF corpus beyond the checked-in
+manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

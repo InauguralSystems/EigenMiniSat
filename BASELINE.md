@@ -101,6 +101,21 @@ Result:
 metadata compaction metadata-2: vars=40 base=40 learnts_added=160 clauses_after=120 active_learnts=80 clause_allocs=200 learnt_allocs=160 learnt_lits=480 reduce_runs=1 reduce_scans=80 learnt_deleted=80 compact_runs=1 compact_removed=80 compact_kept=120 watch_rebuilds=1 compact_replays=40 build_add_ms=13.019 reduce_ms=195.196 compact_ms=3.49531
 ```
 
+Storage benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
+```
+
+Result:
+
+```text
+storage arena wide-40-12-20: vars=40 clauses=20 lits=240 flat_lits=240 offsets=20 list_scan_ms=1.2605 build_ms=0.195626 flat_scan_ms=1.13234 watch_seed_ms=0.493152 reconstruct_ms=0.317709 watch_links=40 watch_buckets=34 max_watch_bucket=2 checksum=1230396
+storage arena pigeonhole-4-3: vars=12 clauses=34 lits=72 flat_lits=72 offsets=34 list_scan_ms=0.412485 build_ms=0.116985 flat_scan_ms=0.377215 watch_seed_ms=0.55133 reconstruct_ms=0.196953 watch_links=68 watch_buckets=20 max_watch_bucket=5 checksum=36634
+storage arena grid-unsat-6x6: vars=36 clauses=62 lits=122 flat_lits=122 offsets=62 list_scan_ms=0.688011 build_ms=0.191995 flat_scan_ms=0.597565 watch_seed_ms=1.19834 reconstruct_ms=0.354168 watch_links=122 watch_buckets=72 max_watch_bucket=2 checksum=357195
+storage arena chain-unsat-80: vars=80 clauses=81 lits=160 flat_lits=160 offsets=81 list_scan_ms=0.877002 build_ms=0.275804 flat_scan_ms=0.773496 watch_seed_ms=1.53386 reconstruct_ms=0.465565 watch_links=160 watch_buckets=160 max_watch_bucket=1 checksum=1378160
+```
+
 Parse benchmark command:
 
 ```bash
