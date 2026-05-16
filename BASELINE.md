@@ -74,21 +74,26 @@ Scan parser benchmark command:
 Result:
 
 ```text
-parse split grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=5.11291
-parse scan grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=9.07252
-scan fixture cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=5.61514
-parse split grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=5.32607
-parse scan grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=7.08336
-scan fixture cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=4.36714
-parse split chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=12.7829
-parse scan chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=29.2559
-scan fixture cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=32.5425
-parse split chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=17.9021
-parse scan chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=15.2573
-scan fixture cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=16.3572
-parse split wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=8.24853
-parse scan wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=15.6317
-scan fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=35.8634
+parse split grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=5.02396
+parse scan grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=6.08026
+parse ints grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=0.708899
+ints fixture cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=4.359
+parse split grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=4.52208
+parse scan grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=6.28133
+parse ints grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=0.665107
+ints fixture cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=3.87275
+parse split chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=9.88422
+parse scan chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=13.0697
+parse ints chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=1.50098
+ints fixture cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=11.2676
+parse split chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=10.8568
+parse scan chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=14.1833
+parse ints chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=1.43721
+ints fixture cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=10.049
+parse split wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=3.66085
+parse scan wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=5.76939
+parse ints wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=0.798576
+ints fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.98758
 ```
 
 File-backed benchmark command:

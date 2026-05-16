@@ -246,14 +246,22 @@ define run_scan_parse_benchmarks(size) as:
         assert_dimacs_ok of scan_parsed
         assert_dimacs_same of [c.name, split_parsed, scan_parsed]
 
+        it0 is monotonic_ns of null
+        ints_parsed is parse_dimacs_text_ints of text
+        it1 is monotonic_ns of null
+        ints_ms is (it1 - it0) / 1000000
+        assert_dimacs_ok of ints_parsed
+        assert_dimacs_same of [c.name, split_parsed, ints_parsed]
+
         print of f"parse split {c.name}: text_len={len of text} vars={split_parsed.nvars} clauses={len of split_parsed.clauses} ok={split_parsed.ok} errors={split_parsed.error_count} ms={split_ms}"
         print of f"parse scan {c.name}: text_len={len of text} vars={scan_parsed.nvars} clauses={len of scan_parsed.clauses} ok={scan_parsed.ok} errors={scan_parsed.error_count} ms={scan_ms}"
+        print of f"parse ints {c.name}: text_len={len of text} vars={ints_parsed.nvars} clauses={len of ints_parsed.clauses} ok={ints_parsed.ok} errors={ints_parsed.error_count} ms={ints_ms}"
 
         ct0 is monotonic_ns of null
-        cdcl is solve_cnf_cdcl of [scan_parsed.nvars, scan_parsed.clauses]
+        cdcl is solve_cnf_cdcl of [ints_parsed.nvars, ints_parsed.clauses]
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
-        print of f"scan fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+        print of f"ints fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases
 
 define run_file_benchmarks(size) as:

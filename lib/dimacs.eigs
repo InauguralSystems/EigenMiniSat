@@ -203,6 +203,39 @@ define parse_dimacs_text_scan(text) as:
 
     return _finish_parse_state of state
 
+define parse_dimacs_text_ints(text) as:
+    ints is scan_ints of [text, "c"]
+    state is _empty_parse_state of null
+
+    if (len of ints) < 2:
+        _add_parse_error of [state.errors, "missing integer problem counts"]
+        return _finish_parse_state of state
+
+    state.header_seen is 1
+    state.declared_vars is floor of ints[0]
+    state.declared_clauses is floor of ints[1]
+    if state.declared_vars < 0:
+        _add_parse_error of [state.errors, "negative variable count"]
+    if state.declared_clauses < 0:
+        _add_parse_error of [state.errors, "negative clause count"]
+
+    i is 2
+    loop while i < (len of ints):
+        lit is floor of ints[i]
+        if lit == 0:
+            append of [state.clauses, state.current]
+            state.current is []
+        else:
+            append of [state.current, lit]
+            v is lit
+            if v < 0:
+                v is 0 - v
+            if v > state.max_var:
+                state.max_var is v
+        i += 1
+
+    return _finish_parse_state of state
+
 define parse_dimacs_file(path) as:
     text is read_text of path
     return parse_dimacs_text of text
@@ -210,6 +243,10 @@ define parse_dimacs_file(path) as:
 define parse_dimacs_file_scan(path) as:
     text is read_text of path
     return parse_dimacs_text_scan of text
+
+define parse_dimacs_file_ints(path) as:
+    text is read_text of path
+    return parse_dimacs_text_ints of text
 
 define assert_dimacs_ok(parsed) as:
     if parsed.ok == 0:

@@ -37,8 +37,12 @@ Compaction counters show when deleted learnt clauses are removed and watch lists
 are rebuilt.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
-`--scan-parse-bench` compares the current split/trim parser with a
-character-scanning parser that shares the same diagnostics and output shape.
+`--scan-parse-bench` compares the current split/trim parser, a
+character-scanning parser that shares the same diagnostics and output shape,
+and a C-backed integer-token fast path built on EigenScript `scan_ints`. The
+`scan_ints` path is intentionally for validated DIMACS-style input and
+benchmark pressure; the split/trim and character scanners remain the diagnostic
+parsers for malformed token/header reporting.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
@@ -65,6 +69,7 @@ Current:
 - checked-in DIMACS corpus fixtures for real file-shape coverage
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
+- C-backed `scan_ints` DIMACS parser comparison path
 - fixture correctness tests
 - generated benchmark families
 
@@ -91,3 +96,4 @@ This repo is expected to stress:
 - parser robustness across checked-in DIMACS formatting variants
 - parser diagnostic overhead while validating larger CNF input
 - character-at-a-time scanner overhead versus split/trim tokenization
+- C-backed integer scan throughput versus EigenScript-side clause assembly
