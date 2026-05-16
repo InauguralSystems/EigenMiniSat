@@ -24,7 +24,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   one physical line, comment-heavy files, graph-coloring, pigeonhole, wide
   clause, and parity/XOR instances. Parser diagnostics now report
   header/count/token problems directly, and benchmark parse lines expose
-  `ok`/`errors` counts. If larger corpora amplify the extra validation cost,
+  `ok`/`errors` counts. The corpus now includes a small vendored structural set
+  with provenance notes for larger self-contained graph-coloring, pigeonhole,
+  and parity pressure. If larger corpora amplify the extra validation cost,
   EigenScript may need cheaper character classification or a streaming
   tokenizer.
 - The corpus manifest is deliberately plain text, so EigenScript parses case
@@ -33,7 +35,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   structured-data ingestion belongs in the standard library.
 - The benchmark trend runner captures repeatable pressure snapshots without
   committing machine-local logs. This should make regressions easier to compare
-  while keeping the constrained dev machine's output explicit and local.
+  while keeping the constrained dev machine's output explicit and local. The
+  `evidence` profile now defaults to bounded larger-case pressure and includes
+  malformed diagnostics without running every benchmark mode.
 - A character-scanning DIMACS parser now matches the split/trim parser's
   diagnostics and clauses, but repeated `substr` and token string concatenation
   are often slower than split/trim on these fixtures. EigenScript now exposes
@@ -63,8 +67,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   deleted-clause compaction now operate over the solver-local clause store.
   The solver now reports store-to-list copies, conflict-analysis rebuild
   literals, and direct compaction-copy literals. Remaining pressure is the list
-  reconstruction still needed for learnt-clause assembly, which should be
-  measured before asking EigenScript for root arena/reference primitives.
+  reconstruction still needed for learnt-clause assembly. Larger copy-pressure
+  cases and deferred-vs-lazy summary deltas should decide whether that pressure
+  stays local or justifies EigenScript root arena/reference primitives.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but
   conversion still uses arithmetic helpers around signed DIMACS literals. If
   encoded-literal churn becomes hot, EigenScript may need cheaper bitwise
@@ -116,6 +121,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   XOR cases. This makes combined option dispatch, heap pop/reinsert churn,
   phase-list mutation, restart cancellation, and compaction side effects visible
   in one run instead of requiring separate restart and phase comparisons.
+- The copy-pressure benchmark now includes larger generated pigeonhole,
+  graph-coloring, and parity cases. Delta summaries compare deferred and lazy
+  maxima for compaction copies, watch rebuilds, pending deleted clauses,
+  watch-detach scans, and trail replays.
 - The Luby restart benchmark adds small but repeated `floor`, modulo, and
   integer-power schedule calculations around CDCL conflicts. If larger restart
   sweeps make schedule overhead visible, EigenScript may need cheaper integer

@@ -32,6 +32,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 tests/run_smoke.sh
 benchmarks/run_trends.sh quick 1
+benchmarks/run_trends.sh evidence
 ```
 
 The CLI prints MiniSat-like `s SATISFIABLE` or `s UNSATISFIABLE` lines for CNF
@@ -59,9 +60,11 @@ per-policy counters plus per-case decision/conflict/restart ranges.
 polarity policies, then reports store-to-list copy, store-native analysis scan,
 remaining analysis rebuild, deferred compaction, targeted watch detaching, and
 direct compaction-copy counters for deciding whether clause references should
-stay local or become an EigenScript root primitive. It includes lazy
-no-physical-compaction variants beside the default deferred policy so larger
-cases can expose the copy/rebuild tradeoff directly.
+stay local or become an EigenScript root primitive. It includes larger evidence
+cases and lazy no-physical-compaction variants beside the default deferred
+policy so larger cases can expose the copy/rebuild tradeoff directly. Summary
+delta lines compare deferred and lazy maxima for compaction copies, watch
+rebuilds, pending deleted clauses, watch-detach scans, and trail replays.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
@@ -89,13 +92,16 @@ the parsed clauses with CDCL.
 `--corpus-bench` loads checked-in DIMACS files from a pipe-delimited manifest.
 The default corpus covers comments, multiline clauses, multi-clause lines,
 graph coloring, pigeonhole, wide clauses, and parity/XOR SAT/UNSAT instances.
+It also includes a small vendored structural corpus under
+`tests/corpus/vendor/` with provenance notes for larger self-contained pressure.
 For each case it compares split/trim parsing, character scanning, and the
 C-backed `scan_ints` path before solving with CDCL.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and
-the manifest corpus plus clause storage pressure; the `full` profile runs every
-benchmark mode.
+the manifest corpus plus clause storage pressure. The `evidence` profile adds
+malformed-DIMACS diagnostics and defaults to size `2` for bounded larger-case
+pressure; the `full` profile runs every benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.
@@ -115,6 +121,7 @@ Current:
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
 - combined restart/polarity heuristic stress benchmarks
 - conflict-copy pressure benchmarks over clause-store CDCL counters
+- larger copy-pressure evidence cases with deferred-vs-lazy delta summaries
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - flat clause arena benchmark for compact clause/vector storage pressure
 - solver-local clause-store adapter for clause references, watch seeding, and
@@ -130,7 +137,9 @@ Current:
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - manifest-driven DIMACS corpus fixtures for real file-shape coverage
+- small vendored structural corpus fixtures with provenance notes
 - lightweight trend runner for repeatable pressure snapshots
+- evidence trend profile for bounded larger-case decision runs
 - root-pressure feedback ledger for EigenScript/std-lib/local decisions
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
@@ -141,11 +150,12 @@ Current:
 
 Next:
 
-- larger heuristic and copy-pressure stress cases
-- use deferred compaction counters to decide whether targeted watch-detach
+- run evidence trend logs across larger copy-pressure sizes
+- use deferred/lazy compaction deltas to decide whether targeted watch-detach
   pressure and physical compaction pressure belong in EigenMiniSat, a library,
   or EigenScript root
-- larger third-party CNF corpus once checked-in corpus pressure stabilizes
+- add true third-party CNF files only when provenance and size are suitable for
+  routine local validation
 
 ## EigenScript Pressure
 

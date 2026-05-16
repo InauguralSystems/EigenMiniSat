@@ -107,10 +107,19 @@ print of "  heuristic stress helpers: ok"
 
 copy_cases is copy_pressure_cases of 1
 copy_policies is copy_pressure_policies of null
-assert_eq of ["copy pressure case count", len of copy_cases, 3]
+assert_eq of ["copy pressure case count", len of copy_cases, 6]
 assert_eq of ["copy pressure policy count", len of copy_policies, 4]
 copy_case is copy_cases[0]
 copy_policy is copy_policies[0]
+copy_larger_pigeon is copy_cases[3]
+copy_larger_graph is copy_cases[4]
+copy_larger_xor is copy_cases[5]
+assert_eq of ["copy pressure larger pigeon", copy_larger_pigeon.name, "pigeonhole-5-4-larger"]
+assert_eq of ["copy pressure larger pigeon expected", copy_larger_pigeon.expected, "UNSAT"]
+assert_eq of ["copy pressure larger graph", copy_larger_graph.name, "k5-4color-larger"]
+assert_eq of ["copy pressure larger graph expected", copy_larger_graph.expected, "UNSAT"]
+assert_eq of ["copy pressure larger xor", copy_larger_xor.name, "xor-triangle-6-larger"]
+assert_eq of ["copy pressure larger xor expected", copy_larger_xor.expected, "SAT"]
 copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
     "restart_policy": copy_policy.restart_policy,
     "restart_first": copy_policy.restart_first,
@@ -467,7 +476,7 @@ print of "  corpus manifest parser: ok"
 
 corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
-assert_true of ["external corpus expanded", (len of corpus_cases) >= 8]
+assert_true of ["external corpus expanded", (len of corpus_cases) >= 11]
 for corpus in corpus_cases:
     assert_true of [f"corpus file exists {corpus.name}", (file_exists of corpus.path) == 1]
     assert_true of [f"corpus family {corpus.name}", (len of corpus.family) > 0]

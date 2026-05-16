@@ -231,6 +231,27 @@ define copy_pressure_cases(size) as:
         "clauses": copy_xor.clauses,
         "expected": "SAT"
     }]
+    copy_large_pigeon is pigeonhole_case of [size + 4, size + 3]
+    append of [copy_cases, {
+        "name": f"{copy_large_pigeon.name}-larger",
+        "nvars": copy_large_pigeon.nvars,
+        "clauses": copy_large_pigeon.clauses,
+        "expected": "UNSAT"
+    }]
+    copy_large_graph is complete_graph_color_case of [size + 4, size + 3]
+    append of [copy_cases, {
+        "name": f"{copy_large_graph.name}-larger",
+        "nvars": copy_large_graph.nvars,
+        "clauses": copy_large_graph.clauses,
+        "expected": copy_large_graph.expected
+    }]
+    copy_large_xor is xor_triangle_case of (size + 5)
+    append of [copy_cases, {
+        "name": f"{copy_large_xor.name}-larger",
+        "nvars": copy_large_xor.nvars,
+        "clauses": copy_large_xor.clauses,
+        "expected": "SAT"
+    }]
     return copy_cases
 
 define copy_pressure_policies() as:
@@ -572,6 +593,16 @@ define run_copy_benchmarks(size) as:
         copy_max_watch_detach_removed is 0
         copy_max_watch_prunes is 0
         copy_max_watch_prune_removed is 0
+        copy_deferred_compact_lits is 0
+        copy_deferred_watch_rebuilds is 0
+        copy_deferred_pending_deleted is 0
+        copy_deferred_watch_detach_scans is 0
+        copy_deferred_compact_replays is 0
+        copy_lazy_compact_lits is 0
+        copy_lazy_watch_rebuilds is 0
+        copy_lazy_pending_deleted is 0
+        copy_lazy_watch_detach_scans is 0
+        copy_lazy_compact_replays is 0
         copy_policy_runs is 0
 
         for copy_policy in copy_policies_to_run:
@@ -622,11 +653,34 @@ define run_copy_benchmarks(size) as:
                 copy_max_watch_prunes is copy_result.watch_prunes
             if copy_result.watch_prune_removed > copy_max_watch_prune_removed:
                 copy_max_watch_prune_removed is copy_result.watch_prune_removed
+            if copy_result.compact_policy == "lazy":
+                if copy_result.compact_clause_lits > copy_lazy_compact_lits:
+                    copy_lazy_compact_lits is copy_result.compact_clause_lits
+                if copy_result.watch_rebuilds > copy_lazy_watch_rebuilds:
+                    copy_lazy_watch_rebuilds is copy_result.watch_rebuilds
+                if copy_result.compact_pending_deleted > copy_lazy_pending_deleted:
+                    copy_lazy_pending_deleted is copy_result.compact_pending_deleted
+                if copy_result.watch_detach_scans > copy_lazy_watch_detach_scans:
+                    copy_lazy_watch_detach_scans is copy_result.watch_detach_scans
+                if copy_result.compact_replays > copy_lazy_compact_replays:
+                    copy_lazy_compact_replays is copy_result.compact_replays
+            else:
+                if copy_result.compact_clause_lits > copy_deferred_compact_lits:
+                    copy_deferred_compact_lits is copy_result.compact_clause_lits
+                if copy_result.watch_rebuilds > copy_deferred_watch_rebuilds:
+                    copy_deferred_watch_rebuilds is copy_result.watch_rebuilds
+                if copy_result.compact_pending_deleted > copy_deferred_pending_deleted:
+                    copy_deferred_pending_deleted is copy_result.compact_pending_deleted
+                if copy_result.watch_detach_scans > copy_deferred_watch_detach_scans:
+                    copy_deferred_watch_detach_scans is copy_result.watch_detach_scans
+                if copy_result.compact_replays > copy_deferred_compact_replays:
+                    copy_deferred_compact_replays is copy_result.compact_replays
             copy_policy_runs += 1
 
             print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} analysis_store_scans={copy_result.analysis_store_scans} analysis_store_lits={copy_result.analysis_store_lits} analysis_native_learnts={copy_result.analysis_native_learnts} compact_policy={copy_result.compact_policy} compact_checks={copy_result.compact_checks} compact_deferred={copy_result.compact_deferred} pending_deleted={copy_result.compact_pending_deleted} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} watch_rebuilds={copy_result.watch_rebuilds} watch_detaches={copy_result.watch_detaches} watch_detach_scans={copy_result.watch_detach_scans} watch_detach_removed={copy_result.watch_detach_removed} watch_prunes={copy_result.watch_prunes} watch_prune_scans={copy_result.watch_prune_scans} watch_prune_removed={copy_result.watch_prune_removed} compact_replays={copy_result.compact_replays} active_learnts={copy_result.active_learnts} ms={copy_ms}"
 
         print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_store_lits={copy_max_analysis_store_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts} max_compact_deferred={copy_max_deferred} max_pending_deleted={copy_max_pending_deleted} max_watch_detaches={copy_max_watch_detaches} max_watch_detach_scans={copy_max_watch_detach_scans} max_watch_detach_removed={copy_max_watch_detach_removed} max_watch_prunes={copy_max_watch_prunes} max_watch_prune_removed={copy_max_watch_prune_removed}"
+        print of f"copy delta {copy_case.name}: deferred_compact_lits={copy_deferred_compact_lits} lazy_compact_lits={copy_lazy_compact_lits} delta_compact_lits={copy_lazy_compact_lits - copy_deferred_compact_lits} deferred_watch_rebuilds={copy_deferred_watch_rebuilds} lazy_watch_rebuilds={copy_lazy_watch_rebuilds} delta_watch_rebuilds={copy_lazy_watch_rebuilds - copy_deferred_watch_rebuilds} deferred_pending_deleted={copy_deferred_pending_deleted} lazy_pending_deleted={copy_lazy_pending_deleted} delta_pending_deleted={copy_lazy_pending_deleted - copy_deferred_pending_deleted} deferred_watch_detach_scans={copy_deferred_watch_detach_scans} lazy_watch_detach_scans={copy_lazy_watch_detach_scans} delta_watch_detach_scans={copy_lazy_watch_detach_scans - copy_deferred_watch_detach_scans} deferred_compact_replays={copy_deferred_compact_replays} lazy_compact_replays={copy_lazy_compact_replays} delta_compact_replays={copy_lazy_compact_replays - copy_deferred_compact_replays}"
     return len of copy_cases_to_run
 
 define storage_pressure_cases(size) as:

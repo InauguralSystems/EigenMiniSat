@@ -96,7 +96,8 @@ analysis rebuild literals, deferred compaction checks, pending deleted clauses,
 targeted watch-detach scans/removals, and direct compaction-copy literals.
 `--copy-bench` now puts those counters under conflict-heavy generated cases with
 tight restart and polarity policies, with lazy no-physical-compaction variants
-beside the default deferred policy. Store-native conflict analysis removes the
+beside the default deferred policy and larger evidence cases that emit
+deferred-vs-lazy delta summaries. Store-native conflict analysis removes the
 hot list rebuild path locally. Deferred physical compaction removes the hot
 clause-copy path in small conflict cases; targeted watch detaching keeps the
 solve path from shifting that cost into full watch-table pruning, full watch
@@ -113,8 +114,9 @@ primitive.
 Next action: grow copy-pressure cases and use the deferred/lazy compaction
 counters to decide whether remaining targeted watch-detach and physical
 compaction pressure belongs in EigenMiniSat, a reusable library, or EigenScript
-root. The adapter preserves
-signed DIMACS literals at the boundary and should prove whether arena
+root. Use the `evidence` trend profile and the small vendored structural corpus
+to keep runs self-contained while collecting that evidence. The adapter
+preserves signed DIMACS literals at the boundary and should prove whether arena
 references simplify conflict analysis and database reduction.
 
 ### Bitwise Integer Operations
@@ -133,9 +135,11 @@ Compact integer vectors and token spans are higher-value root candidates today.
 - Keep benchmarks as the evidence surface, not just performance demos.
 - Use `--copy-bench` counters to decide whether remaining clause-reference
   pressure should stay local, become a library, or move to root.
+- Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
+  snapshots before opening root or stdlib issues.
 - Treat deferred/lazy compaction as algorithm-local unless larger cases show
   targeted watch-detach or compaction-copy churn needs a reusable primitive.
-- Expand the checked-in corpus with larger real-shaped CNF cases before relying
-  on any single generated family.
+- Expand the checked-in corpus only with small, provenance-clear cases before
+  relying on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local
   experiments that are needed to identify the right root abstraction.
