@@ -14,20 +14,25 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   through `parse_dimacs_file`, and `rm` pressure. This separates parser cost
   from file I/O cost and may expose whether EigenScript needs streaming file
   parsing or buffered write helpers for larger CNF corpora.
-- The checked-in DIMACS corpus adds multiline clauses, multiple clauses on one
-  physical line, comment-heavy files, and graph-coloring instances. Parser
-  diagnostics now report header/count/token problems directly, and benchmark
-  parse lines expose `ok`/`errors` counts. If larger corpora amplify the extra
-  validation cost, EigenScript may need cheaper character classification or a
-  streaming tokenizer.
+- The manifest-driven DIMACS corpus adds multiline clauses, multiple clauses on
+  one physical line, comment-heavy files, graph-coloring, pigeonhole, wide
+  clause, and parity/XOR instances. Parser diagnostics now report
+  header/count/token problems directly, and benchmark parse lines expose
+  `ok`/`errors` counts. If larger corpora amplify the extra validation cost,
+  EigenScript may need cheaper character classification or a streaming
+  tokenizer.
+- The corpus manifest is deliberately plain text, so EigenScript parses case
+  metadata itself instead of relying on a host-side runner. This exposes
+  repeated split/trim/numeric conversion and validates whether simple
+  structured-data ingestion belongs in the standard library.
 - A character-scanning DIMACS parser now matches the split/trim parser's
   diagnostics and clauses, but repeated `substr` and token string concatenation
   are often slower than split/trim on these fixtures. EigenScript now exposes
-  the root `scan_ints` primitive, and EigenMiniSat benchmarks it as a
-  C-backed integer-token DIMACS fast path. The remaining pressure is clause
-  assembly from scanned integers and whether a future tokenizer should expose
-  token spans/error reporting for full diagnostics instead of only numeric
-  extraction.
+  the root `scan_ints` primitive, and EigenMiniSat benchmarks all three parser
+  paths on both generated fixtures and the manifest corpus. The remaining
+  pressure is clause assembly from scanned integers and whether a future
+  tokenizer should expose token spans/error reporting for full diagnostics
+  instead of only numeric extraction.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but

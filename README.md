@@ -25,7 +25,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench
+/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 tests/run_smoke.sh
 ```
 
@@ -58,10 +58,11 @@ parsers for malformed token/header reporting.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
-`--corpus-bench` parses checked-in DIMACS files with comments, multiline
-clauses, multi-clause lines, and small graph-coloring SAT/UNSAT instances.
-Parser results include `ok`, `errors`, `error_count`, `max_var`, and declared
-count checks so malformed DIMACS headers are reported before solving.
+`--corpus-bench` loads checked-in DIMACS files from a pipe-delimited manifest.
+The default corpus covers comments, multiline clauses, multi-clause lines,
+graph coloring, pigeonhole, wide clauses, and parity/XOR SAT/UNSAT instances.
+For each case it compares split/trim parsing, character scanning, and the
+C-backed `scan_ints` path before solving with CDCL.
 
 ## Scope
 
@@ -80,7 +81,7 @@ Current:
 - synthetic learnt metadata and compaction benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
-- checked-in DIMACS corpus fixtures for real file-shape coverage
+- manifest-driven DIMACS corpus fixtures for real file-shape coverage
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
 - C-backed `scan_ints` DIMACS parser comparison path
@@ -91,7 +92,7 @@ Next:
 
 - larger polarity, restart-schedule, and metadata stress cases
 - compact clause/vector storage if metadata and lazy deletion pressure grows
-- larger external CNF corpus once parser throughput is stable
+- larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure
 
@@ -112,6 +113,7 @@ This repo is expected to stress:
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants
+- manifest parsing and corpus-family metadata plumbing
 - parser diagnostic overhead while validating larger CNF input
 - character-at-a-time scanner overhead versus split/trim tokenization
 - C-backed integer scan throughput versus EigenScript-side clause assembly
