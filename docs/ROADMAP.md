@@ -33,9 +33,10 @@ Status: a first CDCL path exists with reason arrays, assignment levels,
 conflict-clause resolution, learnt clauses, and non-chronological backjumping.
 Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
-and a geometric restart policy are in place. It still does not compact the
-underlying clause arena or watch lists eagerly. The next target is richer
-restart schedules, polarity heuristics, and eager database compaction.
+and a geometric restart policy are in place. Deleted learnt clauses are now
+eagerly compacted by remapping clause references and rebuilding watch lists.
+The next target is richer restart schedules, polarity heuristics, and larger
+CNF fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

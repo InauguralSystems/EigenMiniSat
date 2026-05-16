@@ -18,6 +18,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   flags, deleted flags, activity, and level-span estimates. This is a direct
   pressure point for struct-like storage, arena-backed clause references, and
   watch-list compaction support.
+- Eager compaction now remaps clause references, rebuilds watch lists, and
+  replays the trail after deleted learnt clauses are removed. The
+  `compact_runs`, `compact_removed`, `watch_rebuilds`, and `compact_replays`
+  counters should guide whether root EigenScript needs better in-place list
+  compaction or arena/reference primitives.
 - Restarts now cancel trail levels back to root and reinsert variables into the
   order heap while preserving phase state. The `restarts`, `restart_cancels`,
   and phase counters make repeated backtracking churn visible.
