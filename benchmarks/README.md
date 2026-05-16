@@ -22,12 +22,14 @@ Profiles:
 - `evidence`: quick profile coverage plus malformed-DIMACS diagnostics, with
   default size `2` for bounded larger-case pressure. It appends a compact
   evidence summary with copy, metadata, storage, parser, diagnostic, and corpus
-  totals plus decision flags.
+  totals plus decision flags and active candidate-decision rows.
 - `full`: solver tests plus every benchmark mode, including malformed-DIMACS
   diagnostics.
 
 Use `EIGENSCRIPT_BIN=/path/to/eigenscript` to override the interpreter.
 
-The summary flags are evidence markers, not automatic root decisions. They are
-intended to keep the next EigenMiniSat-vs-EigenScript decision grounded in
+The summary flags are evidence markers, not automatic root decisions.
+`decision_candidate` rows turn active flags into the current scoped next action:
+EigenMiniSat-local, root/runtime, or root-or-standard-library exploration. They
+are intended to keep the next EigenMiniSat-vs-EigenScript decision grounded in
 small repeatable counters instead of full raw logs.

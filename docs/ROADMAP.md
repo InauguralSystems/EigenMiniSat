@@ -109,4 +109,6 @@ candidates, string builders and priority queues are standard-library
 candidates, compact integer vectors are still root-vs-stdlib pressure, and
 clause arenas are being prototyped and measured locally in EigenMiniSat before
 asking for a root primitive. The trend runner now has an evidence profile for
-bounded larger-case decision runs.
+bounded larger-case decision runs, and its summary emits active
+candidate-decision rows so the next experiment is scoped before any root or
+stdlib request is made.

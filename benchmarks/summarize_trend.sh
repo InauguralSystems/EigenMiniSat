@@ -27,6 +27,10 @@ function field_value(key,    i, pair) {
     return 0
 }
 
+function emit_candidate(area, scope, evidence, next_action) {
+    printf "decision_candidate area=%s scope=%s evidence=%s next=%s\n", area, scope, evidence, next_action
+}
+
 /^## evidence summary/ {
     stop = 1
     next
@@ -182,5 +186,24 @@ END {
         compact_vector_pressure = 0
     }
     printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure
+
+    if (physical_compaction_pressure != 0) {
+        emit_candidate("clause_physical_compaction", "eigenminisat_local", "active", "compare_deferred_lazy_before_root_request")
+    }
+    if (lazy_debt_pressure != 0) {
+        emit_candidate("clause_lazy_deletion_debt", "eigenminisat_local", "active", "measure_targeted_detach_vs_physical_compaction")
+    }
+    if (diagnostic_tokenizer_pressure != 0) {
+        emit_candidate("diagnostic_token_spans", "root_or_stdlib", "active", "prototype_span_tokenizer_if_larger_corpus_repeats")
+    }
+    if (validated_scan_ints_win != 0) {
+        emit_candidate("validated_integer_scan", "root_runtime", "active", "keep_fast_path_and_measure_clause_assembly")
+    }
+    if (storage_adapter_pressure != 0) {
+        emit_candidate("clause_store_adapter", "eigenminisat_local", "active", "reduce_lookup_overhead_before_root_arena_request")
+    }
+    if (compact_vector_pressure != 0) {
+        emit_candidate("compact_integer_vectors", "root_or_stdlib", "active", "prototype_reusable_int_vector_before_solver_wrappers")
+    }
 }
 ' "$LOG"

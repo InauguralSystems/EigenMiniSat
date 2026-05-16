@@ -103,8 +103,8 @@ solver tests, metadata compaction, copy pressure, scan parser comparison, and
 the manifest corpus plus clause storage pressure. The `evidence` profile adds
 malformed-DIMACS diagnostics and defaults to size `2` for bounded larger-case
 pressure, then appends a compact summary of copy, metadata, storage, parser,
-diagnostic, and corpus totals plus decision flags; the `full` profile runs
-every benchmark mode.
+diagnostic, and corpus totals plus decision flags and active candidate-decision
+rows; the `full` profile runs every benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.
@@ -143,6 +143,7 @@ Current:
 - small vendored structural corpus fixtures with provenance notes
 - lightweight trend runner for repeatable pressure snapshots
 - evidence trend profile for bounded larger-case decision runs
+- active candidate-decision rows in evidence summaries
 - root-pressure feedback ledger for EigenScript/std-lib/local decisions
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
@@ -157,6 +158,8 @@ Next:
 - use deferred/lazy compaction deltas to decide whether targeted watch-detach
   pressure and physical compaction pressure belong in EigenMiniSat, a library,
   or EigenScript root
+- follow `decision_candidate` rows from evidence summaries when choosing the
+  next solver-local, standard-library, or root/runtime experiment
 - add true third-party CNF files only when provenance and size are suitable for
   routine local validation
 

@@ -156,7 +156,9 @@ Compact integer vectors and token spans are higher-value root candidates today.
   pressure should stay local, become a library, or move to root.
 - Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
   snapshots before opening root or stdlib issues. Use
-  `benchmarks/summarize_trend.sh` when comparing saved logs.
+  `benchmarks/summarize_trend.sh` when comparing saved logs. Its
+  `decision_candidate` rows are the current scoped next actions, not final
+  EigenScript requests.
 - Treat deferred/lazy compaction as algorithm-local unless larger cases show
   targeted watch-detach or compaction-copy churn needs a reusable primitive.
 - Expand the checked-in corpus only with small, provenance-clear cases before
