@@ -19,6 +19,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
@@ -35,6 +36,9 @@ activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
 Compaction counters show when deleted learnt clauses are removed and watch lists
 are rebuilt.
+`--restart-bench` compares the default geometric CDCL restart schedule with a
+Luby schedule on the same generated cases and reports restart budgets, restart
+indexes, cancellations, compaction, and elapsed milliseconds.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--scan-parse-bench` compares the current split/trim parser, a
@@ -63,7 +67,7 @@ Current:
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
 - MiniSat-style variable activity and a binary heap order structure for CDCL
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
-- saved phase/polarity decisions and geometric restart policy
+- saved phase/polarity decisions, geometric restarts, and Luby restart benchmarks
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
@@ -76,7 +80,7 @@ Current:
 
 Next:
 
-- richer restart schedules and polarity heuristics
+- polarity heuristics and larger restart-schedule stress cases
 - compact clause/vector storage if metadata and lazy deletion pressure grows
 - larger external CNF corpus once parser throughput is stable
 
@@ -92,6 +96,7 @@ This repo is expected to stress:
 - heap and queue library candidates, including pop/reinsert churn
 - allocator behavior under clause metadata, learnt churn, and lazy deletion
 - restart cancellation and phase-saving churn across repeated backtracking
+- restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
