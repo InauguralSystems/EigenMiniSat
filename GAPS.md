@@ -40,8 +40,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   clause references.
 - The storage benchmark now builds a flat clause arena from list-of-lists input
   and measures list scanning, arena build, flat scanning, watch seeding, and
-  reconstruction. This gives concrete evidence before replacing solver storage
-  or promoting compact vectors/arena references into EigenScript root support.
+  reconstruction. It also compacts deleted arena clauses and remaps synthetic
+  reason references. This gives concrete evidence before replacing solver
+  storage or promoting compact vectors/arena references into EigenScript root
+  support.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but
   conversion still uses arithmetic helpers around signed DIMACS literals. If
   encoded-literal churn becomes hot, EigenScript may need cheaper bitwise

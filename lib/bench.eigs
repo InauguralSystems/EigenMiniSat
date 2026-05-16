@@ -407,6 +407,95 @@ define flat_watch_seed_summary(nvars, arena) as:
         "max_bucket": max_bucket
     }
 
+define storage_delete_mask(count) as:
+    mask is []
+    removed is 0
+    for ci in range of count:
+        drop is 0
+        if ci > 0 and (ci % 3) == 1:
+            drop is 1
+        append of [mask, drop]
+        if drop != 0:
+            removed += 1
+    return {
+        "mask": mask,
+        "removed": removed
+    }
+
+define compact_list_clauses_by_mask(clauses, delete_mask) as:
+    kept_clauses is []
+    mapping is []
+    removed is 0
+    for ci in range of (len of clauses):
+        if delete_mask[ci] == 0:
+            append of [mapping, len of kept_clauses]
+            append of [kept_clauses, clauses[ci]]
+        else:
+            append of [mapping, -1]
+            removed += 1
+    return {
+        "clauses": kept_clauses,
+        "mapping": mapping,
+        "removed": removed,
+        "kept": len of kept_clauses
+    }
+
+define compact_flat_clause_arena(arena, delete_mask) as:
+    compact_offsets is []
+    compact_sizes is []
+    compact_lits is []
+    mapping is []
+    removed is 0
+    for ci in range of (len of arena.offsets):
+        if delete_mask[ci] == 0:
+            append of [mapping, len of compact_offsets]
+            start is arena.offsets[ci]
+            size is arena.sizes[ci]
+            append of [compact_offsets, len of compact_lits]
+            append of [compact_sizes, size]
+            for i in range of size:
+                append of [compact_lits, arena.lits[start + i]]
+        else:
+            append of [mapping, -1]
+            removed += 1
+    return {
+        "offsets": compact_offsets,
+        "sizes": compact_sizes,
+        "lits": compact_lits,
+        "mapping": mapping,
+        "removed": removed,
+        "kept": len of compact_offsets
+    }
+
+define storage_reason_refs(count) as:
+    refs is []
+    for i in range of count:
+        ref is i
+        if (i % 5) == 0:
+            ref is -1
+        append of [refs, ref]
+    return refs
+
+define remap_reason_refs(mapping, refs) as:
+    out is []
+    for ref in refs:
+        append of [out, remap_clause_ref of [mapping, ref]]
+    return out
+
+define ref_list_summary(refs) as:
+    active is 0
+    checksum is 0
+    pos is 1
+    for ref in refs:
+        if ref >= 0:
+            active += 1
+            checksum += (ref + 1) * pos
+        pos += 1
+    return {
+        "active": active,
+        "checksum": checksum
+    }
+
 define run_storage_benchmarks(size) as:
     cases is storage_pressure_cases of size
     for c in cases:
@@ -439,6 +528,36 @@ define run_storage_benchmarks(size) as:
         assert of [list_summary.checksum == flat_summary.checksum, f"storage checksum mismatch {c.name}"]
         assert_clauses_match of [f"storage rebuild {c.name}", c.clauses, rebuilt]
         print of f"storage arena {c.name}: vars={c.nvars} clauses={len of c.clauses} lits={list_summary.lits} flat_lits={len of arena.lits} offsets={len of arena.offsets} list_scan_ms={list_ms} build_ms={build_ms} flat_scan_ms={flat_ms} watch_seed_ms={watch_ms} reconstruct_ms={rebuild_ms} watch_links={watch_summary.links} watch_buckets={watch_summary.occupied} max_watch_bucket={watch_summary.max_bucket} checksum={flat_summary.checksum}"
+
+        delete_plan is storage_delete_mask of (len of c.clauses)
+
+        list_compact_t0 is monotonic_ns of null
+        compact_list is compact_list_clauses_by_mask of [c.clauses, delete_plan.mask]
+        list_compact_t1 is monotonic_ns of null
+        list_compact_ms is (list_compact_t1 - list_compact_t0) / 1000000
+
+        flat_compact_t0 is monotonic_ns of null
+        compact_arena is compact_flat_clause_arena of [arena, delete_plan.mask]
+        flat_compact_t1 is monotonic_ns of null
+        flat_compact_ms is (flat_compact_t1 - flat_compact_t0) / 1000000
+
+        refs is storage_reason_refs of (len of c.clauses)
+        remap_t0 is monotonic_ns of null
+        remapped_refs is remap_reason_refs of [compact_arena.mapping, refs]
+        remap_t1 is monotonic_ns of null
+        remap_ms is (remap_t1 - remap_t0) / 1000000
+        remap_summary is ref_list_summary of remapped_refs
+
+        compact_flat_summary is flat_clause_summary of compact_arena
+        compact_rebuilt is reconstruct_flat_clauses of compact_arena
+        assert of [compact_list.removed == compact_arena.removed, f"storage compact removed mismatch {c.name}"]
+        assert of [compact_list.kept == compact_arena.kept, f"storage compact kept mismatch {c.name}"]
+        assert of [compact_list.removed == delete_plan.removed, f"storage delete mask mismatch {c.name}"]
+        assert of [(len of compact_list.mapping) == (len of compact_arena.mapping), f"storage compact mapping mismatch {c.name}"]
+        for mi in range of (len of compact_list.mapping):
+            assert of [compact_list.mapping[mi] == compact_arena.mapping[mi], f"storage compact mapping value mismatch {c.name}"]
+        assert_clauses_match of [f"storage compact rebuild {c.name}", compact_list.clauses, compact_rebuilt]
+        print of f"storage compact {c.name}: clauses={len of c.clauses} removed={compact_arena.removed} kept={compact_arena.kept} kept_lits={compact_flat_summary.lits} list_compact_ms={list_compact_ms} flat_compact_ms={flat_compact_ms} remap_ms={remap_ms} remap_active={remap_summary.active} remap_checksum={remap_summary.checksum} compact_checksum={compact_flat_summary.checksum}"
     return len of cases
 
 define metadata_pressure_config(size) as:

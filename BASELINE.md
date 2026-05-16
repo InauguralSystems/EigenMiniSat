@@ -110,10 +110,14 @@ Storage benchmark command:
 Result:
 
 ```text
-storage arena wide-40-12-20: vars=40 clauses=20 lits=240 flat_lits=240 offsets=20 list_scan_ms=1.2605 build_ms=0.195626 flat_scan_ms=1.13234 watch_seed_ms=0.493152 reconstruct_ms=0.317709 watch_links=40 watch_buckets=34 max_watch_bucket=2 checksum=1230396
-storage arena pigeonhole-4-3: vars=12 clauses=34 lits=72 flat_lits=72 offsets=34 list_scan_ms=0.412485 build_ms=0.116985 flat_scan_ms=0.377215 watch_seed_ms=0.55133 reconstruct_ms=0.196953 watch_links=68 watch_buckets=20 max_watch_bucket=5 checksum=36634
-storage arena grid-unsat-6x6: vars=36 clauses=62 lits=122 flat_lits=122 offsets=62 list_scan_ms=0.688011 build_ms=0.191995 flat_scan_ms=0.597565 watch_seed_ms=1.19834 reconstruct_ms=0.354168 watch_links=122 watch_buckets=72 max_watch_bucket=2 checksum=357195
-storage arena chain-unsat-80: vars=80 clauses=81 lits=160 flat_lits=160 offsets=81 list_scan_ms=0.877002 build_ms=0.275804 flat_scan_ms=0.773496 watch_seed_ms=1.53386 reconstruct_ms=0.465565 watch_links=160 watch_buckets=160 max_watch_bucket=1 checksum=1378160
+storage arena wide-40-12-20: vars=40 clauses=20 lits=240 flat_lits=240 offsets=20 list_scan_ms=1.22928 build_ms=0.202821 flat_scan_ms=1.09644 watch_seed_ms=0.506003 reconstruct_ms=0.319596 watch_links=40 watch_buckets=34 max_watch_bucket=2 checksum=1230396
+storage compact wide-40-12-20: clauses=20 removed=7 kept=13 kept_lits=156 list_compact_ms=0.073264 flat_compact_ms=0.274967 remap_ms=0.046235 remap_active=10 remap_checksum=1003 compact_checksum=531704
+storage arena pigeonhole-4-3: vars=12 clauses=34 lits=72 flat_lits=72 offsets=34 list_scan_ms=0.402498 build_ms=0.118661 flat_scan_ms=0.369044 watch_seed_ms=0.548327 reconstruct_ms=0.200795 watch_links=68 watch_buckets=20 max_watch_bucket=5 checksum=36634
+storage compact pigeonhole-4-3: clauses=34 removed=11 kept=23 kept_lits=49 list_compact_ms=0.079341 flat_compact_ms=0.212598 remap_ms=0.068654 remap_active=18 remap_checksum=5268 compact_checksum=18597
+storage arena grid-unsat-6x6: vars=36 clauses=62 lits=122 flat_lits=122 offsets=62 list_scan_ms=0.674391 build_ms=0.199607 flat_scan_ms=0.584226 watch_seed_ms=1.03079 reconstruct_ms=0.34397 watch_links=122 watch_buckets=72 max_watch_bucket=2 checksum=357195
+storage compact grid-unsat-6x6: clauses=62 removed=21 kept=41 kept_lits=81 list_compact_ms=0.147785 flat_compact_ms=1.24975 remap_ms=0.155817 remap_active=32 remap_checksum=27840 compact_checksum=157763
+storage arena chain-unsat-80: vars=80 clauses=81 lits=160 flat_lits=160 offsets=81 list_scan_ms=0.891111 build_ms=0.270288 flat_scan_ms=0.761275 watch_seed_ms=1.52807 reconstruct_ms=0.483235 watch_links=160 watch_buckets=160 max_watch_bucket=1 checksum=1378160
+storage compact chain-unsat-80: clauses=81 removed=27 kept=54 kept_lits=106 list_compact_ms=0.181798 flat_compact_ms=0.441469 remap_ms=0.158611 remap_active=42 remap_checksum=61743 compact_checksum=605393
 ```
 
 Parse benchmark command:

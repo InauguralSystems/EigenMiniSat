@@ -40,8 +40,9 @@ and the persistent path keeps watch state across recursive DPLL nodes with
 trail marks for backtracking. CDCL decisions now use a MiniSat-style variable
 activity array and binary heap/order structure. A flat clause arena benchmark
 now measures list scanning, arena build, flat scanning, watch seeding, and
-reconstruction before committing to a solver storage rewrite or root compact
-vector support.
+reconstruction. It also measures deleted-clause compaction and synthetic reason
+reference remapping before committing to a solver storage rewrite or root
+compact vector support.
 
 ## Milestone 3: CDCL
 
