@@ -655,6 +655,76 @@ define reduce_learnt_db(clauses, state, stats) as:
     stats.active_learnts is count_active_learnts of state
     return deleted
 
+define remap_clause_ref(mapping, ci) as:
+    if ci < 0:
+        return -1
+    if ci >= (len of mapping):
+        return -1
+    return mapping[ci]
+
+define rebuild_watches(nvars, clauses, state, stats) as:
+    state.watches is make_watch_table of nvars
+    state.watch_a is []
+    state.watch_b is []
+
+    for ci in range of (len of clauses):
+        clause is clauses[ci]
+        if (len of clause) == 0:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 0]
+        elif (len of clause) == 1:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 0]
+        else:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 1]
+            watch_add of [state.watches, clause[0], ci]
+            watch_add of [state.watches, clause[1], ci]
+
+    state.qhead is 0
+    stats.watch_rebuilds += 1
+    stats.compact_replays += len of state.trail
+    return null
+
+define compact_deleted_clauses(nvars, clauses, state, stats) as:
+    mapping is []
+    new_clauses is []
+    new_learnt is []
+    new_deleted is []
+    new_activity is []
+    new_lbd is []
+    removed is 0
+
+    for ci in range of (len of clauses):
+        if state.clause_deleted[ci] == 0:
+            append of [mapping, len of new_clauses]
+            append of [new_clauses, clauses[ci]]
+            append of [new_learnt, state.clause_learnt[ci]]
+            append of [new_deleted, 0]
+            append of [new_activity, state.clause_activity[ci]]
+            append of [new_lbd, state.clause_lbd[ci]]
+        else:
+            append of [mapping, -1]
+            removed += 1
+
+    if removed == 0:
+        return clauses
+
+    for v in range of (len of state.reason):
+        state.reason[v] is remap_clause_ref of [mapping, state.reason[v]]
+    state.conflict is remap_clause_ref of [mapping, state.conflict]
+
+    state.clause_learnt is new_learnt
+    state.clause_deleted is new_deleted
+    state.clause_activity is new_activity
+    state.clause_lbd is new_lbd
+    rebuild_watches of [nvars, new_clauses, state, stats]
+
+    stats.compact_runs += 1
+    stats.compact_removed += removed
+    stats.compact_kept += len of new_clauses
+    return new_clauses
+
 define save_phase_cdcl(state, v, wanted, stats) as:
     if v >= (len of state.phase):
         return null
@@ -990,6 +1060,11 @@ define cdcl_result(status, model, stats, state) as:
         "learnt_kept_locked": stats.learnt_kept_locked,
         "deleted_watch_skips": stats.deleted_watch_skips,
         "active_learnts": active,
+        "compact_runs": stats.compact_runs,
+        "compact_removed": stats.compact_removed,
+        "compact_kept": stats.compact_kept,
+        "watch_rebuilds": stats.watch_rebuilds,
+        "compact_replays": stats.compact_replays,
         "restarts": stats.restarts,
         "restart_cancels": stats.restart_cancels,
         "restart_budget": restart_budget,
@@ -1024,6 +1099,11 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
         "learnt_kept_locked": 0,
         "deleted_watch_skips": 0,
         "active_learnts": 0,
+        "compact_runs": 0,
+        "compact_removed": 0,
+        "compact_kept": 0,
+        "watch_rebuilds": 0,
+        "compact_replays": 0,
         "restarts": 0,
         "restart_cancels": 0,
         "phase_saves": 0,
@@ -1059,7 +1139,9 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
-            reduce_learnt_db of [clauses, state, stats]
+            removed_learnts is reduce_learnt_db of [clauses, state, stats]
+            if removed_learnts > 0:
+                clauses is compact_deleted_clauses of [nvars, clauses, state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 

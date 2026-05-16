@@ -29,6 +29,8 @@ variable count, clause count, decisions, propagations, and conflicts. The CDCL
 line also reports learnt clauses, backjumps, conflict-resolution steps, variable
 activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
+Compaction counters show when deleted learnt clauses are removed and watch lists
+are rebuilt.
 
 ## Scope
 
@@ -42,12 +44,12 @@ Current:
 - MiniSat-style variable activity and a binary heap order structure for CDCL
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved phase/polarity decisions and geometric restart policy
+- eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - fixture correctness tests
 - generated benchmark families
 
 Next:
 
-- eager database compaction
 - richer restart schedules and polarity heuristics
 - compact clause/vector storage if metadata and lazy deletion pressure grows
 
@@ -62,3 +64,4 @@ This repo is expected to stress:
 - heap and queue library candidates, including pop/reinsert churn
 - allocator behavior under clause metadata, learnt churn, and lazy deletion
 - restart cancellation and phase-saving churn across repeated backtracking
+- clause compaction and watch rebuild/replay overhead
