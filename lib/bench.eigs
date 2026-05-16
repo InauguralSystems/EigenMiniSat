@@ -228,6 +228,34 @@ define run_parse_benchmarks(size) as:
         print of f"fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases
 
+define run_scan_parse_benchmarks(size) as:
+    cases is large_fixture_cases of size
+    for c in cases:
+        text is case_to_dimacs_text of c
+
+        pt0 is monotonic_ns of null
+        split_parsed is parse_dimacs_text of text
+        pt1 is monotonic_ns of null
+        split_ms is (pt1 - pt0) / 1000000
+        assert_dimacs_ok of split_parsed
+
+        st0 is monotonic_ns of null
+        scan_parsed is parse_dimacs_text_scan of text
+        st1 is monotonic_ns of null
+        scan_ms is (st1 - st0) / 1000000
+        assert_dimacs_ok of scan_parsed
+        assert_dimacs_same of [c.name, split_parsed, scan_parsed]
+
+        print of f"parse split {c.name}: text_len={len of text} vars={split_parsed.nvars} clauses={len of split_parsed.clauses} ok={split_parsed.ok} errors={split_parsed.error_count} ms={split_ms}"
+        print of f"parse scan {c.name}: text_len={len of text} vars={scan_parsed.nvars} clauses={len of scan_parsed.clauses} ok={scan_parsed.ok} errors={scan_parsed.error_count} ms={scan_ms}"
+
+        ct0 is monotonic_ns of null
+        cdcl is solve_cnf_cdcl of [scan_parsed.nvars, scan_parsed.clauses]
+        ct1 is monotonic_ns of null
+        cms is (ct1 - ct0) / 1000000
+        print of f"scan fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+    return len of cases
+
 define run_file_benchmarks(size) as:
     cases is large_fixture_cases of size
     for c in cases:

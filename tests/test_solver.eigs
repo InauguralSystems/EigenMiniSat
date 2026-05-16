@@ -136,6 +136,8 @@ print of "  restart policy: ok"
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case
 grid_parsed is parse_dimacs_text of grid_text
+grid_scan_parsed is parse_dimacs_text_scan of grid_text
+assert_dimacs_same of ["grid scan parser", grid_parsed, grid_scan_parsed]
 assert_eq of ["grid DIMACS vars", grid_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid DIMACS clauses", len of grid_parsed.clauses, len of grid_case.clauses]
 assert_eq of ["grid DIMACS diagnostics", grid_parsed.ok, 1]
@@ -145,6 +147,8 @@ grid_path is mktemp of null
 assert_true of ["grid mktemp path", (len of grid_path) > 0]
 assert_eq of ["grid write DIMACS file", write_text of [grid_path, grid_text], 1]
 grid_file_parsed is parse_dimacs_file of grid_path
+grid_file_scan_parsed is parse_dimacs_file_scan of grid_path
+assert_dimacs_same of ["grid file scan parser", grid_file_parsed, grid_file_scan_parsed]
 assert_eq of ["grid file DIMACS vars", grid_file_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid file DIMACS clauses", len of grid_file_parsed.clauses, len of grid_case.clauses]
 assert_eq of ["grid file DIMACS diagnostics", grid_file_parsed.ok, 1]
@@ -153,6 +157,8 @@ assert_eq of ["grid rm DIMACS file", rm of grid_path, 1]
 wide_case is wide_clause_case of [18, 6, 7]
 wide_text is case_to_dimacs_text of wide_case
 wide_parsed is parse_dimacs_text of wide_text
+wide_scan_parsed is parse_dimacs_text_scan of wide_text
+assert_dimacs_same of ["wide scan parser", wide_parsed, wide_scan_parsed]
 assert_eq of ["wide DIMACS vars", wide_parsed.nvars, wide_case.nvars]
 assert_eq of ["wide DIMACS clauses", len of wide_parsed.clauses, len of wide_case.clauses]
 assert_eq of ["wide DIMACS diagnostics", wide_parsed.ok, 1]
@@ -161,21 +167,29 @@ assert_eq of ["wide parsed cdcl SAT", wide_cdcl.status, "SAT"]
 print of "  generated DIMACS fixtures: ok"
 
 bad_count is parse_dimacs_text of "p cnf 1 2\n1 0\n"
+bad_count_scan is parse_dimacs_text_scan of "p cnf 1 2\n1 0\n"
+assert_dimacs_same of ["bad count scan parser", bad_count, bad_count_scan]
 assert_eq of ["bad count diagnostics", bad_count.ok, 0]
 assert_eq of ["bad count flag", bad_count.clause_count_ok, 0]
 assert_true of ["bad count message", contains of [bad_count.errors[0], "declared_clauses=2"]]
 
 bad_var is parse_dimacs_text of "p cnf 1 1\n2 0\n"
+bad_var_scan is parse_dimacs_text_scan of "p cnf 1 1\n2 0\n"
+assert_dimacs_same of ["bad var scan parser", bad_var, bad_var_scan]
 assert_eq of ["bad var diagnostics", bad_var.ok, 0]
 assert_eq of ["bad var flag", bad_var.var_count_ok, 0]
 assert_eq of ["bad var max", bad_var.max_var, 2]
 assert_true of ["bad var message", contains of [bad_var.errors[0], "declared_vars=1"]]
 
 bad_token is parse_dimacs_text of "p cnf 1 1\nx 0\n"
+bad_token_scan is parse_dimacs_text_scan of "p cnf 1 1\nx 0\n"
+assert_dimacs_same of ["bad token scan parser", bad_token, bad_token_scan]
 assert_eq of ["bad token diagnostics", bad_token.ok, 0]
 assert_true of ["bad token message", contains of [bad_token.errors[0], "non-integer token"]]
 
 missing_header is parse_dimacs_text of "1 0\n"
+missing_header_scan is parse_dimacs_text_scan of "1 0\n"
+assert_dimacs_same of ["missing header scan parser", missing_header, missing_header_scan]
 assert_eq of ["missing header diagnostics", missing_header.ok, 0]
 assert_eq of ["missing header flag", missing_header.header_seen, 0]
 assert_true of ["missing header message", contains of [missing_header.errors[0], "missing problem header"]]
@@ -185,6 +199,8 @@ corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
 for corpus in corpus_cases:
     corpus_parsed is parse_dimacs_file of corpus.path
+    corpus_scan_parsed is parse_dimacs_file_scan of corpus.path
+    assert_dimacs_same of [f"corpus scan parser {corpus.name}", corpus_parsed, corpus_scan_parsed]
     assert_eq of [f"corpus vars {corpus.name}", corpus_parsed.nvars, corpus.nvars]
     assert_eq of [f"corpus clauses {corpus.name}", len of corpus_parsed.clauses, corpus.nclauses]
     assert_eq of [f"corpus declared vars {corpus.name}", corpus_parsed.declared_vars, corpus.nvars]

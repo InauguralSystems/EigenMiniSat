@@ -20,6 +20,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   parse lines expose `ok`/`errors` counts. If larger corpora amplify the extra
   validation cost, EigenScript may need cheaper character classification or a
   streaming tokenizer.
+- A character-scanning DIMACS parser now matches the split/trim parser's
+  diagnostics and clauses, but `--scan-parse-bench` shows that repeated
+  `substr` and token string concatenation are often slower than split/trim on
+  these fixtures. That points toward root-level scanner/tokenizer primitives
+  rather than local parser contortions.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Priority queue / binary heap as a standard library candidate.

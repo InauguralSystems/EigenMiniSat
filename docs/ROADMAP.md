@@ -16,6 +16,8 @@ Checked-in DIMACS corpus fixtures now cover comments, multiline clauses,
 multiple clauses on one physical line, and graph-coloring SAT/UNSAT cases.
 The parser now returns diagnostics for malformed headers, declared count
 mismatches, variable-bound mismatches, non-integer tokens, and missing headers.
+A character-scanning parser path now shares the same diagnostics and can be
+benchmarked against the split/trim parser.
 
 ## Milestone 2: MiniSat Data Structures
 
@@ -44,8 +46,9 @@ Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 and a geometric restart policy are in place. Deleted learnt clauses are now
 eagerly compacted by remapping clause references and rebuilding watch lists.
-The next target is richer restart schedules, polarity heuristics, streaming
-parser pressure, and expanding the CNF corpus beyond small checked-in fixtures.
+The next target is richer restart schedules, polarity heuristics, root-level
+scanner/tokenizer pressure, and expanding the CNF corpus beyond small checked-in
+fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
