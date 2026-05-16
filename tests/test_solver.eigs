@@ -128,8 +128,25 @@ assert_eq of ["copy pressure analysis rebuild lits removed", copy_result.analysi
 assert_true of ["copy pressure native analysis scans", copy_result.analysis_store_scans > 0]
 assert_true of ["copy pressure native analysis lits", copy_result.analysis_store_lits > 0]
 assert_true of ["copy pressure native learnts", copy_result.analysis_native_learnts > 0]
-assert_true of ["copy pressure compacts", copy_result.compact_runs > 0]
-assert_true of ["copy pressure compact lits", copy_result.compact_clause_lits > 0]
+assert_eq of ["copy pressure default compact policy", copy_result.compact_policy, "deferred"]
+assert_eq of ["copy pressure deferred compacts", copy_result.compact_runs, 0]
+assert_eq of ["copy pressure deferred compact lits", copy_result.compact_clause_lits, 0]
+assert_true of ["copy pressure compact checks", copy_result.compact_checks > 0]
+assert_true of ["copy pressure deferred count", copy_result.compact_deferred > 0]
+assert_true of ["copy pressure pending deleted", copy_result.compact_pending_deleted > 0]
+assert_true of ["copy pressure watch rebuilds", copy_result.watch_rebuilds > 0]
+assert_true of ["copy pressure replayed trail", copy_result.compact_replays > 0]
+copy_eager_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
+    "restart_policy": copy_policy.restart_policy,
+    "restart_first": copy_policy.restart_first,
+    "restart_growth": copy_policy.restart_growth,
+    "phase_policy": copy_policy.phase_policy,
+    "compact_policy": "eager"
+}]
+assert_eq of ["copy pressure eager policy", copy_eager_result.compact_policy, "eager"]
+assert_eq of ["copy pressure eager status", copy_eager_result.status, "UNSAT"]
+assert_true of ["copy pressure eager compacts", copy_eager_result.compact_runs > 0]
+assert_true of ["copy pressure eager compact lits", copy_eager_result.compact_clause_lits > 0]
 print of "  copy pressure helpers: ok"
 
 reduce_state is {
@@ -294,10 +311,13 @@ assert_true of ["pigeonhole 4-3 restarts", php4_cdcl.restarts > 0]
 assert_eq of ["pigeonhole 4-3 restart index", php4_cdcl.restart_index, php4_cdcl.restarts]
 assert_true of ["pigeonhole 4-3 restart cancels", php4_cdcl.restart_cancels > 0]
 assert_true of ["pigeonhole 4-3 phase saves", php4_cdcl.phase_saves > 0]
-assert_true of ["pigeonhole 4-3 compacts", php4_cdcl.compact_runs > 0]
-assert_true of ["pigeonhole 4-3 compact copies", php4_cdcl.compact_clause_copies > 0]
-assert_true of ["pigeonhole 4-3 compact lits", php4_cdcl.compact_clause_lits > 0]
+assert_eq of ["pigeonhole 4-3 deferred compacts", php4_cdcl.compact_runs, 0]
+assert_true of ["pigeonhole 4-3 compact deferred", php4_cdcl.compact_deferred > 0]
+assert_true of ["pigeonhole 4-3 pending deleted", php4_cdcl.compact_pending_deleted > 0]
+assert_eq of ["pigeonhole 4-3 no compact copies", php4_cdcl.compact_clause_copies, 0]
+assert_eq of ["pigeonhole 4-3 no compact lits", php4_cdcl.compact_clause_lits, 0]
 assert_true of ["pigeonhole 4-3 watch rebuilds", php4_cdcl.watch_rebuilds > 0]
+assert_true of ["pigeonhole 4-3 replayed trail", php4_cdcl.compact_replays > 0]
 php4_luby is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"restart_policy": "luby", "restart_first": 1}]
 assert_eq of ["pigeonhole 4-3 luby UNSAT", php4_luby.status, "UNSAT"]
 assert_eq of ["pigeonhole 4-3 luby policy", php4_luby.restart_policy, "luby"]
