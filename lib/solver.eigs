@@ -782,6 +782,46 @@ define append_active_watch_tail(kept, old, start, state, stats) as:
                 append of [kept, ci]
     return null
 
+define detach_watch_bucket(state, wi, ci, stats) as:
+    old is state.watches[wi]
+    kept is []
+    scanned is 0
+    removed is 0
+    for ref in old:
+        scanned += 1
+        if ref == ci:
+            removed += 1
+        else:
+            append of [kept, ref]
+    state.watches[wi] is kept
+    stats.watch_detach_scans += scanned
+    stats.watch_detach_removed += removed
+    return removed
+
+define detach_clause_watches(store, state, ci, stats) as:
+    if (has_key of [state, "watches"]) == 0:
+        return 0
+    if (has_key of [state, "watch_a"]) == 0:
+        return 0
+    if (has_key of [state, "watch_b"]) == 0:
+        return 0
+    if ci < 0:
+        return 0
+    if ci >= (len of state.watch_a):
+        return 0
+    if (clause_store_size of [store, ci]) < 2:
+        return 0
+
+    wa is state.watch_a[ci]
+    wb is state.watch_b[ci]
+    wi_a is lit_index of (clause_store_lit of [store, ci, wa])
+    wi_b is lit_index of (clause_store_lit of [store, ci, wb])
+    removed is detach_watch_bucket of [state, wi_a, ci, stats]
+    if wi_b != wi_a:
+        removed += detach_watch_bucket of [state, wi_b, ci, stats]
+    stats.watch_detaches += 1
+    return removed
+
 define find_low_activity_learnt(store, state, stats) as:
     best is -1
     best_activity is 1000000000
@@ -811,6 +851,7 @@ define reduce_learnt_db(store, state, stats) as:
         if victim < 0:
             break
         state.clause_deleted[victim] is 1
+        detach_clause_watches of [store, state, victim, stats]
         stats.learnt_deleted += 1
         deleted += 1
 
@@ -1401,6 +1442,9 @@ define cdcl_result(status, model, stats, state) as:
         "compact_clause_copies": stats.compact_clause_copies,
         "compact_clause_lits": stats.compact_clause_lits,
         "watch_rebuilds": stats.watch_rebuilds,
+        "watch_detaches": stats.watch_detaches,
+        "watch_detach_scans": stats.watch_detach_scans,
+        "watch_detach_removed": stats.watch_detach_removed,
         "watch_prunes": stats.watch_prunes,
         "watch_prune_scans": stats.watch_prune_scans,
         "watch_prune_removed": stats.watch_prune_removed,
@@ -1460,6 +1504,9 @@ define cdcl_empty_stats() as:
         "compact_clause_copies": 0,
         "compact_clause_lits": 0,
         "watch_rebuilds": 0,
+        "watch_detaches": 0,
+        "watch_detach_scans": 0,
+        "watch_detach_removed": 0,
         "watch_prunes": 0,
         "watch_prune_scans": 0,
         "watch_prune_removed": 0,
@@ -1510,8 +1557,6 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
             if removed_learnts > 0:
                 if (should_compact_deleted_clauses of [store, state, stats]) != 0:
                     store is compact_deleted_clauses of [nvars, store, state, stats]
-                else:
-                    prune_deleted_watches of [state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 

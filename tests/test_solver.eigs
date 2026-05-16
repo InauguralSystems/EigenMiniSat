@@ -136,9 +136,11 @@ assert_true of ["copy pressure deferred count", copy_result.compact_deferred > 0
 assert_true of ["copy pressure pending deleted", copy_result.compact_pending_deleted > 0]
 assert_eq of ["copy pressure no watch rebuilds", copy_result.watch_rebuilds, 0]
 assert_eq of ["copy pressure no trail replays", copy_result.compact_replays, 0]
-assert_true of ["copy pressure watch prunes", copy_result.watch_prunes > 0]
-assert_true of ["copy pressure watch prune scans", copy_result.watch_prune_scans > 0]
-assert_true of ["copy pressure watch prune removals", copy_result.watch_prune_removed > 0]
+assert_true of ["copy pressure watch detaches", copy_result.watch_detaches > 0]
+assert_true of ["copy pressure watch detach scans", copy_result.watch_detach_scans > 0]
+assert_true of ["copy pressure watch detach removals", copy_result.watch_detach_removed > 0]
+assert_eq of ["copy pressure no watch prunes", copy_result.watch_prunes, 0]
+assert_eq of ["copy pressure no watch prune scans", copy_result.watch_prune_scans, 0]
 copy_eager_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
     "restart_policy": copy_policy.restart_policy,
     "restart_first": copy_policy.restart_first,
@@ -161,7 +163,9 @@ assert_eq of ["copy pressure deeper expected", copy_deeper_case.expected, "UNSAT
 assert_eq of ["copy pressure deeper result", copy_deeper_result.status, "UNSAT"]
 assert_eq of ["copy pressure deeper no watch rebuilds", copy_deeper_result.watch_rebuilds, 0]
 assert_eq of ["copy pressure deeper no trail replays", copy_deeper_result.compact_replays, 0]
-assert_true of ["copy pressure deeper watch prunes", copy_deeper_result.watch_prunes > 0]
+assert_true of ["copy pressure deeper watch detaches", copy_deeper_result.watch_detaches > 0]
+assert_true of ["copy pressure deeper watch detach removals", copy_deeper_result.watch_detach_removed > 0]
+assert_eq of ["copy pressure deeper no watch prunes", copy_deeper_result.watch_prunes, 0]
 print of "  copy pressure helpers: ok"
 
 reduce_state is {
@@ -179,6 +183,9 @@ reduce_stats is {
     "learnt_deleted": 0,
     "learnt_kept_locked": 0,
     "watch_rebuilds": 0,
+    "watch_detaches": 0,
+    "watch_detach_scans": 0,
+    "watch_detach_removed": 0,
     "watch_prunes": 0,
     "watch_prune_scans": 0,
     "watch_prune_removed": 0,
@@ -221,6 +228,8 @@ assert_true of ["metadata churn deleted", metadata_churn_test.learnt_deleted > 0
 assert_true of ["metadata churn compacts", metadata_churn_test.compact_runs > 0]
 assert_true of ["metadata churn compact copies", metadata_churn_test.compact_clause_copies > 0]
 assert_true of ["metadata churn watch rebuilds", metadata_churn_test.watch_rebuilds > 0]
+assert_true of ["metadata churn watch detaches", metadata_churn_test.watch_detaches > 0]
+assert_true of ["metadata churn watch detach removals", metadata_churn_test.watch_detach_removed > 0]
 assert_true of ["metadata churn locked kept", metadata_churn_test.locked_kept > 0]
 assert_true of ["metadata churn reason refs", metadata_churn_test.reason_active > 0]
 print of "  learnt database reduction: ok"
@@ -336,8 +345,9 @@ assert_eq of ["pigeonhole 4-3 no compact copies", php4_cdcl.compact_clause_copie
 assert_eq of ["pigeonhole 4-3 no compact lits", php4_cdcl.compact_clause_lits, 0]
 assert_eq of ["pigeonhole 4-3 no watch rebuilds", php4_cdcl.watch_rebuilds, 0]
 assert_eq of ["pigeonhole 4-3 no trail replays", php4_cdcl.compact_replays, 0]
-assert_true of ["pigeonhole 4-3 watch prunes", php4_cdcl.watch_prunes > 0]
-assert_true of ["pigeonhole 4-3 watch prune removals", php4_cdcl.watch_prune_removed > 0]
+assert_true of ["pigeonhole 4-3 watch detaches", php4_cdcl.watch_detaches > 0]
+assert_true of ["pigeonhole 4-3 watch detach removals", php4_cdcl.watch_detach_removed > 0]
+assert_eq of ["pigeonhole 4-3 no watch prunes", php4_cdcl.watch_prunes, 0]
 php4_luby is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"restart_policy": "luby", "restart_first": 1}]
 assert_eq of ["pigeonhole 4-3 luby UNSAT", php4_luby.status, "UNSAT"]
 assert_eq of ["pigeonhole 4-3 luby policy", php4_luby.restart_policy, "luby"]
