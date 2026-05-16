@@ -26,30 +26,42 @@ assert_eq of ["simple clauses", len of simple.clauses, 3]
 simple_result is solve_cnf of [simple.nvars, simple.clauses]
 assert_eq of ["simple SAT", simple_result.status, "SAT"]
 assert_true of ["simple model satisfies", model_satisfies of [simple.nvars, simple.clauses, simple_result.model]]
+simple_watched is solve_cnf_watched of [simple.nvars, simple.clauses]
+assert_eq of ["simple watched SAT", simple_watched.status, "SAT"]
+assert_true of ["simple watched model satisfies", model_satisfies of [simple.nvars, simple.clauses, simple_watched.model]]
 print of "  simple SAT: ok"
 
 unit_unsat is parse_dimacs_file of "tests/fixtures/unit_unsat.cnf"
 unit_result is solve_cnf of [unit_unsat.nvars, unit_unsat.clauses]
 assert_eq of ["unit UNSAT", unit_result.status, "UNSAT"]
 assert_true of ["unit conflict counted", unit_result.conflicts > 0]
+unit_watched is solve_cnf_watched of [unit_unsat.nvars, unit_unsat.clauses]
+assert_eq of ["unit watched UNSAT", unit_watched.status, "UNSAT"]
 print of "  unit UNSAT: ok"
 
 php is parse_dimacs_file of "tests/fixtures/pigeonhole_3_2.cnf"
 php_result is solve_cnf of [php.nvars, php.clauses]
 assert_eq of ["pigeonhole UNSAT", php_result.status, "UNSAT"]
+php_watched is solve_cnf_watched of [php.nvars, php.clauses]
+assert_eq of ["pigeonhole watched UNSAT", php_watched.status, "UNSAT"]
 print of "  pigeonhole UNSAT: ok"
 
 chain_sat is chain_case of [12, 0]
 chain_sat_result is solve_cnf of [chain_sat.nvars, chain_sat.clauses]
 assert_eq of ["chain SAT", chain_sat_result.status, "SAT"]
 assert_true of ["chain SAT propagates", chain_sat_result.propagations >= 12]
+chain_sat_watched is solve_cnf_watched of [chain_sat.nvars, chain_sat.clauses]
+assert_eq of ["chain watched SAT", chain_sat_watched.status, "SAT"]
+assert_true of ["chain watched propagates", chain_sat_watched.propagations >= 12]
 print of "  generated chain SAT: ok"
 
 chain_unsat is chain_case of [12, 1]
 chain_unsat_result is solve_cnf of [chain_unsat.nvars, chain_unsat.clauses]
 assert_eq of ["chain UNSAT", chain_unsat_result.status, "UNSAT"]
 assert_true of ["chain UNSAT conflict", chain_unsat_result.conflicts > 0]
+chain_unsat_watched is solve_cnf_watched of [chain_unsat.nvars, chain_unsat.clauses]
+assert_eq of ["chain watched UNSAT", chain_unsat_watched.status, "UNSAT"]
+assert_true of ["chain watched UNSAT conflict", chain_unsat_watched.conflicts > 0]
 print of "  generated chain UNSAT: ok"
 
 print of "\n=== All EigenMiniSat solver tests passed ==="
-

@@ -8,12 +8,14 @@ load_file of "lib/bench.eigs"
 
 define parse_args() as:
     argv is args of null
-    cfg is {"mode": "solve", "path": "", "size": 1}
+    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan"}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
         if arg == "--bench":
             cfg.mode is "bench"
+        elif arg == "--watched":
+            cfg.solver is "watched"
         elif arg == "--size":
             if i + 1 < (len of argv):
                 i += 1
@@ -29,7 +31,7 @@ define parse_args() as:
 
 define print_help() as:
     print of "Usage:"
-    print of "  eigenscript minisat.eigs <file.cnf>"
+    print of "  eigenscript minisat.eigs [--watched] <file.cnf>"
     print of "  eigenscript minisat.eigs --bench --size N"
     return null
 
@@ -46,6 +48,8 @@ else:
     parsed is parse_dimacs_file of cfg.path
     t0 is monotonic_ns of null
     result is solve_cnf of [parsed.nvars, parsed.clauses]
+    if cfg.solver == "watched":
+        result is solve_cnf_watched of [parsed.nvars, parsed.clauses]
     t1 is monotonic_ns of null
     ms is (t1 - t0) / 1000000
 
@@ -54,4 +58,3 @@ else:
     else:
         print of "s UNSATISFIABLE"
     print of f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
-

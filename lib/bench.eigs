@@ -88,5 +88,11 @@ define run_benchmarks(size) as:
         result is solve_cnf of [c.nvars, c.clauses]
         t1 is monotonic_ns of null
         ms is (t1 - t0) / 1000000
-        print of f"bench {c.name}: status={result.status} vars={c.nvars} clauses={len of c.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
+        print of f"bench scan {c.name}: status={result.status} vars={c.nvars} clauses={len of c.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
+
+        wt0 is monotonic_ns of null
+        watched is solve_cnf_watched of [c.nvars, c.clauses]
+        wt1 is monotonic_ns of null
+        wms is (wt1 - wt0) / 1000000
+        print of f"bench watched {c.name}: status={watched.status} vars={c.nvars} clauses={len of c.clauses} decisions={watched.decisions} propagations={watched.propagations} conflicts={watched.conflicts} ms={wms}"
     return len of cases
