@@ -29,9 +29,11 @@ from EigenScript-side clause assembly.
 - binary heap variable ordering
 - clause references
 
-Status: initial watched propagation exists as a correctness/benchmark path, and
-the persistent path keeps watch state across recursive DPLL nodes with trail
-marks for backtracking. CDCL decisions now use a MiniSat-style variable
+Status: literal watch-list indexes now use MiniSat-style `var * 2 + sign`
+encoding internally while keeping signed DIMACS literals at the parser/CLI
+boundary. Initial watched propagation exists as a correctness/benchmark path,
+and the persistent path keeps watch state across recursive DPLL nodes with
+trail marks for backtracking. CDCL decisions now use a MiniSat-style variable
 activity array and binary heap/order structure.
 
 ## Milestone 3: CDCL
