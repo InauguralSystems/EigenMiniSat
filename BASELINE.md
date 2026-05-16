@@ -89,6 +89,35 @@ phase positive xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propag
 phase negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=17 conflicts=4 learnts=4 restarts=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 ms=6.19751
 ```
 
+Heuristic benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
+```
+
+Result:
+
+```text
+heuristic geom-saved pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 restart_budget=6 restart_index=1 phase_saves=74 phase_flips=44 phase_pos=2 phase_neg=8 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=16.1252
+heuristic luby-saved pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 restart_budget=3 restart_index=1 phase_saves=74 phase_flips=44 phase_pos=2 phase_neg=8 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=17.5148
+heuristic geom-positive pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=6 propagations=60 conflicts=7 learnts=6 restarts=0 restart_budget=3 restart_index=0 phase_saves=0 phase_flips=0 phase_pos=6 phase_neg=0 heap_pops=14 heap_inserts=9 compact_runs=1 compact_removed=1 ms=15.6191
+heuristic geom-negative pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=11 propagations=63 conflicts=8 learnts=7 restarts=1 restart_budget=6 restart_index=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 heap_pops=16 heap_inserts=13 compact_runs=1 compact_removed=2 ms=15.4659
+heuristic luby-negative pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=12 propagations=68 conflicts=8 learnts=7 restarts=2 restart_budget=4 restart_index=2 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=12 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=13.0782
+heuristic summary pigeonhole-4-3: policies=5 status=UNSAT min_decisions=6 max_decisions=12 min_conflicts=7 max_conflicts=8 max_restarts=2 max_compact_runs=1
+heuristic geom-saved k5-3color: status=UNSAT vars=15 clauses=50 decisions=10 propagations=82 conflicts=8 learnts=7 restarts=1 restart_budget=6 restart_index=1 phase_saves=92 phase_flips=54 phase_pos=2 phase_neg=8 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=14.581
+heuristic luby-saved k5-3color: status=UNSAT vars=15 clauses=50 decisions=10 propagations=82 conflicts=8 learnts=7 restarts=1 restart_budget=3 restart_index=1 phase_saves=92 phase_flips=54 phase_pos=2 phase_neg=8 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=24.1671
+heuristic geom-positive k5-3color: status=UNSAT vars=15 clauses=50 decisions=6 propagations=77 conflicts=7 learnts=6 restarts=0 restart_budget=3 restart_index=0 phase_saves=0 phase_flips=0 phase_pos=6 phase_neg=0 heap_pops=14 heap_inserts=9 compact_runs=1 compact_removed=1 ms=23.3627
+heuristic geom-negative k5-3color: status=UNSAT vars=15 clauses=50 decisions=11 propagations=81 conflicts=8 learnts=7 restarts=1 restart_budget=6 restart_index=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 heap_pops=16 heap_inserts=13 compact_runs=1 compact_removed=2 ms=16.0963
+heuristic luby-negative k5-3color: status=UNSAT vars=15 clauses=50 decisions=12 propagations=87 conflicts=8 learnts=7 restarts=2 restart_budget=4 restart_index=2 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=12 heap_pops=17 heap_inserts=14 compact_runs=1 compact_removed=2 ms=21.4544
+heuristic summary k5-3color: policies=5 status=UNSAT min_decisions=6 max_decisions=12 min_conflicts=7 max_conflicts=8 max_restarts=2 max_compact_runs=1
+heuristic geom-saved xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 phase_saves=11 phase_flips=0 phase_pos=11 phase_neg=0 heap_pops=11 heap_inserts=0 compact_runs=0 compact_removed=0 ms=3.44361
+heuristic luby-saved xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 phase_saves=11 phase_flips=0 phase_pos=11 phase_neg=0 heap_pops=11 heap_inserts=0 compact_runs=0 compact_removed=0 ms=2.9969
+heuristic geom-positive xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 phase_saves=0 phase_flips=0 phase_pos=11 phase_neg=0 heap_pops=11 heap_inserts=0 compact_runs=0 compact_removed=0 ms=5.70466
+heuristic geom-negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=17 conflicts=4 learnts=4 restarts=1 restart_budget=6 restart_index=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 heap_pops=21 heap_inserts=11 compact_runs=0 compact_removed=0 ms=5.68804
+heuristic luby-negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=14 propagations=22 conflicts=4 learnts=4 restarts=2 restart_budget=4 restart_index=2 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=14 heap_pops=25 heap_inserts=18 compact_runs=0 compact_removed=0 ms=6.49177
+heuristic summary xor-triangle-4: policies=5 status=SAT min_decisions=11 max_decisions=14 min_conflicts=0 max_conflicts=4 max_restarts=2 max_compact_runs=0
+```
+
 Metadata compaction benchmark command:
 
 ```bash

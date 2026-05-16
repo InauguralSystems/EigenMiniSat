@@ -83,6 +83,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   public solver result. Larger cases should show whether this remains solver
   heuristic work or becomes root pressure around option dispatch and phase-list
   mutation.
+- The heuristic benchmark now sweeps geometric/Luby restarts with saved,
+  positive, and negative polarity over pigeonhole, complete-graph coloring, and
+  XOR cases. This makes combined option dispatch, heap pop/reinsert churn,
+  phase-list mutation, restart cancellation, and compaction side effects visible
+  in one run instead of requiring separate restart and phase comparisons.
 - The Luby restart benchmark adds small but repeated `floor`, modulo, and
   integer-power schedule calculations around CDCL conflicts. If larger restart
   sweeps make schedule overhead visible, EigenScript may need cheaper integer

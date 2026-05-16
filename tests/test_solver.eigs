@@ -82,6 +82,29 @@ assert_true of ["fixed negative decisions", phase_negative.phase_neg_decisions >
 assert_true of ["fixed negative model", model_satisfies of [phase_case.nvars, phase_case.clauses, phase_negative.model]]
 print of "  phase policies: ok"
 
+graph_color_case is complete_graph_color_case of [4, 3]
+assert_eq of ["graph color expected", graph_color_case.expected, "UNSAT"]
+assert_eq of ["graph color vars", graph_color_case.nvars, 12]
+assert_eq of ["graph color clauses", len of graph_color_case.clauses, 34]
+graph_color_result is solve_cnf_cdcl_with_options of [graph_color_case.nvars, graph_color_case.clauses, {"restart_policy": "luby", "restart_first": 2, "phase_policy": "negative"}]
+assert_eq of ["graph color cdcl UNSAT", graph_color_result.status, "UNSAT"]
+assert_true of ["graph color conflicts", graph_color_result.conflicts > 0]
+heuristic_cases is heuristic_pressure_cases of 1
+heuristic_policies is heuristic_policy_options of null
+assert_eq of ["heuristic case count", len of heuristic_cases, 3]
+assert_eq of ["heuristic policy count", len of heuristic_policies, 5]
+heuristic_phase_case is xor_triangle_case of 1
+for heuristic_policy in heuristic_policies:
+    heuristic_result is solve_cnf_cdcl_with_options of [heuristic_phase_case.nvars, heuristic_phase_case.clauses, {
+        "restart_policy": heuristic_policy.restart_policy,
+        "restart_first": heuristic_policy.restart_first,
+        "restart_growth": heuristic_policy.restart_growth,
+        "phase_policy": heuristic_policy.phase_policy
+    }]
+    assert_eq of [f"heuristic policy SAT {heuristic_policy.name}", heuristic_result.status, "SAT"]
+    assert_true of [f"heuristic policy model {heuristic_policy.name}", model_satisfies of [heuristic_phase_case.nvars, heuristic_phase_case.clauses, heuristic_result.model]]
+print of "  heuristic stress helpers: ok"
+
 reduce_state is {
     "clause_learnt": [0, 1, 1, 1],
     "clause_deleted": [0, 0, 0, 0],
