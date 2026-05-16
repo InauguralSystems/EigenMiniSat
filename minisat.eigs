@@ -65,6 +65,7 @@ elif cfg.path == "":
     assert of [0, "missing DIMACS path"]
 else:
     parsed is parse_dimacs_file of cfg.path
+    assert_dimacs_ok of parsed
     t0 is monotonic_ns of null
     result is solve_cnf of [parsed.nvars, parsed.clauses]
     if cfg.solver == "watched":
