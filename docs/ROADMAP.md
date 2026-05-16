@@ -8,6 +8,9 @@
 - recursive DPLL
 - fixture tests and generated benchmarks
 
+Status: DIMACS parsing now has a generated parse benchmark path that emits
+larger CNF families, reparses the text, and solves parsed clauses through CDCL.
+
 ## Milestone 2: MiniSat Data Structures
 
 - literal encoding parity with MiniSat (`var * 2 + sign`)
@@ -36,7 +39,7 @@ locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 and a geometric restart policy are in place. Deleted learnt clauses are now
 eagerly compacted by remapping clause references and rebuilding watch lists.
 The next target is richer restart schedules, polarity heuristics, and larger
-CNF fixtures.
+external CNF fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

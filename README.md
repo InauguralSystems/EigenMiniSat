@@ -19,6 +19,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 tests/run_smoke.sh
 ```
 
@@ -31,6 +32,8 @@ activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
 Compaction counters show when deleted learnt clauses are removed and watch lists
 are rebuilt.
+`--parse-bench` emits larger generated DIMACS fixtures, parses the generated
+text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 
 ## Scope
 
@@ -45,6 +48,7 @@ Current:
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved phase/polarity decisions and geometric restart policy
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
+- larger generated DIMACS fixture families for parser and scale pressure
 - fixture correctness tests
 - generated benchmark families
 
@@ -52,6 +56,7 @@ Next:
 
 - richer restart schedules and polarity heuristics
 - compact clause/vector storage if metadata and lazy deletion pressure grows
+- larger external CNF corpus once parser throughput is stable
 
 ## EigenScript Pressure
 
@@ -65,3 +70,4 @@ This repo is expected to stress:
 - allocator behavior under clause metadata, learnt churn, and lazy deletion
 - restart cancellation and phase-saving churn across repeated backtracking
 - clause compaction and watch rebuild/replay overhead
+- generated DIMACS string throughput and parse-token allocation

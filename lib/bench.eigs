@@ -70,6 +70,53 @@ define xor_triangle_case(repeats) as:
         "clauses": clauses
     }
 
+define grid_var(row, col, cols) as:
+    return (row * cols) + col + 1
+
+define grid_implication_case(rows, cols, contradictory) as:
+    clauses is []
+    append of [clauses, [1]]
+
+    for r in range of rows:
+        for c in range of cols:
+            v is grid_var of [r, c, cols]
+            if c + 1 < cols:
+                append of [clauses, [0 - v, grid_var of [r, c + 1, cols]]]
+            if r + 1 < rows:
+                append of [clauses, [0 - v, grid_var of [r + 1, c, cols]]]
+
+    last is grid_var of [rows - 1, cols - 1, cols]
+    if contradictory != 0:
+        append of [clauses, [0 - last]]
+    else:
+        append of [clauses, [last]]
+
+    label is f"grid-sat-{rows}x{cols}"
+    if contradictory != 0:
+        label is f"grid-unsat-{rows}x{cols}"
+    return {
+        "name": label,
+        "nvars": rows * cols,
+        "clauses": clauses
+    }
+
+define wide_clause_case(nvars, width, groups) as:
+    clauses is []
+    for g in range of groups:
+        clause is []
+        for i in range of width:
+            v is ((g * width + i) % nvars) + 1
+            lit is v
+            if ((g + i) % 3) == 1:
+                lit is 0 - v
+            append of [clause, lit]
+        append of [clauses, clause]
+    return {
+        "name": f"wide-{nvars}-{width}-{groups}",
+        "nvars": nvars,
+        "clauses": clauses
+    }
+
 define benchmark_cases(size) as:
     if size < 1:
         size is 1
@@ -80,6 +127,28 @@ define benchmark_cases(size) as:
     tri_repeats is size + 2
     append of [cases, xor_triangle_case of tri_repeats]
     return cases
+
+define large_fixture_cases(size) as:
+    if size < 1:
+        size is 1
+    cases is []
+    dim is size + 4
+    append of [cases, grid_implication_case of [dim, dim, 0]]
+    append of [cases, grid_implication_case of [dim, dim, 1]]
+    append of [cases, chain_case of [60 * size, 0]]
+    append of [cases, chain_case of [60 * size, 1]]
+    append of [cases, wide_clause_case of [24 * size, 8, 10 * size]]
+    return cases
+
+define case_to_dimacs_text(c) as:
+    text is f"c generated {c.name}\n"
+    text is text + f"p cnf {c.nvars} {len of c.clauses}\n"
+    for clause in c.clauses:
+        line is ""
+        for lit in clause:
+            line is line + (str of lit) + " "
+        text is text + line + "0\n"
+    return text
 
 define run_benchmarks(size) as:
     cases is benchmark_cases of size
@@ -107,4 +176,21 @@ define run_benchmarks(size) as:
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
         print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} learnt_lits={cdcl.learnt_literals} clause_bumps={cdcl.clause_activity_bumps} clause_decays={cdcl.clause_activity_decays} reduce_runs={cdcl.reduce_runs} reduce_scans={cdcl.reduce_scans} learnt_deleted={cdcl.learnt_deleted} locked_kept={cdcl.learnt_kept_locked} deleted_watch_skips={cdcl.deleted_watch_skips} active_learnts={cdcl.active_learnts} compact_runs={cdcl.compact_runs} compact_removed={cdcl.compact_removed} compact_kept={cdcl.compact_kept} watch_rebuilds={cdcl.watch_rebuilds} compact_replays={cdcl.compact_replays} restarts={cdcl.restarts} restart_cancels={cdcl.restart_cancels} restart_budget={cdcl.restart_budget} phase_saves={cdcl.phase_saves} phase_flips={cdcl.phase_flips} phase_pos={cdcl.phase_pos_decisions} phase_neg={cdcl.phase_neg_decisions} ms={cms}"
+    return len of cases
+
+define run_parse_benchmarks(size) as:
+    cases is large_fixture_cases of size
+    for c in cases:
+        text is case_to_dimacs_text of c
+        pt0 is monotonic_ns of null
+        parsed is parse_dimacs_text of text
+        pt1 is monotonic_ns of null
+        pms is (pt1 - pt0) / 1000000
+        print of f"parse fixture {c.name}: text_len={len of text} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ms={pms}"
+
+        ct0 is monotonic_ns of null
+        cdcl is solve_cnf_cdcl of [parsed.nvars, parsed.clauses]
+        ct1 is monotonic_ns of null
+        cms is (ct1 - ct0) / 1000000
+        print of f"fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases
