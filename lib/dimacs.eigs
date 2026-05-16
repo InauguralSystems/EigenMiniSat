@@ -42,15 +42,100 @@ define _add_parse_error(errors, msg) as:
     append of [errors, msg]
     return 0
 
+define _empty_parse_state() as:
+    return {
+        "clauses": [],
+        "current": [],
+        "declared_vars": 0,
+        "declared_clauses": 0,
+        "max_var": 0,
+        "errors": [],
+        "header_seen": 0
+    }
+
+define _process_dimacs_parts(state, parts, line_no) as:
+    if (len of parts) == 0:
+        return state
+
+    if parts[0] == "p":
+        if state.header_seen != 0:
+            _add_parse_error of [state.errors, f"line {line_no}: duplicate problem header"]
+        state.header_seen is 1
+        if (len of parts) < 4:
+            _add_parse_error of [state.errors, f"line {line_no}: malformed problem header"]
+        elif parts[1] != "cnf":
+            _add_parse_error of [state.errors, f"line {line_no}: unsupported problem type {parts[1]}"]
+        elif (_is_int_token of parts[2]) == 0 or (_is_int_token of parts[3]) == 0:
+            _add_parse_error of [state.errors, f"line {line_no}: non-integer problem counts"]
+        else:
+            state.declared_vars is floor of (num of parts[2])
+            state.declared_clauses is floor of (num of parts[3])
+            if state.declared_vars < 0:
+                _add_parse_error of [state.errors, f"line {line_no}: negative variable count"]
+            if state.declared_clauses < 0:
+                _add_parse_error of [state.errors, f"line {line_no}: negative clause count"]
+        return state
+
+    for tok in parts:
+        if (_is_int_token of tok) == 0:
+            _add_parse_error of [state.errors, f"line {line_no}: non-integer token {tok}"]
+            continue
+        lit is floor of (num of tok)
+        if lit == 0:
+            append of [state.clauses, state.current]
+            state.current is []
+        else:
+            append of [state.current, lit]
+            v is lit
+            if v < 0:
+                v is 0 - v
+            if v > state.max_var:
+                state.max_var is v
+    return state
+
+define _finish_parse_state(state) as:
+    if (len of state.current) > 0:
+        append of [state.clauses, state.current]
+        _add_parse_error of [state.errors, "unterminated final clause"]
+
+    if state.header_seen == 0:
+        _add_parse_error of [state.errors, "missing problem header"]
+
+    clause_count_ok is 1
+    if state.header_seen != 0 and (len of state.clauses) != state.declared_clauses:
+        clause_count_ok is 0
+        _add_parse_error of [state.errors, f"declared_clauses={state.declared_clauses} parsed_clauses={len of state.clauses}"]
+
+    var_count_ok is 1
+    if state.header_seen != 0 and state.max_var > state.declared_vars:
+        var_count_ok is 0
+        _add_parse_error of [state.errors, f"declared_vars={state.declared_vars} max_var={state.max_var}"]
+
+    ok is 1
+    if (len of state.errors) > 0:
+        ok is 0
+
+    nvars is state.declared_vars
+    if state.max_var > nvars:
+        nvars is state.max_var
+
+    return {
+        "nvars": nvars,
+        "clauses": state.clauses,
+        "declared_vars": state.declared_vars,
+        "declared_clauses": state.declared_clauses,
+        "max_var": state.max_var,
+        "header_seen": state.header_seen,
+        "clause_count_ok": clause_count_ok,
+        "var_count_ok": var_count_ok,
+        "ok": ok,
+        "errors": state.errors,
+        "error_count": len of state.errors
+    }
+
 define parse_dimacs_text(text) as:
     lines is split of [text, "\n"]
-    clauses is []
-    current is []
-    declared_vars is 0
-    declared_clauses is 0
-    max_var is 0
-    errors is []
-    header_seen is 0
+    state is _empty_parse_state of null
     line_no is 0
 
     for line in lines:
@@ -62,87 +147,89 @@ define parse_dimacs_text(text) as:
         if (len of parts) == 0:
             continue
 
-        if parts[0] == "p":
-            if header_seen != 0:
-                _add_parse_error of [errors, f"line {line_no}: duplicate problem header"]
-            header_seen is 1
-            if (len of parts) < 4:
-                _add_parse_error of [errors, f"line {line_no}: malformed problem header"]
-            elif parts[1] != "cnf":
-                _add_parse_error of [errors, f"line {line_no}: unsupported problem type {parts[1]}"]
-            elif (_is_int_token of parts[2]) == 0 or (_is_int_token of parts[3]) == 0:
-                _add_parse_error of [errors, f"line {line_no}: non-integer problem counts"]
-            else:
-                declared_vars is floor of (num of parts[2])
-                declared_clauses is floor of (num of parts[3])
-                if declared_vars < 0:
-                    _add_parse_error of [errors, f"line {line_no}: negative variable count"]
-                if declared_clauses < 0:
-                    _add_parse_error of [errors, f"line {line_no}: negative clause count"]
+        state is _process_dimacs_parts of [state, parts, line_no]
+
+    return _finish_parse_state of state
+
+define parse_dimacs_text_scan(text) as:
+    state is _empty_parse_state of null
+    parts is []
+    token is ""
+    line_no is 1
+    line_leading is 1
+    in_comment is 0
+    i is 0
+
+    loop while i < (len of text):
+        ch is substr of [text, i, 1]
+
+        if in_comment != 0:
+            if ch == "\n":
+                in_comment is 0
+                parts is []
+                token is ""
+                line_no += 1
+                line_leading is 1
+            i += 1
             continue
 
-        for tok in parts:
-            if (_is_int_token of tok) == 0:
-                _add_parse_error of [errors, f"line {line_no}: non-integer token {tok}"]
-                continue
-            lit is floor of (num of tok)
-            if lit == 0:
-                append of [clauses, current]
-                current is []
-            else:
-                append of [current, lit]
-                v is lit
-                if v < 0:
-                    v is 0 - v
-                if v > max_var:
-                    max_var is v
+        if ch == " " or ch == "\t" or ch == "\r" or ch == "\n":
+            if token != "":
+                append of [parts, token]
+                token is ""
+            if ch == "\n":
+                state is _process_dimacs_parts of [state, parts, line_no]
+                parts is []
+                line_no += 1
+                line_leading is 1
+            i += 1
+            continue
 
-    if (len of current) > 0:
-        append of [clauses, current]
-        _add_parse_error of [errors, "unterminated final clause"]
+        if line_leading != 0 and ch == "c":
+            parts is []
+            token is ""
+            in_comment is 1
+            i += 1
+            continue
 
-    if header_seen == 0:
-        _add_parse_error of [errors, "missing problem header"]
+        line_leading is 0
+        token is token + ch
+        i += 1
 
-    clause_count_ok is 1
-    if header_seen != 0 and (len of clauses) != declared_clauses:
-        clause_count_ok is 0
-        _add_parse_error of [errors, f"declared_clauses={declared_clauses} parsed_clauses={len of clauses}"]
+    if token != "":
+        append of [parts, token]
+    if (len of parts) > 0:
+        state is _process_dimacs_parts of [state, parts, line_no]
 
-    var_count_ok is 1
-    if header_seen != 0 and max_var > declared_vars:
-        var_count_ok is 0
-        _add_parse_error of [errors, f"declared_vars={declared_vars} max_var={max_var}"]
-
-    ok is 1
-    if (len of errors) > 0:
-        ok is 0
-
-    nvars is declared_vars
-    if max_var > nvars:
-        nvars is max_var
-
-    return {
-        "nvars": nvars,
-        "clauses": clauses,
-        "declared_vars": declared_vars,
-        "declared_clauses": declared_clauses,
-        "max_var": max_var,
-        "header_seen": header_seen,
-        "clause_count_ok": clause_count_ok,
-        "var_count_ok": var_count_ok,
-        "ok": ok,
-        "errors": errors,
-        "error_count": len of errors
-    }
+    return _finish_parse_state of state
 
 define parse_dimacs_file(path) as:
     text is read_text of path
     return parse_dimacs_text of text
+
+define parse_dimacs_file_scan(path) as:
+    text is read_text of path
+    return parse_dimacs_text_scan of text
 
 define assert_dimacs_ok(parsed) as:
     if parsed.ok == 0:
         for err in parsed.errors:
             print of f"c DIMACS parse error: {err}"
         assert of [0, "DIMACS parse diagnostics failed"]
+    return 1
+
+define assert_dimacs_same(label, left, right) as:
+    assert of [left.nvars == right.nvars, f"{label}: nvars mismatch"]
+    assert of [left.declared_vars == right.declared_vars, f"{label}: declared vars mismatch"]
+    assert of [left.declared_clauses == right.declared_clauses, f"{label}: declared clauses mismatch"]
+    assert of [left.max_var == right.max_var, f"{label}: max var mismatch"]
+    assert of [left.ok == right.ok, f"{label}: ok mismatch"]
+    assert of [left.error_count == right.error_count, f"{label}: error count mismatch"]
+    assert of [(len of left.clauses) == (len of right.clauses), f"{label}: clause count mismatch"]
+    for ci in range of (len of left.clauses):
+        lc is left.clauses[ci]
+        rc is right.clauses[ci]
+        assert of [(len of lc) == (len of rc), f"{label}: clause length mismatch"]
+        for li in range of (len of lc):
+            assert of [lc[li] == rc[li], f"{label}: literal mismatch"]
     return 1

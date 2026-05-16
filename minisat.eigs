@@ -16,6 +16,8 @@ define parse_args() as:
             cfg.mode is "bench"
         elif arg == "--parse-bench":
             cfg.mode is "parse_bench"
+        elif arg == "--scan-parse-bench":
+            cfg.mode is "scan_parse_bench"
         elif arg == "--file-bench":
             cfg.mode is "file_bench"
         elif arg == "--corpus-bench":
@@ -44,6 +46,7 @@ define print_help() as:
     print of "  eigenscript minisat.eigs [--watched|--persistent|--cdcl] <file.cnf>"
     print of "  eigenscript minisat.eigs --bench --size N"
     print of "  eigenscript minisat.eigs --parse-bench --size N"
+    print of "  eigenscript minisat.eigs --scan-parse-bench --size N"
     print of "  eigenscript minisat.eigs --file-bench --size N"
     print of "  eigenscript minisat.eigs --corpus-bench"
     return null
@@ -56,6 +59,8 @@ elif cfg.mode == "bench":
     run_benchmarks of cfg.size
 elif cfg.mode == "parse_bench":
     run_parse_benchmarks of cfg.size
+elif cfg.mode == "scan_parse_bench":
+    run_scan_parse_benchmarks of cfg.size
 elif cfg.mode == "file_bench":
     run_file_benchmarks of cfg.size
 elif cfg.mode == "corpus_bench":

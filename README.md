@@ -20,6 +20,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench
 tests/run_smoke.sh
@@ -36,6 +37,8 @@ Compaction counters show when deleted learnt clauses are removed and watch lists
 are rebuilt.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
+`--scan-parse-bench` compares the current split/trim parser with a
+character-scanning parser that shares the same diagnostics and output shape.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
@@ -61,6 +64,7 @@ Current:
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - checked-in DIMACS corpus fixtures for real file-shape coverage
 - DIMACS parser diagnostics for header/count/token problems
+- character-scanning DIMACS parser comparison path
 - fixture correctness tests
 - generated benchmark families
 
@@ -86,3 +90,4 @@ This repo is expected to stress:
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants
 - parser diagnostic overhead while validating larger CNF input
+- character-at-a-time scanner overhead versus split/trim tokenization

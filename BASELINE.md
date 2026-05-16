@@ -65,6 +65,32 @@ parse fixture wide-48-8-20: text_len=575 vars=48 clauses=20 declared_vars=48 dec
 fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=24.5102
 ```
 
+Scan parser benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 2
+```
+
+Result:
+
+```text
+parse split grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=5.11291
+parse scan grid-sat-6x6: text_len=559 vars=36 clauses=62 ok=1 errors=0 ms=9.07252
+scan fixture cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=5.61514
+parse split grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=5.32607
+parse scan grid-unsat-6x6: text_len=562 vars=36 clauses=62 ok=1 errors=0 ms=7.08336
+scan fixture cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=4.36714
+parse split chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=12.7829
+parse scan chain-sat-120: text_len=1145 vars=120 clauses=121 ok=1 errors=0 ms=29.2559
+scan fixture cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=32.5425
+parse split chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=17.9021
+parse scan chain-unsat-120: text_len=1148 vars=120 clauses=121 ok=1 errors=0 ms=15.2573
+scan fixture cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=16.3572
+parse split wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=8.24853
+parse scan wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=15.6317
+scan fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=35.8634
+```
+
 File-backed benchmark command:
 
 ```bash
