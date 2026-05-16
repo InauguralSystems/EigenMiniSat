@@ -198,6 +198,12 @@ define watch_add(watches, lit, clause_index) as:
     append of [watches[idx], clause_index]
     return null
 
+define append_watch_tail(kept, old, start) as:
+    for tail_pos in range of (len of old):
+        if tail_pos >= start:
+            append of [kept, old[tail_pos]]
+    return null
+
 define clause_store_empty() as:
     return {
         "offsets": [],
@@ -401,7 +407,8 @@ define run_watched_queue(nvars, clauses, asg, state, stats) as:
         old is state.watches[wi]
         kept is []
 
-        for ci in old:
+        for old_pos in range of (len of old):
+            ci is old[old_pos]
             clause is clauses[ci]
             wa is state.watch_a[ci]
             wb is state.watch_b[ci]
@@ -441,9 +448,11 @@ define run_watched_queue(nvars, clauses, asg, state, stats) as:
                 append of [kept, ci]
                 if other_val == -1:
                     stats.conflicts += 1
+                    append_watch_tail of [kept, old, old_pos + 1]
                     state.watches[wi] is kept
                     return 0
                 if (enqueue_watched of [asg, state.trail, other_lit, stats, 1]) == 0:
+                    append_watch_tail of [kept, old, old_pos + 1]
                     state.watches[wi] is kept
                     return 0
 
@@ -763,6 +772,16 @@ define count_deleted_clauses(state) as:
             deleted += 1
     return deleted
 
+define append_active_watch_tail(kept, old, start, state, stats) as:
+    for tail_pos in range of (len of old):
+        if tail_pos >= start:
+            ci is old[tail_pos]
+            if state.clause_deleted[ci] != 0:
+                stats.deleted_watch_skips += 1
+            else:
+                append of [kept, ci]
+    return null
+
 define find_low_activity_learnt(store, state, stats) as:
     best is -1
     best_activity is 1000000000
@@ -835,6 +854,25 @@ define rebuild_watches(nvars, store, state, stats) as:
     stats.watch_rebuilds += 1
     stats.compact_replays += len of state.trail
     return null
+
+define prune_deleted_watches(state, stats) as:
+    removed is 0
+    scanned is 0
+    for wi in range of (len of state.watches):
+        old is state.watches[wi]
+        kept is []
+        for ci in old:
+            scanned += 1
+            if state.clause_deleted[ci] != 0:
+                removed += 1
+            else:
+                append of [kept, ci]
+        state.watches[wi] is kept
+
+    stats.watch_prunes += 1
+    stats.watch_prune_scans += scanned
+    stats.watch_prune_removed += removed
+    return removed
 
 define compact_deleted_clauses(nvars, store, state, stats) as:
     delete_mask is []
@@ -1118,7 +1156,8 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
         old is state.watches[wi]
         kept is []
 
-        for ci in old:
+        for old_pos in range of (len of old):
+            ci is old[old_pos]
             if state.clause_deleted[ci] != 0:
                 stats.deleted_watch_skips += 1
                 continue
@@ -1162,10 +1201,12 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
                 if other_val == -1:
                     stats.conflicts += 1
                     state.conflict is ci
+                    append_active_watch_tail of [kept, old, old_pos + 1, state, stats]
                     state.watches[wi] is kept
                     return 0
                 if (enqueue_cdcl of [asg, state, other_lit, ci, level, stats, 1]) == 0:
                     state.conflict is ci
+                    append_active_watch_tail of [kept, old, old_pos + 1, state, stats]
                     state.watches[wi] is kept
                     return 0
 
@@ -1360,6 +1401,9 @@ define cdcl_result(status, model, stats, state) as:
         "compact_clause_copies": stats.compact_clause_copies,
         "compact_clause_lits": stats.compact_clause_lits,
         "watch_rebuilds": stats.watch_rebuilds,
+        "watch_prunes": stats.watch_prunes,
+        "watch_prune_scans": stats.watch_prune_scans,
+        "watch_prune_removed": stats.watch_prune_removed,
         "compact_replays": stats.compact_replays,
         "restarts": stats.restarts,
         "restart_cancels": stats.restart_cancels,
@@ -1416,6 +1460,9 @@ define cdcl_empty_stats() as:
         "compact_clause_copies": 0,
         "compact_clause_lits": 0,
         "watch_rebuilds": 0,
+        "watch_prunes": 0,
+        "watch_prune_scans": 0,
+        "watch_prune_removed": 0,
         "compact_replays": 0,
         "restarts": 0,
         "restart_cancels": 0,
@@ -1464,7 +1511,7 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
                 if (should_compact_deleted_clauses of [store, state, stats]) != 0:
                     store is compact_deleted_clauses of [nvars, store, state, stats]
                 else:
-                    rebuild_watches of [nvars, store, state, stats]
+                    prune_deleted_watches of [state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 
