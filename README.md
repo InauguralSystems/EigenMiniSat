@@ -28,7 +28,7 @@ files, plus baseline counters. Benchmarks print `scan`, `watched`,
 variable count, clause count, decisions, propagations, and conflicts. The CDCL
 line also reports learnt clauses, backjumps, conflict-resolution steps, variable
 activity bumps/decays, heap operation counters, and learnt-clause database
-counters.
+counters. CDCL output also includes restart and phase-saving counters.
 
 ## Scope
 
@@ -41,13 +41,14 @@ Current:
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
 - MiniSat-style variable activity and a binary heap order structure for CDCL
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
+- saved phase/polarity decisions and geometric restart policy
 - fixture correctness tests
 - generated benchmark families
 
 Next:
 
-- restart policy and eager database compaction
-- richer phase selection and polarity state
+- eager database compaction
+- richer restart schedules and polarity heuristics
 - compact clause/vector storage if metadata and lazy deletion pressure grows
 
 ## EigenScript Pressure
@@ -60,3 +61,4 @@ This repo is expected to stress:
 - parser/string throughput for DIMACS
 - heap and queue library candidates, including pop/reinsert churn
 - allocator behavior under clause metadata, learnt churn, and lazy deletion
+- restart cancellation and phase-saving churn across repeated backtracking

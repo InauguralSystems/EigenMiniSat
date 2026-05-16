@@ -32,6 +32,14 @@ assert_eq of ["activity heap first", order_pop_best of [heap_state, null], 2]
 assert_eq of ["activity heap tie", order_pop_best of [heap_state, null], 3]
 print of "  activity heap: ok"
 
+phase_state is {"phase": [1, -1, 1]}
+phase_stats is {"phase_pos_decisions": 0, "phase_neg_decisions": 0}
+assert_eq of ["phase negative decision", decision_lit_cdcl of [phase_state, 1, phase_stats], -1]
+assert_eq of ["phase positive decision", decision_lit_cdcl of [phase_state, 2, phase_stats], 2]
+assert_eq of ["phase negative count", phase_stats.phase_neg_decisions, 1]
+assert_eq of ["phase positive count", phase_stats.phase_pos_decisions, 1]
+print of "  phase decisions: ok"
+
 reduce_state is {
     "clause_learnt": [0, 1, 1, 1],
     "clause_deleted": [0, 0, 0, 0],
@@ -98,6 +106,14 @@ assert_true of ["pigeonhole cdcl clause allocs", php_cdcl.clause_allocs >= (len 
 assert_eq of ["pigeonhole cdcl learnt allocs", php_cdcl.learnt_allocs, php_cdcl.learnts]
 assert_true of ["pigeonhole cdcl clause bumps", php_cdcl.clause_activity_bumps > 0]
 print of "  pigeonhole UNSAT: ok"
+
+php4 is pigeonhole_case of [4, 3]
+php4_cdcl is solve_cnf_cdcl of [php4.nvars, php4.clauses]
+assert_eq of ["pigeonhole 4-3 cdcl UNSAT", php4_cdcl.status, "UNSAT"]
+assert_true of ["pigeonhole 4-3 restarts", php4_cdcl.restarts > 0]
+assert_true of ["pigeonhole 4-3 restart cancels", php4_cdcl.restart_cancels > 0]
+assert_true of ["pigeonhole 4-3 phase saves", php4_cdcl.phase_saves > 0]
+print of "  restart policy: ok"
 
 chain_sat is chain_case of [12, 0]
 chain_sat_result is solve_cnf of [chain_sat.nvars, chain_sat.clauses]

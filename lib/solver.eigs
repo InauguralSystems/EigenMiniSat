@@ -655,6 +655,42 @@ define reduce_learnt_db(clauses, state, stats) as:
     stats.active_learnts is count_active_learnts of state
     return deleted
 
+define save_phase_cdcl(state, v, wanted, stats) as:
+    if v >= (len of state.phase):
+        return null
+    if state.phase[v] != wanted:
+        stats.phase_flips += 1
+    state.phase[v] is wanted
+    stats.phase_saves += 1
+    return null
+
+define decision_lit_cdcl(state, v, stats) as:
+    if state.phase[v] < 0:
+        stats.phase_neg_decisions += 1
+        return 0 - v
+    stats.phase_pos_decisions += 1
+    return v
+
+define cdcl_restart(state, asg, stats) as:
+    if (len of state.trail_lim) == 0:
+        return 0
+
+    root_mark is state.trail_lim[0]
+    cancelled is (len of state.trail) - root_mark
+    cdcl_cancel_until of [state, asg, 0, stats]
+    state.conflicts_since_restart is 0
+    state.restart_budget is floor of (state.restart_budget * state.restart_growth)
+    if state.restart_budget < 1:
+        state.restart_budget is 1
+    stats.restarts += 1
+    stats.restart_cancels += cancelled
+    return 1
+
+define cdcl_maybe_restart(state, asg, stats) as:
+    if state.conflicts_since_restart >= state.restart_budget:
+        return cdcl_restart of [state, asg, stats]
+    return 0
+
 define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagation) as:
     v is lit_abs of lit
     wanted is 1
@@ -668,6 +704,7 @@ define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagat
         asg[v] is wanted
         state.reason[v] is reason_clause
         state.level[v] is level
+        save_phase_cdcl of [state, v, wanted, stats]
         append of [state.trail, lit]
         if count_propagation != 0:
             stats.propagations += 1
@@ -690,6 +727,7 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
         "reason": filled_list of [nvars + 1, -1],
         "level": filled_list of [nvars + 1, 0],
         "activity": filled_list of [nvars + 1, 0],
+        "phase": filled_list of [nvars + 1, 1],
         "var_inc": 1,
         "var_decay": 0.95,
         "clause_learnt": [],
@@ -699,6 +737,9 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
         "clause_inc": 1,
         "clause_decay": 0.999,
         "learnt_limit": 4,
+        "restart_budget": 3,
+        "restart_growth": 2,
+        "conflicts_since_restart": 0,
         "order_heap": [],
         "order_pos": filled_list of [nvars + 1, -1],
         "conflict": -1
@@ -920,8 +961,10 @@ define add_cdcl_clause(clauses, state, clause, learnt, stats) as:
 
 define cdcl_result(status, model, stats, state) as:
     active is 0
+    restart_budget is 0
     if state != null:
         active is count_active_learnts of state
+        restart_budget is state.restart_budget
     return {
         "status": status,
         "model": model,
@@ -946,7 +989,14 @@ define cdcl_result(status, model, stats, state) as:
         "learnt_deleted": stats.learnt_deleted,
         "learnt_kept_locked": stats.learnt_kept_locked,
         "deleted_watch_skips": stats.deleted_watch_skips,
-        "active_learnts": active
+        "active_learnts": active,
+        "restarts": stats.restarts,
+        "restart_cancels": stats.restart_cancels,
+        "restart_budget": restart_budget,
+        "phase_saves": stats.phase_saves,
+        "phase_flips": stats.phase_flips,
+        "phase_pos_decisions": stats.phase_pos_decisions,
+        "phase_neg_decisions": stats.phase_neg_decisions
     }
 
 define solve_cnf_cdcl(nvars, input_clauses) as:
@@ -973,7 +1023,13 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
         "learnt_deleted": 0,
         "learnt_kept_locked": 0,
         "deleted_watch_skips": 0,
-        "active_learnts": 0
+        "active_learnts": 0,
+        "restarts": 0,
+        "restart_cancels": 0,
+        "phase_saves": 0,
+        "phase_flips": 0,
+        "phase_pos_decisions": 0,
+        "phase_neg_decisions": 0
     }
     asg is make_assignment of nvars
     state is build_cdcl_state of [nvars, clauses, asg, stats]
@@ -988,6 +1044,7 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
 
             bump_clause_db_activity of [state, state.conflict, stats]
             decay_clause_activity of [state, stats]
+            state.conflicts_since_restart += 1
             analysis is analyze_conflict_cdcl of [clauses, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
                 return cdcl_result of ["UNSAT", null, stats, state]
@@ -1003,6 +1060,7 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
             reduce_learnt_db of [clauses, state, stats]
+            cdcl_maybe_restart of [state, asg, stats]
             continue
 
         if (all_clauses_satisfied of [input_clauses, asg]) != 0:
@@ -1014,7 +1072,8 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
 
         cdcl_push_level of state
         stats.decisions += 1
-        enqueue_cdcl of [asg, state, v, -1, len of state.trail_lim, stats, 0]
+        decision_lit is decision_lit_cdcl of [state, v, stats]
+        enqueue_cdcl of [asg, state, decision_lit, -1, len of state.trail_lim, stats, 0]
 
 define model_satisfies(nvars, clauses, model) as:
     if model == null:
