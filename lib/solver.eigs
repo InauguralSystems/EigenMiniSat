@@ -746,6 +746,8 @@ define compact_deleted_clauses(nvars, clauses, state, stats) as:
 define save_phase_cdcl(state, v, wanted, stats) as:
     if v >= (len of state.phase):
         return null
+    if state.phase_saving == 0:
+        return null
     if state.phase[v] != wanted:
         stats.phase_flips += 1
     state.phase[v] is wanted
@@ -787,7 +789,10 @@ define cdcl_default_options() as:
     return {
         "restart_policy": "geometric",
         "restart_first": 3,
-        "restart_growth": 2
+        "restart_growth": 2,
+        "phase_policy": "saved",
+        "phase_initial": 1,
+        "phase_saving": 1
     }
 
 define cdcl_merge_options(opts) as:
@@ -806,6 +811,21 @@ define cdcl_merge_options(opts) as:
         cfg.restart_growth is opts.restart_growth
         if cfg.restart_growth < 1:
             cfg.restart_growth is 1
+    if (has_key of [opts, "phase_policy"]) != 0:
+        cfg.phase_policy is opts.phase_policy
+        if cfg.phase_policy == "negative":
+            cfg.phase_initial is -1
+            cfg.phase_saving is 0
+        elif cfg.phase_policy == "positive":
+            cfg.phase_initial is 1
+            cfg.phase_saving is 0
+        elif cfg.phase_policy == "saved_negative":
+            cfg.phase_initial is -1
+            cfg.phase_saving is 1
+        else:
+            cfg.phase_policy is "saved"
+            cfg.phase_initial is 1
+            cfg.phase_saving is 1
     return cfg
 
 define cdcl_restart(state, asg, stats) as:
@@ -869,7 +889,10 @@ define build_cdcl_state(nvars, clauses, asg, stats, opts) as:
         "reason": filled_list of [nvars + 1, -1],
         "level": filled_list of [nvars + 1, 0],
         "activity": filled_list of [nvars + 1, 0],
-        "phase": filled_list of [nvars + 1, 1],
+        "phase": filled_list of [nvars + 1, cfg.phase_initial],
+        "phase_policy": cfg.phase_policy,
+        "phase_saving": cfg.phase_saving,
+        "phase_initial": cfg.phase_initial,
         "var_inc": 1,
         "var_decay": 0.95,
         "clause_learnt": [],
@@ -1109,11 +1132,13 @@ define cdcl_result(status, model, stats, state) as:
     restart_policy is ""
     restart_budget is 0
     restart_index is 0
+    phase_policy is ""
     if state != null:
         active is count_active_learnts of state
         restart_policy is state.restart_policy
         restart_budget is state.restart_budget
         restart_index is state.restart_index
+        phase_policy is state.phase_policy
     return {
         "status": status,
         "model": model,
@@ -1149,6 +1174,7 @@ define cdcl_result(status, model, stats, state) as:
         "restart_policy": restart_policy,
         "restart_budget": restart_budget,
         "restart_index": restart_index,
+        "phase_policy": phase_policy,
         "phase_saves": stats.phase_saves,
         "phase_flips": stats.phase_flips,
         "phase_pos_decisions": stats.phase_pos_decisions,

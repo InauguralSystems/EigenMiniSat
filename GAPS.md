@@ -53,6 +53,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 - Restarts now cancel trail levels back to root and reinsert variables into the
   order heap while preserving phase state. The `restarts`, `restart_cancels`,
   and phase counters make repeated backtracking churn visible.
+- The phase benchmark exposes saved-phase bookkeeping versus fixed positive and
+  fixed negative polarity. On current small cases, the policy can change
+  decisions, conflicts, propagation volume, and restarts while keeping the same
+  public solver result. Larger cases should show whether this remains solver
+  heuristic work or becomes root pressure around option dispatch and phase-list
+  mutation.
 - The Luby restart benchmark adds small but repeated `floor`, modulo, and
   integer-power schedule calculations around CDCL conflicts. If larger restart
   sweeps make schedule overhead visible, EigenScript may need cheaper integer

@@ -66,6 +66,29 @@ restart geometric xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 pro
 restart luby xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=3.79334
 ```
 
+Phase benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 2
+```
+
+Result:
+
+```text
+phase saved chain-sat-40: status=SAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=0 learnts=0 restarts=0 phase_saves=40 phase_flips=0 phase_pos=0 phase_neg=0 ms=9.82238
+phase positive chain-sat-40: status=SAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=0 learnts=0 restarts=0 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=0 ms=12.9072
+phase negative chain-sat-40: status=SAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=0 learnts=0 restarts=0 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=0 ms=12.0934
+phase saved chain-unsat-40: status=UNSAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=1 learnts=0 restarts=0 phase_saves=40 phase_flips=20 phase_pos=0 phase_neg=0 ms=7.30841
+phase positive chain-unsat-40: status=UNSAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=1 learnts=0 restarts=0 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=0 ms=8.86436
+phase negative chain-unsat-40: status=UNSAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=1 learnts=0 restarts=0 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=0 ms=10.5063
+phase saved pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 phase_saves=74 phase_flips=44 phase_pos=2 phase_neg=8 ms=20.2755
+phase positive pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=6 propagations=60 conflicts=7 learnts=6 restarts=0 phase_saves=0 phase_flips=0 phase_pos=6 phase_neg=0 ms=11.8391
+phase negative pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=11 propagations=63 conflicts=8 learnts=7 restarts=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 ms=13.0765
+phase saved xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 phase_saves=11 phase_flips=0 phase_pos=11 phase_neg=0 ms=5.28083
+phase positive xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 phase_saves=0 phase_flips=0 phase_pos=11 phase_neg=0 ms=3.53143
+phase negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=17 conflicts=4 learnts=4 restarts=1 phase_saves=0 phase_flips=0 phase_pos=0 phase_neg=11 ms=6.19751
+```
+
 Parse benchmark command:
 
 ```bash
