@@ -108,7 +108,7 @@ print of "  heuristic stress helpers: ok"
 copy_cases is copy_pressure_cases of 1
 copy_policies is copy_pressure_policies of null
 assert_eq of ["copy pressure case count", len of copy_cases, 3]
-assert_eq of ["copy pressure policy count", len of copy_policies, 2]
+assert_eq of ["copy pressure policy count", len of copy_policies, 4]
 copy_case is copy_cases[0]
 copy_policy is copy_policies[0]
 copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
@@ -152,6 +152,23 @@ assert_eq of ["copy pressure eager policy", copy_eager_result.compact_policy, "e
 assert_eq of ["copy pressure eager status", copy_eager_result.status, "UNSAT"]
 assert_true of ["copy pressure eager compacts", copy_eager_result.compact_runs > 0]
 assert_true of ["copy pressure eager compact lits", copy_eager_result.compact_clause_lits > 0]
+copy_lazy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
+    "restart_policy": copy_policy.restart_policy,
+    "restart_first": copy_policy.restart_first,
+    "restart_growth": copy_policy.restart_growth,
+    "phase_policy": copy_policy.phase_policy,
+    "compact_policy": "lazy",
+    "compact_min_deleted": 1,
+    "compact_waste_percent": 0
+}]
+assert_eq of ["copy pressure lazy policy", copy_lazy_result.compact_policy, "lazy"]
+assert_eq of ["copy pressure lazy status", copy_lazy_result.status, "UNSAT"]
+assert_eq of ["copy pressure lazy compacts", copy_lazy_result.compact_runs, 0]
+assert_eq of ["copy pressure lazy compact lits", copy_lazy_result.compact_clause_lits, 0]
+assert_true of ["copy pressure lazy deferred", copy_lazy_result.compact_deferred > 0]
+assert_true of ["copy pressure lazy watch detaches", copy_lazy_result.watch_detaches > 0]
+assert_eq of ["copy pressure lazy no watch rebuilds", copy_lazy_result.watch_rebuilds, 0]
+assert_eq of ["copy pressure lazy no trail replays", copy_lazy_result.compact_replays, 0]
 copy_deeper_case is (copy_pressure_cases of 2)[0]
 copy_deeper_result is solve_cnf_cdcl_with_options of [copy_deeper_case.nvars, copy_deeper_case.clauses, {
     "restart_policy": copy_policy.restart_policy,
