@@ -31,9 +31,11 @@ activity array and binary heap/order structure.
 
 Status: a first CDCL path exists with reason arrays, assignment levels,
 conflict-clause resolution, learnt clauses, and non-chronological backjumping.
-Variable activity bump/decay and a heap-backed decision order are in place. It
-is still intentionally pre-restart and pre-database-reduction. The next target
-is clause allocator pressure and learnt-clause database management.
+Variable activity bump/decay, a heap-backed decision order, learnt metadata,
+locked-clause protection, and lazy learnt-clause reduction are in place. It is
+still intentionally pre-restart and does not compact the underlying clause arena
+or watch lists eagerly. The next target is restart policy and phase/polarity
+state.
 
 ## Milestone 4: EigenScript Feedback
 
