@@ -211,6 +211,46 @@ define heuristic_policy_options() as:
     }]
     return heuristic_policies
 
+define copy_pressure_cases(size) as:
+    if size < 1:
+        size is 1
+    copy_cases is []
+    copy_pigeon is pigeonhole_case of [size + 3, size + 2]
+    append of [copy_cases, {
+        "name": copy_pigeon.name,
+        "nvars": copy_pigeon.nvars,
+        "clauses": copy_pigeon.clauses,
+        "expected": "UNSAT"
+    }]
+    copy_graph is complete_graph_color_case of [size + 3, size + 2]
+    append of [copy_cases, copy_graph]
+    copy_xor is xor_triangle_case of (size + 3)
+    append of [copy_cases, {
+        "name": copy_xor.name,
+        "nvars": copy_xor.nvars,
+        "clauses": copy_xor.clauses,
+        "expected": "SAT"
+    }]
+    return copy_cases
+
+define copy_pressure_policies() as:
+    copy_policies is []
+    append of [copy_policies, {
+        "name": "geom-saved-tight",
+        "restart_policy": "geometric",
+        "restart_first": 2,
+        "restart_growth": 2,
+        "phase_policy": "saved"
+    }]
+    append of [copy_policies, {
+        "name": "luby-negative-tight",
+        "restart_policy": "luby",
+        "restart_first": 1,
+        "restart_growth": 2,
+        "phase_policy": "negative"
+    }]
+    return copy_policies
+
 define large_fixture_cases(size) as:
     if size < 1:
         size is 1
@@ -499,6 +539,54 @@ define run_heuristic_benchmarks(size) as:
 
         print of f"heuristic summary {heuristic_case.name}: policies={len of heuristic_policies_to_run} status={heuristic_expected_status} min_decisions={heuristic_min_decisions} max_decisions={heuristic_max_decisions} min_conflicts={heuristic_min_conflicts} max_conflicts={heuristic_max_conflicts} max_restarts={heuristic_max_restarts} max_compact_runs={heuristic_max_compacts}"
     return len of heuristic_cases_to_run
+
+define run_copy_benchmarks(size) as:
+    copy_cases_to_run is copy_pressure_cases of size
+    copy_policies_to_run is copy_pressure_policies of null
+    for copy_case in copy_cases_to_run:
+        copy_max_conflicts is 0
+        copy_max_store_lits is 0
+        copy_max_analysis_lits is 0
+        copy_max_compact_lits is 0
+        copy_max_compacts is 0
+        copy_policy_runs is 0
+
+        for copy_policy in copy_policies_to_run:
+            copy_options is {
+                "restart_policy": copy_policy.restart_policy,
+                "restart_first": copy_policy.restart_first,
+                "restart_growth": copy_policy.restart_growth,
+                "phase_policy": copy_policy.phase_policy
+            }
+
+            copy_t0 is monotonic_ns of null
+            copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, copy_options]
+            copy_t1 is monotonic_ns of null
+            copy_ms is (copy_t1 - copy_t0) / 1000000
+
+            assert of [copy_result.status == copy_case.expected, f"copy pressure status mismatch {copy_case.name} {copy_policy.name}"]
+            if copy_result.status == "SAT":
+                assert of [model_satisfies of [copy_case.nvars, copy_case.clauses, copy_result.model], f"copy pressure model mismatch {copy_case.name} {copy_policy.name}"]
+            else:
+                assert of [copy_result.conflicts > 0, f"copy pressure no conflicts {copy_case.name} {copy_policy.name}"]
+                assert of [copy_result.analysis_rebuild_lits > 0, f"copy pressure no analysis rebuilds {copy_case.name} {copy_policy.name}"]
+
+            if copy_result.conflicts > copy_max_conflicts:
+                copy_max_conflicts is copy_result.conflicts
+            if copy_result.store_clause_copy_lits > copy_max_store_lits:
+                copy_max_store_lits is copy_result.store_clause_copy_lits
+            if copy_result.analysis_rebuild_lits > copy_max_analysis_lits:
+                copy_max_analysis_lits is copy_result.analysis_rebuild_lits
+            if copy_result.compact_clause_lits > copy_max_compact_lits:
+                copy_max_compact_lits is copy_result.compact_clause_lits
+            if copy_result.compact_runs > copy_max_compacts:
+                copy_max_compacts is copy_result.compact_runs
+            copy_policy_runs += 1
+
+            print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} active_learnts={copy_result.active_learnts} ms={copy_ms}"
+
+        print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_rebuild_lits={copy_max_analysis_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts}"
+    return len of copy_cases_to_run
 
 define storage_pressure_cases(size) as:
     if size < 1:

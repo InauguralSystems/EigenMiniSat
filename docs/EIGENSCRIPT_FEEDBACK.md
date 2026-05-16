@@ -92,12 +92,13 @@ reference remapping, locked-clause scans, watch rebuilds, and trail replay. The
 CDCL path now uses the clause-store adapter for propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction. It also
 reports store-to-list copies, conflict-analysis rebuild literals, and direct
-compaction-copy literals. The evidence is strong that the solver wants
-clause-reference discipline, but not yet strong enough to demand a root arena
-primitive.
+compaction-copy literals. `--copy-bench` now puts those counters under
+conflict-heavy generated cases with tight restart and polarity policies. The
+evidence is strong that the solver wants clause-reference discipline, but not
+yet strong enough to demand a root arena primitive.
 
-Next action: use the new copy counters on harder conflict cases to decide
-whether conflict analysis needs a store-native learnt builder before asking
+Next action: grow copy-pressure cases and prototype a store-native learnt
+builder only if conflict-analysis rebuild literals stay hot before asking
 EigenScript for root arena support. The adapter preserves signed DIMACS
 literals at the boundary and should prove whether arena references simplify
 conflict analysis and database reduction.
@@ -116,7 +117,7 @@ Compact integer vectors and token spans are higher-value root candidates today.
 ## Near-Term EigenMiniSat Work
 
 - Keep benchmarks as the evidence surface, not just performance demos.
-- Use clause-store copy counters to decide whether learnt construction needs a
+- Use `--copy-bench` counters to decide whether learnt construction needs a
   store-native builder before promoting arena references to root.
 - Expand the checked-in corpus with larger real-shaped CNF cases before relying
   on any single generated family.

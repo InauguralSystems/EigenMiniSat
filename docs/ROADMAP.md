@@ -51,7 +51,9 @@ seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
 reports store-to-list copies, conflict-analysis rebuild literals, and
-compaction-copy literals before asking EigenScript for root arena support.
+compaction-copy literals. A focused copy-pressure benchmark now runs
+conflict-heavy generated cases under tight restart and polarity policies before
+asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -74,10 +76,10 @@ allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-clause-store reconstruction/copy counters across harder conflict cases, then
-deciding whether conflict analysis needs a store-native learnt builder, plus
-scanner token-span pressure and a larger third-party CNF corpus beyond the
-checked-in manifest fixtures.
+clause-store reconstruction/copy counters across larger conflict cases, then
+prototyping a store-native learnt builder only if conflict-analysis rebuild
+literals remain hot, plus scanner token-span pressure and a larger third-party
+CNF corpus beyond the checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
@@ -91,5 +93,5 @@ Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
 ledger. Local-only binding and diagnostic token spans are root/runtime
 candidates, string builders and priority queues are standard-library
 candidates, compact integer vectors are still root-vs-stdlib pressure, and
-clause arenas are being prototyped locally in EigenMiniSat before asking for a
-root primitive.
+clause arenas are being prototyped and measured locally in EigenMiniSat before
+asking for a root primitive.
