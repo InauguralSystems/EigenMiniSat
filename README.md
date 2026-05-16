@@ -33,6 +33,7 @@ reduction.
 tests/run_smoke.sh
 benchmarks/run_trends.sh quick 1
 benchmarks/run_trends.sh evidence
+benchmarks/summarize_trend.sh /tmp/eigenminisat-evidence.log
 ```
 
 The CLI prints MiniSat-like `s SATISFIABLE` or `s UNSATISFIABLE` lines for CNF
@@ -101,7 +102,8 @@ timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and
 the manifest corpus plus clause storage pressure. The `evidence` profile adds
 malformed-DIMACS diagnostics and defaults to size `2` for bounded larger-case
-pressure; the `full` profile runs every benchmark mode.
+pressure, then appends a compact summary of copy-delta totals and decision
+flags; the `full` profile runs every benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.

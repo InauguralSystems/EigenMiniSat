@@ -84,4 +84,9 @@ fi
 
 run_cmd "$EIGS" minisat.eigs --corpus-bench
 
+if [[ "$PROFILE" == "evidence" ]]; then
+    SUMMARY="$(benchmarks/summarize_trend.sh "$OUT")"
+    printf '\n## evidence summary\n%s\n' "$SUMMARY" | tee -a "$OUT"
+fi
+
 printf '\ntrend_log=%s\n' "$OUT" | tee -a "$OUT"
