@@ -10,5 +10,6 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   clause references.
 - Priority queue / binary heap as a standard library candidate.
 - Arena-like allocation for clauses and learnt-clause churn.
-- Persistent mutable solver state is verbose to copy/rebuild safely; watched
-  propagation should drive trail/backtracking and compact list mutation work.
+- Persistent mutable solver state is now implemented, and the benchmarks show
+  rollback/list-truncation overhead on unit-chain cases. Compact mutable vectors
+  or list truncation remain candidates if this pressure repeats.

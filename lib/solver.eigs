@@ -320,6 +320,90 @@ define solve_cnf_watched(nvars, clauses) as:
         "conflicts": stats.conflicts
     }
 
+define watched_cancel_to(state, asg, mark) as:
+    i is (len of state.trail) - 1
+    loop while i >= mark:
+        lit is state.trail[i]
+        asg[lit_abs of lit] is 0
+        i -= 1
+
+    trimmed is []
+    for j in range of mark:
+        append of [trimmed, state.trail[j]]
+    state.trail is trimmed
+    if state.qhead > mark:
+        state.qhead is mark
+    return null
+
+define watched_push_level(state) as:
+    append of [state.trail_lim, len of state.trail]
+    return len of state.trail_lim
+
+define watched_cancel_until(state, asg, level) as:
+    if level >= (len of state.trail_lim):
+        return null
+    mark is state.trail_lim[level]
+    watched_cancel_to of [state, asg, mark]
+
+    kept is []
+    for i in range of level:
+        append of [kept, state.trail_lim[i]]
+    state.trail_lim is kept
+    return null
+
+define build_persistent_watched_state(nvars, clauses, asg, stats) as:
+    state is build_watched_state of [nvars, clauses, asg, stats]
+    state.trail_lim is []
+    return state
+
+define dpll_rec_persistent(nvars, clauses, asg, state, stats) as:
+    if (run_watched_queue of [nvars, clauses, asg, state, stats]) == 0:
+        return null
+    if (all_clauses_satisfied of [clauses, asg]) != 0:
+        return copy_assignment of asg
+
+    v is choose_var of asg
+    if v == 0:
+        return copy_assignment of asg
+
+    base_level is len of state.trail_lim
+    watched_push_level of state
+
+    for val in [1, -1]:
+        lit is v
+        if val < 0:
+            lit is 0 - v
+        stats.decisions += 1
+
+        if (enqueue_watched of [asg, state.trail, lit, stats, 0]) != 0:
+            result is dpll_rec_persistent of [nvars, clauses, asg, state, stats]
+            if result != null:
+                return result
+
+        watched_cancel_until of [state, asg, base_level]
+        watched_push_level of state
+
+    watched_cancel_until of [state, asg, base_level]
+    return null
+
+define solve_cnf_persistent(nvars, clauses) as:
+    stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
+    asg is make_assignment of nvars
+    state is build_persistent_watched_state of [nvars, clauses, asg, stats]
+    model is null
+    if state.ok != 0:
+        model is dpll_rec_persistent of [nvars, clauses, asg, state, stats]
+    status is "UNSAT"
+    if model != null:
+        status is "SAT"
+    return {
+        "status": status,
+        "model": model,
+        "decisions": stats.decisions,
+        "propagations": stats.propagations,
+        "conflicts": stats.conflicts
+    }
+
 define model_satisfies(nvars, clauses, model) as:
     if model == null:
         return 0

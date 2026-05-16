@@ -16,9 +16,10 @@
 - binary heap variable ordering
 - clause references
 
-Status: initial watched propagation exists as a correctness/benchmark path, but
-it rebuilds watch state at DPLL nodes. The next step is persistent trail,
-decision levels, and incremental watch state.
+Status: initial watched propagation exists as a correctness/benchmark path, and
+the persistent path keeps watch state across recursive DPLL nodes with trail
+marks for backtracking. The next step is iterative decision levels, reasons,
+and conflict analysis.
 
 ## Milestone 3: CDCL
 
