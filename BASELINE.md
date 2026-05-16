@@ -65,6 +65,27 @@ parse fixture wide-48-8-20: text_len=575 vars=48 clauses=20 declared_vars=48 dec
 fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=11.4635
 ```
 
+File-backed benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 2
+```
+
+Result:
+
+```text
+file fixture grid-sat-6x6: text_len=559 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 write_ms=0.21658 parse_file_ms=2.16879
+file cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=4.73778
+file fixture grid-unsat-6x6: text_len=562 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 write_ms=0.2295 parse_file_ms=2.12466
+file cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=4.08448
+file fixture chain-sat-120: text_len=1145 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 write_ms=0.205195 parse_file_ms=5.20998
+file cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=14.5854
+file fixture chain-unsat-120: text_len=1148 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 write_ms=0.263583 parse_file_ms=5.0476
+file cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=10.6663
+file fixture wide-48-8-20: text_len=575 wrote=1 removed=1 vars=48 clauses=20 declared_vars=48 declared_clauses=20 write_ms=0.292288 parse_file_ms=1.7767
+file cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.94931
+```
+
 Smoke command:
 
 ```bash

@@ -10,6 +10,8 @@
 
 Status: DIMACS parsing now has a generated parse benchmark path that emits
 larger CNF families, reparses the text, and solves parsed clauses through CDCL.
+The same generated fixtures can also be written to temp files and parsed through
+the file-backed DIMACS path to measure write/read/remove overhead.
 
 ## Milestone 2: MiniSat Data Structures
 
@@ -38,8 +40,8 @@ Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 and a geometric restart policy are in place. Deleted learnt clauses are now
 eagerly compacted by remapping clause references and rebuilding watch lists.
-The next target is richer restart schedules, polarity heuristics, and larger
-external CNF fixtures.
+The next target is richer restart schedules, polarity heuristics, and a larger
+external CNF fixture corpus.
 
 ## Milestone 4: EigenScript Feedback
 

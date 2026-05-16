@@ -194,3 +194,37 @@ define run_parse_benchmarks(size) as:
         cms is (ct1 - ct0) / 1000000
         print of f"fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases
+
+define run_file_benchmarks(size) as:
+    cases is large_fixture_cases of size
+    for c in cases:
+        text is case_to_dimacs_text of c
+        path is mktemp of null
+        assert of [(len of path) > 0, "mktemp failed for file benchmark"]
+
+        wt0 is monotonic_ns of null
+        wrote is write_text of [path, text]
+        wt1 is monotonic_ns of null
+        wms is (wt1 - wt0) / 1000000
+        if wrote != 1:
+            rm of path
+        assert of [wrote == 1, "write_text failed for file benchmark"]
+
+        pt0 is monotonic_ns of null
+        parsed is parse_dimacs_file of path
+        pt1 is monotonic_ns of null
+        pms is (pt1 - pt0) / 1000000
+        assert of [parsed.nvars == c.nvars, "file benchmark parsed var mismatch"]
+        assert of [(len of parsed.clauses) == (len of c.clauses), "file benchmark parsed clause mismatch"]
+
+        removed is rm of path
+        assert of [removed == 1, "rm failed for file benchmark"]
+
+        print of f"file fixture {c.name}: text_len={len of text} wrote={wrote} removed={removed} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} write_ms={wms} parse_file_ms={pms}"
+
+        ct0 is monotonic_ns of null
+        cdcl is solve_cnf_cdcl of [parsed.nvars, parsed.clauses]
+        ct1 is monotonic_ns of null
+        cms is (ct1 - ct0) / 1000000
+        print of f"file cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+    return len of cases

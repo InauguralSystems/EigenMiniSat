@@ -16,6 +16,8 @@ define parse_args() as:
             cfg.mode is "bench"
         elif arg == "--parse-bench":
             cfg.mode is "parse_bench"
+        elif arg == "--file-bench":
+            cfg.mode is "file_bench"
         elif arg == "--watched":
             cfg.solver is "watched"
         elif arg == "--persistent":
@@ -40,6 +42,7 @@ define print_help() as:
     print of "  eigenscript minisat.eigs [--watched|--persistent|--cdcl] <file.cnf>"
     print of "  eigenscript minisat.eigs --bench --size N"
     print of "  eigenscript minisat.eigs --parse-bench --size N"
+    print of "  eigenscript minisat.eigs --file-bench --size N"
     return null
 
 cfg is parse_args of null
@@ -50,6 +53,8 @@ elif cfg.mode == "bench":
     run_benchmarks of cfg.size
 elif cfg.mode == "parse_bench":
     run_parse_benchmarks of cfg.size
+elif cfg.mode == "file_bench":
+    run_file_benchmarks of cfg.size
 elif cfg.path == "":
     print_help of null
     assert of [0, "missing DIMACS path"]
