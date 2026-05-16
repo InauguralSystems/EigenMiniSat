@@ -83,18 +83,19 @@ small priority-queue library with custom comparison hooks.
 
 ### Clause Arena And Clause References
 
-Classification: EigenMiniSat-local prototype first.
+Classification: EigenMiniSat-local prototype in progress.
 
-Evidence: `--storage-bench` measures flat arena build, scan, watch seeding,
-reconstruction, deletion compaction, and synthetic reason remapping. Metadata
-churn also amplifies reference remapping, locked-clause scans, watch rebuilds,
-and trail replay. The evidence is strong that the solver wants clause-reference
-discipline, but not yet strong enough to demand a root arena primitive.
+Evidence: `--storage-bench` measures flat arena build, direct scan,
+adapter-mediated lookup, CDCL-style watch seeding, reconstruction, deletion
+compaction, and synthetic reason remapping. Metadata churn also amplifies
+reference remapping, locked-clause scans, watch rebuilds, and trail replay. The
+evidence is strong that the solver wants clause-reference discipline, but not
+yet strong enough to demand a root arena primitive.
 
-Next action: prototype EigenMiniSat-local clause storage before asking
-EigenScript for root arena support. The prototype should preserve signed DIMACS
-literals at the boundary, use encoded literal indexes internally where useful,
-and prove whether arena references simplify CDCL conflict analysis and database
+Next action: migrate CDCL propagation and conflict analysis onto the
+EigenMiniSat-local clause-store adapter before asking EigenScript for root arena
+support. The adapter preserves signed DIMACS literals at the boundary and
+should prove whether arena references simplify conflict analysis and database
 reduction.
 
 ### Bitwise Integer Operations
@@ -111,7 +112,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
 ## Near-Term EigenMiniSat Work
 
 - Keep benchmarks as the evidence surface, not just performance demos.
-- Prototype local clause storage before promoting arena references to root.
+- Migrate CDCL propagation/conflict analysis onto the local clause-store
+  adapter before promoting arena references to root.
 - Expand the checked-in corpus with larger real-shaped CNF cases before relying
   on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local

@@ -511,19 +511,7 @@ define storage_pressure_cases(size) as:
     return cases
 
 define flat_clause_arena(clauses) as:
-    arena_offsets is []
-    arena_sizes is []
-    arena_lits is []
-    for clause in clauses:
-        append of [arena_offsets, len of arena_lits]
-        append of [arena_sizes, len of clause]
-        for lit in clause:
-            append of [arena_lits, lit]
-    return {
-        "offsets": arena_offsets,
-        "sizes": arena_sizes,
-        "lits": arena_lits
-    }
+    return clause_store_from_clauses of clauses
 
 define clause_checksum_value(lit, pos) as:
     return ((lit_encode of lit) + 1) * pos
@@ -550,6 +538,21 @@ define flat_clause_summary(arena) as:
         pos += 1
     return {
         "lits": len of arena.lits,
+        "checksum": checksum
+    }
+
+define clause_store_adapter_summary(store) as:
+    lit_count is 0
+    checksum is 0
+    pos is 1
+    for ci in range of (clause_store_len of store):
+        for li in range of (clause_store_size of [store, ci]):
+            lit is clause_store_lit of [store, ci, li]
+            lit_count += 1
+            checksum += clause_checksum_value of [lit, pos]
+            pos += 1
+    return {
+        "lits": lit_count,
         "checksum": checksum
     }
 
@@ -583,12 +586,10 @@ define flat_watch_seed_summary(nvars, arena) as:
     for ci in range of (len of arena.offsets):
         start is arena.offsets[ci]
         size is arena.sizes[ci]
-        if size > 0:
+        if size > 1:
             watch_add of [watches, arena.lits[start], ci]
-            links += 1
-            if size > 1:
-                watch_add of [watches, arena.lits[start + 1], ci]
-                links += 1
+            watch_add of [watches, arena.lits[start + 1], ci]
+            links += 2
 
     occupied is 0
     max_bucket is 0
@@ -711,10 +712,20 @@ define run_storage_benchmarks(size) as:
         flat_t1 is monotonic_ns of null
         flat_ms is (flat_t1 - flat_t0) / 1000000
 
+        adapter_t0 is monotonic_ns of null
+        adapter_summary is clause_store_adapter_summary of arena
+        adapter_t1 is monotonic_ns of null
+        adapter_ms is (adapter_t1 - adapter_t0) / 1000000
+
         watch_t0 is monotonic_ns of null
         watch_summary is flat_watch_seed_summary of [c.nvars, arena]
         watch_t1 is monotonic_ns of null
         watch_ms is (watch_t1 - watch_t0) / 1000000
+
+        adapter_watch_t0 is monotonic_ns of null
+        adapter_watch is clause_store_seed_watches of [c.nvars, arena]
+        adapter_watch_t1 is monotonic_ns of null
+        adapter_watch_ms is (adapter_watch_t1 - adapter_watch_t0) / 1000000
 
         rebuild_t0 is monotonic_ns of null
         rebuilt is reconstruct_flat_clauses of arena
@@ -723,8 +734,11 @@ define run_storage_benchmarks(size) as:
 
         assert of [list_summary.lits == flat_summary.lits, f"storage lit count mismatch {c.name}"]
         assert of [list_summary.checksum == flat_summary.checksum, f"storage checksum mismatch {c.name}"]
+        assert of [list_summary.lits == adapter_summary.lits, f"storage adapter lit count mismatch {c.name}"]
+        assert of [list_summary.checksum == adapter_summary.checksum, f"storage adapter checksum mismatch {c.name}"]
         assert_clauses_match of [f"storage rebuild {c.name}", c.clauses, rebuilt]
         print of f"storage arena {c.name}: vars={c.nvars} clauses={len of c.clauses} lits={list_summary.lits} flat_lits={len of arena.lits} offsets={len of arena.offsets} list_scan_ms={list_ms} build_ms={build_ms} flat_scan_ms={flat_ms} watch_seed_ms={watch_ms} reconstruct_ms={rebuild_ms} watch_links={watch_summary.links} watch_buckets={watch_summary.occupied} max_watch_bucket={watch_summary.max_bucket} checksum={flat_summary.checksum}"
+        print of f"storage adapter {c.name}: clauses={clause_store_len of arena} lits={adapter_summary.lits} adapter_scan_ms={adapter_ms} adapter_watch_seed_ms={adapter_watch_ms} watch_links={adapter_watch.links} watch_a={len of adapter_watch.watch_a} watch_b={len of adapter_watch.watch_b} watch_buckets={adapter_watch.occupied} max_watch_bucket={adapter_watch.max_bucket} checksum={adapter_summary.checksum}"
 
         delete_plan is storage_delete_mask of (len of c.clauses)
 
@@ -738,6 +752,11 @@ define run_storage_benchmarks(size) as:
         flat_compact_t1 is monotonic_ns of null
         flat_compact_ms is (flat_compact_t1 - flat_compact_t0) / 1000000
 
+        adapter_compact_t0 is monotonic_ns of null
+        adapter_compact is clause_store_compact_by_mask of [arena, delete_plan.mask]
+        adapter_compact_t1 is monotonic_ns of null
+        adapter_compact_ms is (adapter_compact_t1 - adapter_compact_t0) / 1000000
+
         refs is storage_reason_refs of (len of c.clauses)
         remap_t0 is monotonic_ns of null
         remapped_refs is remap_reason_refs of [compact_arena.mapping, refs]
@@ -746,15 +765,23 @@ define run_storage_benchmarks(size) as:
         remap_summary is ref_list_summary of remapped_refs
 
         compact_flat_summary is flat_clause_summary of compact_arena
+        compact_adapter_summary is clause_store_adapter_summary of adapter_compact
         compact_rebuilt is reconstruct_flat_clauses of compact_arena
+        adapter_compact_rebuilt is clause_store_reconstruct of adapter_compact
         assert of [compact_list.removed == compact_arena.removed, f"storage compact removed mismatch {c.name}"]
         assert of [compact_list.kept == compact_arena.kept, f"storage compact kept mismatch {c.name}"]
+        assert of [compact_list.removed == adapter_compact.removed, f"storage adapter compact removed mismatch {c.name}"]
+        assert of [compact_list.kept == adapter_compact.kept, f"storage adapter compact kept mismatch {c.name}"]
         assert of [compact_list.removed == delete_plan.removed, f"storage delete mask mismatch {c.name}"]
         assert of [(len of compact_list.mapping) == (len of compact_arena.mapping), f"storage compact mapping mismatch {c.name}"]
+        assert of [(len of compact_list.mapping) == (len of adapter_compact.mapping), f"storage adapter compact mapping mismatch {c.name}"]
         for mi in range of (len of compact_list.mapping):
             assert of [compact_list.mapping[mi] == compact_arena.mapping[mi], f"storage compact mapping value mismatch {c.name}"]
+            assert of [compact_list.mapping[mi] == adapter_compact.mapping[mi], f"storage adapter compact mapping value mismatch {c.name}"]
         assert_clauses_match of [f"storage compact rebuild {c.name}", compact_list.clauses, compact_rebuilt]
+        assert_clauses_match of [f"storage adapter compact rebuild {c.name}", compact_list.clauses, adapter_compact_rebuilt]
         print of f"storage compact {c.name}: clauses={len of c.clauses} removed={compact_arena.removed} kept={compact_arena.kept} kept_lits={compact_flat_summary.lits} list_compact_ms={list_compact_ms} flat_compact_ms={flat_compact_ms} remap_ms={remap_ms} remap_active={remap_summary.active} remap_checksum={remap_summary.checksum} compact_checksum={compact_flat_summary.checksum}"
+        print of f"storage adapter compact {c.name}: removed={adapter_compact.removed} kept={adapter_compact.kept} kept_lits={compact_adapter_summary.lits} adapter_compact_ms={adapter_compact_ms} compact_checksum={compact_adapter_summary.checksum}"
     return len of cases
 
 define metadata_pressure_config(size) as:
