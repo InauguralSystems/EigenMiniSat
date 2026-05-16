@@ -139,6 +139,22 @@ compact_clauses is compact_deleted_clauses of [4, reduce_clauses, reduce_state, 
 assert_eq of ["learnt compact removes", len of compact_clauses, 3]
 assert_eq of ["learnt compact metadata", len of reduce_state.clause_learnt, 3]
 assert_eq of ["learnt compact runs", reduce_stats.compact_runs, 1]
+metadata_churn_test is run_metadata_churn_case of [{
+    "name": "metadata-churn-test",
+    "nvars": 8,
+    "waves": 2,
+    "wave_learnts": 12,
+    "width": 4,
+    "pin_count": 2
+}, 0]
+assert_eq of ["metadata churn waves", metadata_churn_test.waves, 2]
+assert_eq of ["metadata churn learnts", metadata_churn_test.learnts_added, 24]
+assert_eq of ["metadata churn clause allocs", metadata_churn_test.clause_allocs, 32]
+assert_true of ["metadata churn deleted", metadata_churn_test.learnt_deleted > 0]
+assert_true of ["metadata churn compacts", metadata_churn_test.compact_runs > 0]
+assert_true of ["metadata churn watch rebuilds", metadata_churn_test.watch_rebuilds > 0]
+assert_true of ["metadata churn locked kept", metadata_churn_test.locked_kept > 0]
+assert_true of ["metadata churn reason refs", metadata_churn_test.reason_active > 0]
 print of "  learnt database reduction: ok"
 
 storage_case is wide_clause_case of [8, 4, 5]

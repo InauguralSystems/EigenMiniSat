@@ -62,11 +62,13 @@ policies over pigeonhole, complete-graph coloring, and XOR pressure cases.
 Deleted learnt clauses are now eagerly compacted by remapping clause references
 and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
 allocation, database reduction, compaction, watch rebuild, and trail replay
-pressure without requiring a larger CNF corpus. The next target is using the
-new storage data to decide between EigenScript root compact vector/arena support
-and an EigenMiniSat-local clause storage rewrite, plus larger metadata stress
-cases, scanner diagnostic/token span pressure, and a larger third-party CNF
-corpus beyond the checked-in manifest fixtures.
+pressure without requiring a larger CNF corpus. It also runs repeated
+learnt-churn waves with pinned reason references to expose locked-clause scans
+and repeated reason remapping. The next target is using the new storage and
+metadata data to decide between EigenScript root compact vector/arena support
+and an EigenMiniSat-local clause storage rewrite, plus scanner diagnostic/token
+span pressure and a larger third-party CNF corpus beyond the checked-in
+manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

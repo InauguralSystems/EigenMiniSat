@@ -55,8 +55,10 @@ representation and compares list scanning, arena build, flat scanning, watch
 seeding, reconstruction, deletion compaction, and reason-reference remapping
 costs.
 `--metadata-bench` builds synthetic learnt-clause pressure, runs database
-reduction, compacts deleted clauses, and reports allocation, deletion, watch
-rebuild, and trail replay counters without needing a larger external CNF.
+reduction, compacts deleted clauses, then runs repeated learnt-churn waves with
+pinned reason references. It reports allocation, deletion, locked-clause, watch
+rebuild, reason remap, and trail replay counters without needing a larger
+external CNF.
 `--parse-bench` emits larger generated DIMACS fixtures, parses the generated
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--scan-parse-bench` compares the current split/trim parser, a
@@ -95,7 +97,7 @@ Current:
 - combined restart/polarity heuristic stress benchmarks
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - flat clause arena benchmark for compact clause/vector storage pressure
-- synthetic learnt metadata and compaction benchmark pressure
+- synthetic learnt metadata compaction and churn benchmark pressure
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - manifest-driven DIMACS corpus fixtures for real file-shape coverage
@@ -108,7 +110,7 @@ Current:
 
 Next:
 
-- larger metadata and heuristic stress cases
+- larger heuristic stress cases
 - decide whether flat clause/vector storage belongs in EigenScript root support
   or in EigenMiniSat-local solver internals
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
@@ -130,7 +132,7 @@ This repo is expected to stress:
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
-- synthetic learnt-clause allocation, deletion, and compaction pressure
+- synthetic learnt-clause allocation, deletion, compaction, and churn pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants
