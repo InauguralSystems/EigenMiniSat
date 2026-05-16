@@ -18,6 +18,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   flags, deleted flags, activity, and level-span estimates. This is a direct
   pressure point for struct-like storage, arena-backed clause references, and
   watch-list compaction support.
+- Restarts now cancel trail levels back to root and reinsert variables into the
+  order heap while preserving phase state. The `restarts`, `restart_cancels`,
+  and phase counters make repeated backtracking churn visible.
 - Persistent mutable solver state is now implemented, and the benchmarks show
   rollback/list-truncation overhead on unit-chain cases. Compact mutable vectors
   or list truncation remain candidates if this pressure repeats.
