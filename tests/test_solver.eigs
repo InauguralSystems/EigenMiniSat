@@ -32,6 +32,26 @@ assert_eq of ["activity heap first", order_pop_best of [heap_state, null], 2]
 assert_eq of ["activity heap tie", order_pop_best of [heap_state, null], 3]
 print of "  activity heap: ok"
 
+reduce_state is {
+    "clause_learnt": [0, 1, 1, 1],
+    "clause_deleted": [0, 0, 0, 0],
+    "clause_activity": [0, 0.1, 5, 0.2],
+    "reason": [-1, -1, -1],
+    "learnt_limit": 1
+}
+reduce_stats is {
+    "active_learnts": 0,
+    "reduce_runs": 0,
+    "reduce_scans": 0,
+    "learnt_deleted": 0,
+    "learnt_kept_locked": 0
+}
+reduce_clauses is [[1], [1, 2, 3], [1, 0 - 2, 4], [2, 3, 4]]
+assert_eq of ["learnt reduce deletes one", reduce_learnt_db of [reduce_clauses, reduce_state, reduce_stats], 1]
+assert_eq of ["learnt reduce low activity", reduce_state.clause_deleted[1], 1]
+assert_eq of ["learnt reduce active count", reduce_stats.active_learnts, 2]
+print of "  learnt database reduction: ok"
+
 simple is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"
 assert_eq of ["simple nvars", simple.nvars, 3]
 assert_eq of ["simple clauses", len of simple.clauses, 3]
@@ -74,6 +94,9 @@ assert_true of ["pigeonhole cdcl learns", php_cdcl.learnts > 0]
 assert_true of ["pigeonhole cdcl bumps", php_cdcl.activity_bumps > 0]
 assert_true of ["pigeonhole cdcl heap pops", php_cdcl.order_pops > 0]
 assert_true of ["pigeonhole cdcl heap reinserts", php_cdcl.order_inserts > 0]
+assert_true of ["pigeonhole cdcl clause allocs", php_cdcl.clause_allocs >= (len of php.clauses)]
+assert_eq of ["pigeonhole cdcl learnt allocs", php_cdcl.learnt_allocs, php_cdcl.learnts]
+assert_true of ["pigeonhole cdcl clause bumps", php_cdcl.clause_activity_bumps > 0]
 print of "  pigeonhole UNSAT: ok"
 
 chain_sat is chain_case of [12, 0]

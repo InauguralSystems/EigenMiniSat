@@ -14,6 +14,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   `heap_skips` counters are useful evidence for whether EigenScript needs
   compact mutable vector or priority-queue library support.
 - Arena-like allocation for clauses and learnt-clause churn.
+- Learnt-clause metadata and lazy deletion now add parallel arrays for learnt
+  flags, deleted flags, activity, and level-span estimates. This is a direct
+  pressure point for struct-like storage, arena-backed clause references, and
+  watch-list compaction support.
 - Persistent mutable solver state is now implemented, and the benchmarks show
   rollback/list-truncation overhead on unit-chain cases. Compact mutable vectors
   or list truncation remain candidates if this pressure repeats.

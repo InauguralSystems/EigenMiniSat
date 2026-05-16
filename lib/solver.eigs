@@ -570,6 +570,91 @@ define decay_var_activity(state, stats) as:
     stats.activity_decays += 1
     return null
 
+define clause_level_span(clause, state) as:
+    levels is []
+    for lit in clause:
+        lvl is state.level[lit_abs of lit]
+        if (clause_has_lit of [levels, lvl]) == 0:
+            append of [levels, lvl]
+    return len of levels
+
+define init_clause_metadata(state, clause, learnt, stats) as:
+    append of [state.clause_learnt, learnt]
+    append of [state.clause_deleted, 0]
+    append of [state.clause_activity, 0]
+    append of [state.clause_lbd, clause_level_span of [clause, state]]
+    stats.clause_allocs += 1
+    if learnt != 0:
+        stats.learnt_allocs += 1
+        stats.learnt_literals += len of clause
+    return null
+
+define bump_clause_db_activity(state, ci, stats) as:
+    if ci < 0:
+        return null
+    if ci >= (len of state.clause_activity):
+        return null
+    if state.clause_deleted[ci] != 0:
+        return null
+    state.clause_activity[ci] is state.clause_activity[ci] + state.clause_inc
+    stats.clause_activity_bumps += 1
+    return null
+
+define decay_clause_activity(state, stats) as:
+    state.clause_inc is state.clause_inc / state.clause_decay
+    stats.clause_activity_decays += 1
+    return null
+
+define clause_locked(state, ci) as:
+    for r in state.reason:
+        if r == ci:
+            return 1
+    return 0
+
+define count_active_learnts(state) as:
+    active is 0
+    for ci in range of (len of state.clause_learnt):
+        if state.clause_learnt[ci] != 0:
+            if state.clause_deleted[ci] == 0:
+                active += 1
+    return active
+
+define find_low_activity_learnt(clauses, state, stats) as:
+    best is -1
+    best_activity is 1000000000
+    for ci in range of (len of clauses):
+        if state.clause_learnt[ci] != 0:
+            if state.clause_deleted[ci] == 0:
+                if (len of clauses[ci]) > 2:
+                    if (clause_locked of [state, ci]) != 0:
+                        stats.learnt_kept_locked += 1
+                    elif state.clause_activity[ci] < best_activity:
+                        best_activity is state.clause_activity[ci]
+                        best is ci
+    stats.reduce_scans += 1
+    return best
+
+define reduce_learnt_db(clauses, state, stats) as:
+    active is count_active_learnts of state
+    if active <= state.learnt_limit:
+        stats.active_learnts is active
+        return 0
+
+    stats.reduce_runs += 1
+    target_delete is floor of (active / 2)
+    deleted is 0
+    loop while deleted < target_delete:
+        victim is find_low_activity_learnt of [clauses, state, stats]
+        if victim < 0:
+            break
+        state.clause_deleted[victim] is 1
+        stats.learnt_deleted += 1
+        deleted += 1
+
+    state.learnt_limit += 2
+    stats.active_learnts is count_active_learnts of state
+    return deleted
+
 define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagation) as:
     v is lit_abs of lit
     wanted is 1
@@ -607,6 +692,13 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
         "activity": filled_list of [nvars + 1, 0],
         "var_inc": 1,
         "var_decay": 0.95,
+        "clause_learnt": [],
+        "clause_deleted": [],
+        "clause_activity": [],
+        "clause_lbd": [],
+        "clause_inc": 1,
+        "clause_decay": 0.999,
+        "learnt_limit": 4,
         "order_heap": [],
         "order_pos": filled_list of [nvars + 1, -1],
         "conflict": -1
@@ -614,6 +706,7 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
 
     for ci in range of (len of clauses):
         clause is clauses[ci]
+        init_clause_metadata of [state, clause, 0, stats]
         if (len of clause) == 0:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
@@ -646,6 +739,10 @@ define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
         kept is []
 
         for ci in old:
+            if state.clause_deleted[ci] != 0:
+                stats.deleted_watch_skips += 1
+                continue
+
             clause is clauses[ci]
             wa is state.watch_a[ci]
             wb is state.watch_b[ci]
@@ -802,9 +899,11 @@ define analyze_conflict_cdcl(clauses, state, conflict_ci, stats) as:
         "backtrack": backtrack
     }
 
-define add_cdcl_clause(clauses, state, clause) as:
+define add_cdcl_clause(clauses, state, clause, learnt, stats) as:
     ci is len of clauses
     append of [clauses, clause]
+    init_clause_metadata of [state, clause, learnt, stats]
+    state.clause_lbd[ci] is clause_level_span of [clause, state]
     if (len of clause) == 0:
         append of [state.watch_a, 0]
         append of [state.watch_b, 0]
@@ -819,6 +918,37 @@ define add_cdcl_clause(clauses, state, clause) as:
         watch_add of [state.watches, clause[1], ci]
     return ci
 
+define cdcl_result(status, model, stats, state) as:
+    active is 0
+    if state != null:
+        active is count_active_learnts of state
+    return {
+        "status": status,
+        "model": model,
+        "decisions": stats.decisions,
+        "propagations": stats.propagations,
+        "conflicts": stats.conflicts,
+        "learnts": stats.learnts,
+        "backjumps": stats.backjumps,
+        "resolutions": stats.resolutions,
+        "activity_bumps": stats.activity_bumps,
+        "activity_decays": stats.activity_decays,
+        "order_pops": stats.order_pops,
+        "order_inserts": stats.order_inserts,
+        "order_skips": stats.order_skips,
+        "clause_allocs": stats.clause_allocs,
+        "learnt_allocs": stats.learnt_allocs,
+        "learnt_literals": stats.learnt_literals,
+        "clause_activity_bumps": stats.clause_activity_bumps,
+        "clause_activity_decays": stats.clause_activity_decays,
+        "reduce_runs": stats.reduce_runs,
+        "reduce_scans": stats.reduce_scans,
+        "learnt_deleted": stats.learnt_deleted,
+        "learnt_kept_locked": stats.learnt_kept_locked,
+        "deleted_watch_skips": stats.deleted_watch_skips,
+        "active_learnts": active
+    }
+
 define solve_cnf_cdcl(nvars, input_clauses) as:
     clauses is copy_clauses of input_clauses
     stats is {
@@ -832,110 +962,55 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
         "activity_decays": 0,
         "order_pops": 0,
         "order_inserts": 0,
-        "order_skips": 0
+        "order_skips": 0,
+        "clause_allocs": 0,
+        "learnt_allocs": 0,
+        "learnt_literals": 0,
+        "clause_activity_bumps": 0,
+        "clause_activity_decays": 0,
+        "reduce_runs": 0,
+        "reduce_scans": 0,
+        "learnt_deleted": 0,
+        "learnt_kept_locked": 0,
+        "deleted_watch_skips": 0,
+        "active_learnts": 0
     }
     asg is make_assignment of nvars
     state is build_cdcl_state of [nvars, clauses, asg, stats]
 
     if state.ok == 0:
-        return {
-            "status": "UNSAT",
-            "model": null,
-            "decisions": stats.decisions,
-            "propagations": stats.propagations,
-            "conflicts": stats.conflicts,
-            "learnts": stats.learnts,
-            "backjumps": stats.backjumps,
-            "resolutions": stats.resolutions,
-            "activity_bumps": stats.activity_bumps,
-            "activity_decays": stats.activity_decays,
-            "order_pops": stats.order_pops,
-            "order_inserts": stats.order_inserts,
-            "order_skips": stats.order_skips
-        }
+        return cdcl_result of ["UNSAT", null, stats, state]
 
     loop while 1:
         if (run_watched_queue_cdcl of [nvars, clauses, asg, state, stats]) == 0:
             if (len of state.trail_lim) == 0:
-                return {
-                    "status": "UNSAT",
-                    "model": null,
-                    "decisions": stats.decisions,
-                    "propagations": stats.propagations,
-                    "conflicts": stats.conflicts,
-                    "learnts": stats.learnts,
-                    "backjumps": stats.backjumps,
-                    "resolutions": stats.resolutions,
-                    "activity_bumps": stats.activity_bumps,
-                    "activity_decays": stats.activity_decays,
-                    "order_pops": stats.order_pops,
-                    "order_inserts": stats.order_inserts,
-                    "order_skips": stats.order_skips
-                }
+                return cdcl_result of ["UNSAT", null, stats, state]
 
+            bump_clause_db_activity of [state, state.conflict, stats]
+            decay_clause_activity of [state, stats]
             analysis is analyze_conflict_cdcl of [clauses, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
-                return {
-                    "status": "UNSAT",
-                    "model": null,
-                    "decisions": stats.decisions,
-                    "propagations": stats.propagations,
-                    "conflicts": stats.conflicts,
-                    "learnts": stats.learnts,
-                    "backjumps": stats.backjumps,
-                    "resolutions": stats.resolutions,
-                    "activity_bumps": stats.activity_bumps,
-                    "activity_decays": stats.activity_decays,
-                    "order_pops": stats.order_pops,
-                    "order_inserts": stats.order_inserts,
-                    "order_skips": stats.order_skips
-                }
+                return cdcl_result of ["UNSAT", null, stats, state]
 
             bump_clause_activity of [state, analysis.clause, stats]
             decay_var_activity of [state, stats]
-            learned_ci is add_cdcl_clause of [clauses, state, analysis.clause]
+            learned_ci is add_cdcl_clause of [clauses, state, analysis.clause, 1, stats]
+            bump_clause_db_activity of [state, learned_ci, stats]
             stats.learnts += 1
             cdcl_cancel_until of [state, asg, analysis.backtrack, stats]
             stats.backjumps += 1
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
+            reduce_learnt_db of [clauses, state, stats]
             continue
 
         if (all_clauses_satisfied of [input_clauses, asg]) != 0:
-            return {
-                "status": "SAT",
-                "model": copy_assignment of asg,
-                "decisions": stats.decisions,
-                "propagations": stats.propagations,
-                "conflicts": stats.conflicts,
-                "learnts": stats.learnts,
-                "backjumps": stats.backjumps,
-                "resolutions": stats.resolutions,
-                "activity_bumps": stats.activity_bumps,
-                "activity_decays": stats.activity_decays,
-                "order_pops": stats.order_pops,
-                "order_inserts": stats.order_inserts,
-                "order_skips": stats.order_skips
-            }
+            return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
 
         v is choose_var_cdcl of [asg, state, stats]
         if v == 0:
-            return {
-                "status": "SAT",
-                "model": copy_assignment of asg,
-                "decisions": stats.decisions,
-                "propagations": stats.propagations,
-                "conflicts": stats.conflicts,
-                "learnts": stats.learnts,
-                "backjumps": stats.backjumps,
-                "resolutions": stats.resolutions,
-                "activity_bumps": stats.activity_bumps,
-                "activity_decays": stats.activity_decays,
-                "order_pops": stats.order_pops,
-                "order_inserts": stats.order_inserts,
-                "order_skips": stats.order_skips
-            }
+            return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
 
         cdcl_push_level of state
         stats.decisions += 1
