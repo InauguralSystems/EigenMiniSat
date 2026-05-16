@@ -18,8 +18,7 @@
 
 Status: initial watched propagation exists as a correctness/benchmark path, and
 the persistent path keeps watch state across recursive DPLL nodes with trail
-marks for backtracking. The next step is iterative decision levels, reasons,
-and conflict analysis.
+marks for backtracking.
 
 ## Milestone 3: CDCL
 
@@ -28,6 +27,11 @@ and conflict analysis.
 - activity bumping and decay
 - restarts
 - learnt-clause database reduction
+
+Status: a first CDCL path exists with reason arrays, assignment levels,
+conflict-clause resolution, learnt clauses, and non-chronological backjumping.
+It is still intentionally pre-VSIDS, pre-restart, and pre-database-reduction.
+The next target is MiniSat-style variable activity and a heap/order structure.
 
 ## Milestone 4: EigenScript Feedback
 
