@@ -759,6 +759,55 @@ define decision_lit_cdcl(state, v, stats) as:
     stats.phase_pos_decisions += 1
     return v
 
+define pow2_int(exp) as:
+    out is 1
+    for i in range of exp:
+        out is out * 2
+    return out
+
+define luby_value(index) as:
+    if index < 0:
+        return 1
+
+    x is index
+    size is 1
+    seq is 0
+    loop while size < (x + 1):
+        seq += 1
+        size is (size * 2) + 1
+
+    loop while (size - 1) != x:
+        size is floor of ((size - 1) / 2)
+        seq -= 1
+        x is x % size
+
+    return pow2_int of seq
+
+define cdcl_default_options() as:
+    return {
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2
+    }
+
+define cdcl_merge_options(opts) as:
+    cfg is cdcl_default_options of null
+    if opts == null:
+        return cfg
+    if (has_key of [opts, "restart_policy"]) != 0:
+        cfg.restart_policy is opts.restart_policy
+        if cfg.restart_policy != "luby":
+            cfg.restart_policy is "geometric"
+    if (has_key of [opts, "restart_first"]) != 0:
+        cfg.restart_first is floor of opts.restart_first
+        if cfg.restart_first < 1:
+            cfg.restart_first is 1
+    if (has_key of [opts, "restart_growth"]) != 0:
+        cfg.restart_growth is opts.restart_growth
+        if cfg.restart_growth < 1:
+            cfg.restart_growth is 1
+    return cfg
+
 define cdcl_restart(state, asg, stats) as:
     if (len of state.trail_lim) == 0:
         return 0
@@ -767,7 +816,11 @@ define cdcl_restart(state, asg, stats) as:
     cancelled is (len of state.trail) - root_mark
     cdcl_cancel_until of [state, asg, 0, stats]
     state.conflicts_since_restart is 0
-    state.restart_budget is floor of (state.restart_budget * state.restart_growth)
+    state.restart_index += 1
+    if state.restart_policy == "luby":
+        state.restart_budget is state.restart_first * (luby_value of state.restart_index)
+    else:
+        state.restart_budget is floor of (state.restart_budget * state.restart_growth)
     if state.restart_budget < 1:
         state.restart_budget is 1
     stats.restarts += 1
@@ -803,7 +856,8 @@ define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagat
     state.conflict is reason_clause
     return 0
 
-define build_cdcl_state(nvars, clauses, asg, stats) as:
+define build_cdcl_state(nvars, clauses, asg, stats, opts) as:
+    cfg is cdcl_merge_options of opts
     state is {
         "ok": 1,
         "watches": make_watch_table of nvars,
@@ -825,8 +879,11 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
         "clause_inc": 1,
         "clause_decay": 0.999,
         "learnt_limit": 4,
-        "restart_budget": 3,
-        "restart_growth": 2,
+        "restart_policy": cfg.restart_policy,
+        "restart_first": cfg.restart_first,
+        "restart_budget": cfg.restart_first,
+        "restart_growth": cfg.restart_growth,
+        "restart_index": 0,
         "conflicts_since_restart": 0,
         "order_heap": [],
         "order_pos": filled_list of [nvars + 1, -1],
@@ -1049,10 +1106,14 @@ define add_cdcl_clause(clauses, state, clause, learnt, stats) as:
 
 define cdcl_result(status, model, stats, state) as:
     active is 0
+    restart_policy is ""
     restart_budget is 0
+    restart_index is 0
     if state != null:
         active is count_active_learnts of state
+        restart_policy is state.restart_policy
         restart_budget is state.restart_budget
+        restart_index is state.restart_index
     return {
         "status": status,
         "model": model,
@@ -1085,7 +1146,9 @@ define cdcl_result(status, model, stats, state) as:
         "compact_replays": stats.compact_replays,
         "restarts": stats.restarts,
         "restart_cancels": stats.restart_cancels,
+        "restart_policy": restart_policy,
         "restart_budget": restart_budget,
+        "restart_index": restart_index,
         "phase_saves": stats.phase_saves,
         "phase_flips": stats.phase_flips,
         "phase_pos_decisions": stats.phase_pos_decisions,
@@ -1093,6 +1156,9 @@ define cdcl_result(status, model, stats, state) as:
     }
 
 define solve_cnf_cdcl(nvars, input_clauses) as:
+    return solve_cnf_cdcl_with_options of [nvars, input_clauses, null]
+
+define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
     clauses is copy_clauses of input_clauses
     stats is {
         "decisions": 0,
@@ -1130,7 +1196,7 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
         "phase_neg_decisions": 0
     }
     asg is make_assignment of nvars
-    state is build_cdcl_state of [nvars, clauses, asg, stats]
+    state is build_cdcl_state of [nvars, clauses, asg, stats, opts]
 
     if state.ok == 0:
         return cdcl_result of ["UNSAT", null, stats, state]

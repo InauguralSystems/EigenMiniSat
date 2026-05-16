@@ -53,6 +53,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 - Restarts now cancel trail levels back to root and reinsert variables into the
   order heap while preserving phase state. The `restarts`, `restart_cancels`,
   and phase counters make repeated backtracking churn visible.
+- The Luby restart benchmark adds small but repeated `floor`, modulo, and
+  integer-power schedule calculations around CDCL conflicts. If larger restart
+  sweeps make schedule overhead visible, EigenScript may need cheaper integer
+  bit operations or this should become a small standard-library helper.
 - Persistent mutable solver state is now implemented, and the benchmarks show
   rollback/list-truncation overhead on unit-chain cases. Compact mutable vectors
   or list truncation remain candidates if this pressure repeats.

@@ -35,6 +35,16 @@ watch_slots is make_watch_table of 3
 assert_eq of ["watch slots", len of watch_slots, 6]
 print of "  MiniSat literal encoding: ok"
 
+assert_eq of ["luby 0", luby_value of 0, 1]
+assert_eq of ["luby 1", luby_value of 1, 1]
+assert_eq of ["luby 2", luby_value of 2, 2]
+assert_eq of ["luby 3", luby_value of 3, 1]
+assert_eq of ["luby 4", luby_value of 4, 1]
+assert_eq of ["luby 5", luby_value of 5, 2]
+assert_eq of ["luby 6", luby_value of 6, 4]
+assert_eq of ["luby 7", luby_value of 7, 1]
+print of "  Luby restart sequence: ok"
+
 heap_state is {
     "activity": [0, 1, 5, 5],
     "order_heap": [],
@@ -141,12 +151,19 @@ print of "  pigeonhole UNSAT: ok"
 php4 is pigeonhole_case of [4, 3]
 php4_cdcl is solve_cnf_cdcl of [php4.nvars, php4.clauses]
 assert_eq of ["pigeonhole 4-3 cdcl UNSAT", php4_cdcl.status, "UNSAT"]
+assert_eq of ["pigeonhole 4-3 default restart policy", php4_cdcl.restart_policy, "geometric"]
 assert_true of ["pigeonhole 4-3 restarts", php4_cdcl.restarts > 0]
+assert_eq of ["pigeonhole 4-3 restart index", php4_cdcl.restart_index, php4_cdcl.restarts]
 assert_true of ["pigeonhole 4-3 restart cancels", php4_cdcl.restart_cancels > 0]
 assert_true of ["pigeonhole 4-3 phase saves", php4_cdcl.phase_saves > 0]
 assert_true of ["pigeonhole 4-3 compacts", php4_cdcl.compact_runs > 0]
 assert_true of ["pigeonhole 4-3 watch rebuilds", php4_cdcl.watch_rebuilds > 0]
-print of "  restart policy: ok"
+php4_luby is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"restart_policy": "luby", "restart_first": 1}]
+assert_eq of ["pigeonhole 4-3 luby UNSAT", php4_luby.status, "UNSAT"]
+assert_eq of ["pigeonhole 4-3 luby policy", php4_luby.restart_policy, "luby"]
+assert_true of ["pigeonhole 4-3 luby restarts", php4_luby.restarts > 0]
+assert_eq of ["pigeonhole 4-3 luby restart index", php4_luby.restart_index, php4_luby.restarts]
+print of "  restart policies: ok"
 
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case

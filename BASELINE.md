@@ -47,6 +47,25 @@ Watch-list indexes now use MiniSat-style encoded literal slots, which reduces
 the table shape to the active `2 * nvars` literal domain while leaving signed
 DIMACS literals at the solver boundary.
 
+Restart benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 2
+```
+
+Result:
+
+```text
+restart geometric chain-sat-40: status=SAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=7.36801
+restart luby chain-sat-40: status=SAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=10.1841
+restart geometric chain-unsat-40: status=UNSAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=1 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=4.08667
+restart luby chain-unsat-40: status=UNSAT vars=40 clauses=41 decisions=0 propagations=40 conflicts=1 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=6.87912
+restart geometric pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 restart_budget=6 restart_index=1 restart_cancels=4 compact_runs=1 ms=14.5979
+restart luby pigeonhole-4-3: status=UNSAT vars=12 clauses=34 decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 restart_budget=3 restart_index=1 restart_cancels=4 compact_runs=1 ms=19.2224
+restart geometric xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=6.60422
+restart luby xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagations=0 conflicts=0 learnts=0 restarts=0 restart_budget=3 restart_index=0 restart_cancels=0 compact_runs=0 ms=3.79334
+```
+
 Parse benchmark command:
 
 ```bash
