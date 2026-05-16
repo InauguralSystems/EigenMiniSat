@@ -157,6 +157,20 @@ wide_cdcl is solve_cnf_cdcl of [wide_parsed.nvars, wide_parsed.clauses]
 assert_eq of ["wide parsed cdcl SAT", wide_cdcl.status, "SAT"]
 print of "  generated DIMACS fixtures: ok"
 
+corpus_cases is external_corpus_cases of null
+assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
+for corpus in corpus_cases:
+    corpus_parsed is parse_dimacs_file of corpus.path
+    assert_eq of [f"corpus vars {corpus.name}", corpus_parsed.nvars, corpus.nvars]
+    assert_eq of [f"corpus clauses {corpus.name}", len of corpus_parsed.clauses, corpus.nclauses]
+    assert_eq of [f"corpus declared vars {corpus.name}", corpus_parsed.declared_vars, corpus.nvars]
+    assert_eq of [f"corpus declared clauses {corpus.name}", corpus_parsed.declared_clauses, corpus.nclauses]
+    corpus_cdcl is solve_cnf_cdcl of [corpus_parsed.nvars, corpus_parsed.clauses]
+    assert_eq of [f"corpus status {corpus.name}", corpus_cdcl.status, corpus.expected]
+    if corpus_cdcl.status == "SAT":
+        assert_true of [f"corpus model {corpus.name}", model_satisfies of [corpus_parsed.nvars, corpus_parsed.clauses, corpus_cdcl.model]]
+print of "  external DIMACS corpus: ok"
+
 chain_sat is chain_case of [12, 0]
 chain_sat_result is solve_cnf of [chain_sat.nvars, chain_sat.clauses]
 assert_eq of ["chain SAT", chain_sat_result.status, "SAT"]

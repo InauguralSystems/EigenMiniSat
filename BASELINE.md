@@ -86,6 +86,25 @@ file fixture wide-48-8-20: text_len=575 wrote=1 removed=1 vars=48 clauses=20 dec
 file cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.94931
 ```
 
+Corpus benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench
+```
+
+Result:
+
+```text
+corpus parse multiline-sat: path=tests/corpus/multiline_sat.cnf vars=4 clauses=4 declared_vars=4 declared_clauses=4 ms=0.322389
+corpus cdcl multiline-sat: status=SAT decisions=1 propagations=2 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=2.30715
+corpus parse multi-clause-line-unsat: path=tests/corpus/multi_clause_line_unsat.cnf vars=2 clauses=4 declared_vars=2 declared_clauses=4 ms=1.49755
+corpus cdcl multi-clause-line-unsat: status=UNSAT decisions=0 propagations=2 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=0.396491
+corpus parse triangle-3color-sat: path=tests/corpus/triangle_3color_sat.cnf vars=9 clauses=21 declared_vars=9 declared_clauses=21 ms=0.967517
+corpus cdcl triangle-3color-sat: status=SAT decisions=2 propagations=7 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=6.20795
+corpus parse k4-3color-unsat: path=tests/corpus/k4_3color_unsat.cnf vars=12 clauses=34 declared_vars=12 declared_clauses=34 ms=3.06368
+corpus cdcl k4-3color-unsat: status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 compact_runs=1 ms=15.4044
+```
+
 Smoke command:
 
 ```bash
