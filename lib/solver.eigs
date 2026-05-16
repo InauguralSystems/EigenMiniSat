@@ -961,6 +961,9 @@ define should_compact_deleted_clauses(store, state, stats) as:
     stats.compact_pending_deleted is deleted
     if deleted == 0:
         return 0
+    if state.compact_policy == "lazy":
+        stats.compact_deferred += 1
+        return 0
     if deleted < state.compact_min_deleted:
         stats.compact_deferred += 1
         return 0
@@ -1060,6 +1063,8 @@ define cdcl_merge_options(opts) as:
         if merged_opts.compact_policy == "eager":
             merged_opts.compact_min_deleted is 1
             merged_opts.compact_waste_percent is 0
+        elif merged_opts.compact_policy == "lazy":
+            merged_opts.compact_policy is "lazy"
         else:
             merged_opts.compact_policy is "deferred"
     if (has_key of [opts, "compact_min_deleted"]) != 0:

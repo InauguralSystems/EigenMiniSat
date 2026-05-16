@@ -54,7 +54,8 @@ reports store-to-list copies, store-native conflict-analysis scans, remaining
 analysis rebuild literals, deferred compaction checks, pending deleted clauses,
 targeted watch-detach scans/removals, and compaction-copy literals. A focused copy-pressure
 benchmark now runs conflict-heavy generated cases under tight restart and
-polarity policies before asking EigenScript for root arena support.
+polarity policies, including lazy no-physical-compaction variants, before
+asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -75,7 +76,10 @@ Deleted learnt clauses are now eagerly compacted by remapping clause references
 and rebuilding watch lists in the synthetic metadata path, while the CDCL solve
 path now defers physical compaction behind deleted-clause thresholds and
 detaches deleted learnt clauses from their current watch buckets without
-copying the clause store or replaying the trail. Watched propagation also preserves unprocessed bucket
+copying the clause store or replaying the trail while compaction stays below
+thresholds. Copy-pressure cases also expose a lazy no-physical-compaction policy
+to compare against the default deferred policy when larger cases cross those
+thresholds. Watched propagation also preserves unprocessed bucket
 tails when a conflict stops propagation early, so deferred compaction no longer
 depends on a full watch rebuild to repair missing watcher entries. A synthetic metadata
 benchmark now isolates learnt allocation, database reduction, compaction, watch
@@ -83,9 +87,9 @@ rebuild, and trail replay pressure without requiring a larger CNF corpus. It
 also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-targeted watch-detach pressure across larger conflict cases after deferred
-compaction, then deciding whether that pressure belongs in EigenMiniSat, a
-reusable library, or EigenScript root, plus scanner token-span pressure and a
+targeted watch-detach and physical compaction pressure across larger conflict
+cases, then deciding whether that pressure belongs in EigenMiniSat, a reusable
+library, or EigenScript root, plus scanner token-span pressure and a
 larger third-party CNF corpus beyond the checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback

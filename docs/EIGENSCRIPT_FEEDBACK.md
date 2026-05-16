@@ -95,11 +95,14 @@ reports store-to-list copies, store-native conflict-analysis scans, remaining
 analysis rebuild literals, deferred compaction checks, pending deleted clauses,
 targeted watch-detach scans/removals, and direct compaction-copy literals.
 `--copy-bench` now puts those counters under conflict-heavy generated cases with
-tight restart and polarity policies. Store-native conflict analysis removes the
+tight restart and polarity policies, with lazy no-physical-compaction variants
+beside the default deferred policy. Store-native conflict analysis removes the
 hot list rebuild path locally. Deferred physical compaction removes the hot
 clause-copy path in small conflict cases; targeted watch detaching keeps the
 solve path from shifting that cost into full watch-table pruning, full watch
-rebuilds, or trail replays. The
+rebuilds, or trail replays until larger cases cross the compaction thresholds.
+The lazy policy is an evidence knob for that larger-case tradeoff, not a root
+language ask by itself. The
 copy-pressure cases also exposed a watched-propagation invariant bug: a
 conflict return must preserve the unprocessed tail of the current watch bucket.
 That is an EigenMiniSat-local algorithmic correction, not a root-language ask.
@@ -107,9 +110,10 @@ The evidence is strong that the solver wants
 clause-reference discipline, but not yet strong enough to demand a root arena
 primitive.
 
-Next action: grow copy-pressure cases and use the deferred compaction counters
-to decide whether remaining targeted watch-detach pressure belongs in
-EigenMiniSat, a reusable library, or EigenScript root. The adapter preserves
+Next action: grow copy-pressure cases and use the deferred/lazy compaction
+counters to decide whether remaining targeted watch-detach and physical
+compaction pressure belongs in EigenMiniSat, a reusable library, or EigenScript
+root. The adapter preserves
 signed DIMACS literals at the boundary and should prove whether arena
 references simplify conflict analysis and database reduction.
 
@@ -129,8 +133,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
 - Keep benchmarks as the evidence surface, not just performance demos.
 - Use `--copy-bench` counters to decide whether remaining clause-reference
   pressure should stay local, become a library, or move to root.
-- Treat deferred compaction as algorithm-local unless larger cases show
-  targeted watch-detach churn needs a reusable primitive.
+- Treat deferred/lazy compaction as algorithm-local unless larger cases show
+  targeted watch-detach or compaction-copy churn needs a reusable primitive.
 - Expand the checked-in corpus with larger real-shaped CNF cases before relying
   on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local

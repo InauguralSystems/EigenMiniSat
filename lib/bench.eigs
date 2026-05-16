@@ -243,11 +243,27 @@ define copy_pressure_policies() as:
         "phase_policy": "saved"
     }]
     append of [copy_policies, {
+        "name": "geom-saved-tight-lazy",
+        "restart_policy": "geometric",
+        "restart_first": 2,
+        "restart_growth": 2,
+        "phase_policy": "saved",
+        "compact_policy": "lazy"
+    }]
+    append of [copy_policies, {
         "name": "luby-negative-tight",
         "restart_policy": "luby",
         "restart_first": 1,
         "restart_growth": 2,
         "phase_policy": "negative"
+    }]
+    append of [copy_policies, {
+        "name": "luby-negative-tight-lazy",
+        "restart_policy": "luby",
+        "restart_first": 1,
+        "restart_growth": 2,
+        "phase_policy": "negative",
+        "compact_policy": "lazy"
     }]
     return copy_policies
 
@@ -565,6 +581,8 @@ define run_copy_benchmarks(size) as:
                 "restart_growth": copy_policy.restart_growth,
                 "phase_policy": copy_policy.phase_policy
             }
+            if (has_key of [copy_policy, "compact_policy"]) != 0:
+                copy_options.compact_policy is copy_policy.compact_policy
 
             copy_t0 is monotonic_ns of null
             copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, copy_options]

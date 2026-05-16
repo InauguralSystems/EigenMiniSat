@@ -59,7 +59,9 @@ per-policy counters plus per-case decision/conflict/restart ranges.
 polarity policies, then reports store-to-list copy, store-native analysis scan,
 remaining analysis rebuild, deferred compaction, targeted watch detaching, and
 direct compaction-copy counters for deciding whether clause references should
-stay local or become an EigenScript root primitive.
+stay local or become an EigenScript root primitive. It includes lazy
+no-physical-compaction variants beside the default deferred policy so larger
+cases can expose the copy/rebuild tradeoff directly.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
@@ -121,6 +123,7 @@ Current:
   compaction over the solver-local clause-store adapter
 - store-native CDCL conflict analysis over clause references
 - deferred CDCL clause-store compaction with targeted watch detaching
+- lazy CDCL compaction policy for no-physical-compaction benchmark comparisons
 - clause-store copy/native-scan/rebuild counters for conflict analysis and
   direct compaction-copy pressure
 - synthetic learnt metadata compaction and churn benchmark pressure
@@ -140,7 +143,8 @@ Next:
 
 - larger heuristic and copy-pressure stress cases
 - use deferred compaction counters to decide whether targeted watch-detach
-  pressure belongs in EigenMiniSat, a library, or EigenScript root
+  pressure and physical compaction pressure belong in EigenMiniSat, a library,
+  or EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
 ## EigenScript Pressure
@@ -160,6 +164,7 @@ This repo is expected to stress:
 - conflict-heavy copy pressure across tight restart and polarity policies
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and targeted watch-detach overhead
+- no-physical-compaction comparison pressure
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
 - CDCL clause-store propagation and conflict-analysis access patterns
