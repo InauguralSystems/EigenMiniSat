@@ -303,6 +303,144 @@ define run_phase_benchmarks(size) as:
         print of f"phase negative {c.name}: status={negative.status} vars={c.nvars} clauses={len of c.clauses} decisions={negative.decisions} propagations={negative.propagations} conflicts={negative.conflicts} learnts={negative.learnts} restarts={negative.restarts} phase_saves={negative.phase_saves} phase_flips={negative.phase_flips} phase_pos={negative.phase_pos_decisions} phase_neg={negative.phase_neg_decisions} ms={nms}"
     return len of cases
 
+define storage_pressure_cases(size) as:
+    if size < 1:
+        size is 1
+    cases is []
+    append of [cases, wide_clause_case of [40 * size, 12, 20 * size]]
+    append of [cases, pigeonhole_case of [size + 3, size + 2]]
+    append of [cases, grid_implication_case of [size + 5, size + 5, 1]]
+    append of [cases, chain_case of [80 * size, 1]]
+    return cases
+
+define flat_clause_arena(clauses) as:
+    arena_offsets is []
+    arena_sizes is []
+    arena_lits is []
+    for clause in clauses:
+        append of [arena_offsets, len of arena_lits]
+        append of [arena_sizes, len of clause]
+        for lit in clause:
+            append of [arena_lits, lit]
+    return {
+        "offsets": arena_offsets,
+        "sizes": arena_sizes,
+        "lits": arena_lits
+    }
+
+define clause_checksum_value(lit, pos) as:
+    return ((lit_encode of lit) + 1) * pos
+
+define clause_list_summary(clauses) as:
+    lit_count is 0
+    checksum is 0
+    pos is 1
+    for clause in clauses:
+        for lit in clause:
+            lit_count += 1
+            checksum += clause_checksum_value of [lit, pos]
+            pos += 1
+    return {
+        "lits": lit_count,
+        "checksum": checksum
+    }
+
+define flat_clause_summary(arena) as:
+    checksum is 0
+    pos is 1
+    for lit in arena.lits:
+        checksum += clause_checksum_value of [lit, pos]
+        pos += 1
+    return {
+        "lits": len of arena.lits,
+        "checksum": checksum
+    }
+
+define flat_clause_at(arena, ci) as:
+    out is []
+    start is arena.offsets[ci]
+    size is arena.sizes[ci]
+    for i in range of size:
+        append of [out, arena.lits[start + i]]
+    return out
+
+define reconstruct_flat_clauses(arena) as:
+    out is []
+    for ci in range of (len of arena.offsets):
+        append of [out, flat_clause_at of [arena, ci]]
+    return out
+
+define assert_clauses_match(label, left, right) as:
+    assert of [(len of left) == (len of right), f"{label}: clause count mismatch"]
+    for ci in range of (len of left):
+        lc is left[ci]
+        rc is right[ci]
+        assert of [(len of lc) == (len of rc), f"{label}: clause length mismatch"]
+        for li in range of (len of lc):
+            assert of [lc[li] == rc[li], f"{label}: literal mismatch"]
+    return 1
+
+define flat_watch_seed_summary(nvars, arena) as:
+    watches is make_watch_table of nvars
+    links is 0
+    for ci in range of (len of arena.offsets):
+        start is arena.offsets[ci]
+        size is arena.sizes[ci]
+        if size > 0:
+            watch_add of [watches, arena.lits[start], ci]
+            links += 1
+            if size > 1:
+                watch_add of [watches, arena.lits[start + 1], ci]
+                links += 1
+
+    occupied is 0
+    max_bucket is 0
+    for bucket in watches:
+        bucket_size is len of bucket
+        if bucket_size > 0:
+            occupied += 1
+        if bucket_size > max_bucket:
+            max_bucket is bucket_size
+    return {
+        "links": links,
+        "occupied": occupied,
+        "max_bucket": max_bucket
+    }
+
+define run_storage_benchmarks(size) as:
+    cases is storage_pressure_cases of size
+    for c in cases:
+        list_t0 is monotonic_ns of null
+        list_summary is clause_list_summary of c.clauses
+        list_t1 is monotonic_ns of null
+        list_ms is (list_t1 - list_t0) / 1000000
+
+        build_t0 is monotonic_ns of null
+        arena is flat_clause_arena of c.clauses
+        build_t1 is monotonic_ns of null
+        build_ms is (build_t1 - build_t0) / 1000000
+
+        flat_t0 is monotonic_ns of null
+        flat_summary is flat_clause_summary of arena
+        flat_t1 is monotonic_ns of null
+        flat_ms is (flat_t1 - flat_t0) / 1000000
+
+        watch_t0 is monotonic_ns of null
+        watch_summary is flat_watch_seed_summary of [c.nvars, arena]
+        watch_t1 is monotonic_ns of null
+        watch_ms is (watch_t1 - watch_t0) / 1000000
+
+        rebuild_t0 is monotonic_ns of null
+        rebuilt is reconstruct_flat_clauses of arena
+        rebuild_t1 is monotonic_ns of null
+        rebuild_ms is (rebuild_t1 - rebuild_t0) / 1000000
+
+        assert of [list_summary.lits == flat_summary.lits, f"storage lit count mismatch {c.name}"]
+        assert of [list_summary.checksum == flat_summary.checksum, f"storage checksum mismatch {c.name}"]
+        assert_clauses_match of [f"storage rebuild {c.name}", c.clauses, rebuilt]
+        print of f"storage arena {c.name}: vars={c.nvars} clauses={len of c.clauses} lits={list_summary.lits} flat_lits={len of arena.lits} offsets={len of arena.offsets} list_scan_ms={list_ms} build_ms={build_ms} flat_scan_ms={flat_ms} watch_seed_ms={watch_ms} reconstruct_ms={rebuild_ms} watch_links={watch_summary.links} watch_buckets={watch_summary.occupied} max_watch_bucket={watch_summary.max_bucket} checksum={flat_summary.checksum}"
+    return len of cases
+
 define metadata_pressure_config(size) as:
     if size < 1:
         size is 1
