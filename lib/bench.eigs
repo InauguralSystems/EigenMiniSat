@@ -140,6 +140,38 @@ define large_fixture_cases(size) as:
     append of [cases, wide_clause_case of [24 * size, 8, 10 * size]]
     return cases
 
+define external_corpus_cases() as:
+    cases is []
+    append of [cases, {
+        "name": "multiline-sat",
+        "path": "tests/corpus/multiline_sat.cnf",
+        "expected": "SAT",
+        "nvars": 4,
+        "nclauses": 4
+    }]
+    append of [cases, {
+        "name": "multi-clause-line-unsat",
+        "path": "tests/corpus/multi_clause_line_unsat.cnf",
+        "expected": "UNSAT",
+        "nvars": 2,
+        "nclauses": 4
+    }]
+    append of [cases, {
+        "name": "triangle-3color-sat",
+        "path": "tests/corpus/triangle_3color_sat.cnf",
+        "expected": "SAT",
+        "nvars": 9,
+        "nclauses": 21
+    }]
+    append of [cases, {
+        "name": "k4-3color-unsat",
+        "path": "tests/corpus/k4_3color_unsat.cnf",
+        "expected": "UNSAT",
+        "nvars": 12,
+        "nclauses": 34
+    }]
+    return cases
+
 define case_to_dimacs_text(c) as:
     text is f"c generated {c.name}\n"
     text is text + f"p cnf {c.nvars} {len of c.clauses}\n"
@@ -227,4 +259,29 @@ define run_file_benchmarks(size) as:
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
         print of f"file cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+    return len of cases
+
+define run_corpus_benchmarks() as:
+    cases is external_corpus_cases of null
+    for c in cases:
+        assert of [(file_exists of c.path) == 1, f"missing corpus file {c.path}"]
+
+        pt0 is monotonic_ns of null
+        parsed is parse_dimacs_file of c.path
+        pt1 is monotonic_ns of null
+        pms is (pt1 - pt0) / 1000000
+        assert of [parsed.nvars == c.nvars, f"corpus var mismatch {c.name}"]
+        assert of [(len of parsed.clauses) == c.nclauses, f"corpus clause mismatch {c.name}"]
+        assert of [parsed.declared_vars == c.nvars, f"corpus declared var mismatch {c.name}"]
+        assert of [parsed.declared_clauses == c.nclauses, f"corpus declared clause mismatch {c.name}"]
+        print of f"corpus parse {c.name}: path={c.path} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ms={pms}"
+
+        ct0 is monotonic_ns of null
+        cdcl is solve_cnf_cdcl of [parsed.nvars, parsed.clauses]
+        ct1 is monotonic_ns of null
+        cms is (ct1 - ct0) / 1000000
+        assert of [cdcl.status == c.expected, f"corpus status mismatch {c.name}"]
+        if cdcl.status == "SAT":
+            assert of [model_satisfies of [parsed.nvars, parsed.clauses, cdcl.model], f"corpus model mismatch {c.name}"]
+        print of f"corpus cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases

@@ -21,6 +21,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench
 tests/run_smoke.sh
 ```
 
@@ -38,6 +39,8 @@ text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
+`--corpus-bench` parses checked-in DIMACS files with comments, multiline
+clauses, multi-clause lines, and small graph-coloring SAT/UNSAT instances.
 
 ## Scope
 
@@ -54,6 +57,7 @@ Current:
 - eager deleted-clause compaction with reason remapping and watch rebuild/replay
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
+- checked-in DIMACS corpus fixtures for real file-shape coverage
 - fixture correctness tests
 - generated benchmark families
 
@@ -77,3 +81,4 @@ This repo is expected to stress:
 - clause compaction and watch rebuild/replay overhead
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
+- parser robustness across checked-in DIMACS formatting variants
