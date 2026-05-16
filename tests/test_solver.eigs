@@ -130,6 +130,17 @@ assert_clauses_match of ["storage arena rebuild", storage_case.clauses, storage_
 storage_watch_summary is flat_watch_seed_summary of [storage_case.nvars, storage_arena]
 assert_true of ["storage arena watch links", storage_watch_summary.links > 0]
 assert_true of ["storage arena watch buckets", storage_watch_summary.occupied > 0]
+storage_delete is storage_delete_mask of (len of storage_case.clauses)
+storage_list_compact is compact_list_clauses_by_mask of [storage_case.clauses, storage_delete.mask]
+storage_flat_compact is compact_flat_clause_arena of [storage_arena, storage_delete.mask]
+assert_eq of ["storage compact removed", storage_flat_compact.removed, storage_list_compact.removed]
+assert_eq of ["storage compact kept", storage_flat_compact.kept, storage_list_compact.kept]
+storage_compact_rebuilt is reconstruct_flat_clauses of storage_flat_compact
+assert_clauses_match of ["storage compact rebuild", storage_list_compact.clauses, storage_compact_rebuilt]
+storage_refs is storage_reason_refs of (len of storage_case.clauses)
+storage_remapped_refs is remap_reason_refs of [storage_flat_compact.mapping, storage_refs]
+storage_ref_summary is ref_list_summary of storage_remapped_refs
+assert_true of ["storage remap refs", storage_ref_summary.active > 0]
 print of "  flat clause arena helpers: ok"
 
 simple is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"

@@ -48,7 +48,8 @@ negative polarity on the same generated cases, reporting phase save/flip and
 positive/negative decision counters.
 `--storage-bench` builds a flat clause arena beside the existing list-of-lists
 representation and compares list scanning, arena build, flat scanning, watch
-seeding, and reconstruction costs.
+seeding, reconstruction, deletion compaction, and reason-reference remapping
+costs.
 `--metadata-bench` builds synthetic learnt-clause pressure, runs database
 reduction, compacts deleted clauses, and reports allocation, deletion, watch
 rebuild, and trail replay counters without needing a larger external CNF.
@@ -122,7 +123,7 @@ This repo is expected to stress:
 - restart cancellation and phase-saving churn across repeated backtracking
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
 - clause compaction and watch rebuild/replay overhead
-- flat clause arena build/scan/reconstruct/watch-seeding pressure
+- flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - synthetic learnt-clause allocation, deletion, and compaction pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
