@@ -119,6 +119,15 @@ to keep runs self-contained while collecting that evidence. The adapter
 preserves signed DIMACS literals at the boundary and should prove whether arena
 references simplify conflict analysis and database reduction.
 
+Current evidence checkpoint: `benchmarks/run_trends.sh evidence 2` shows the
+larger pigeonhole and graph-coloring cases crossing the physical-compaction
+threshold. The summarized copy deltas report 3820 avoided compaction-copy
+literals, 8 avoided watch rebuilds, and 146 avoided trail replays under lazy
+compaction, while also adding 498 pending deleted clauses and 780 watch-detach
+scans. That keeps both `physical_compaction_pressure` and `lazy_debt_pressure`
+active; this is still evidence for a solver/storage decision, not yet a root
+EigenScript arena request.
+
 ### Bitwise Integer Operations
 
 Classification: root runtime candidate, lower priority.
