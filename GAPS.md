@@ -6,6 +6,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 ## Open Watchlist
 
 - Hot function-call overhead in propagation loops.
+- DIMACS parser throughput is now measured with generated text fixtures. The
+  current path builds strings by repeated concatenation and tokenizes each line
+  through split/trim/num conversion, so larger fixtures should tell us whether
+  EigenScript needs string-builder or streaming-tokenizer support.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Priority queue / binary heap as a standard library candidate.
