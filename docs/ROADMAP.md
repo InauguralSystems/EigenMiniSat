@@ -45,7 +45,10 @@ activity array and binary heap/order structure. A flat clause arena benchmark
 now measures list scanning, arena build, flat scanning, watch seeding, and
 reconstruction. It also measures deleted-clause compaction and synthetic reason
 reference remapping before committing to a solver storage rewrite or root
-compact vector support.
+compact vector support. A solver-local clause-store adapter now wraps the flat
+arena with clause length/literal lookup, reconstruction, CDCL-style watch
+seeding, and deletion-compaction mapping so real propagation can move behind
+that API before asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -67,10 +70,10 @@ and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
 allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
-and repeated reason remapping. The next target is an EigenMiniSat-local clause
-storage prototype before promoting arena/reference support to EigenScript root,
-plus scanner token-span pressure and a larger third-party CNF corpus beyond the
-checked-in manifest fixtures.
+and repeated reason remapping. The next target is migrating CDCL propagation
+and conflict analysis onto the clause-store adapter, plus scanner token-span
+pressure and a larger third-party CNF corpus beyond the checked-in manifest
+fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
@@ -84,5 +87,5 @@ Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
 ledger. Local-only binding and diagnostic token spans are root/runtime
 candidates, string builders and priority queues are standard-library
 candidates, compact integer vectors are still root-vs-stdlib pressure, and
-clause arenas should be prototyped locally in EigenMiniSat before asking for a
+clause arenas are being prototyped locally in EigenMiniSat before asking for a
 root primitive.

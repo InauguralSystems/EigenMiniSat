@@ -198,6 +198,110 @@ define watch_add(watches, lit, clause_index) as:
     append of [watches[idx], clause_index]
     return null
 
+define clause_store_empty() as:
+    return {
+        "offsets": [],
+        "sizes": [],
+        "lits": []
+    }
+
+define clause_store_add_clause(store, clause) as:
+    ci is len of store.offsets
+    append of [store.offsets, len of store.lits]
+    append of [store.sizes, len of clause]
+    for lit in clause:
+        append of [store.lits, lit]
+    return ci
+
+define clause_store_from_clauses(clauses) as:
+    store is clause_store_empty of null
+    for clause in clauses:
+        clause_store_add_clause of [store, clause]
+    return store
+
+define clause_store_len(store) as:
+    return len of store.offsets
+
+define clause_store_size(store, ci) as:
+    return store.sizes[ci]
+
+define clause_store_lit(store, ci, pos) as:
+    return store.lits[(store.offsets[ci]) + pos]
+
+define clause_store_clause(store, ci) as:
+    out is []
+    size is clause_store_size of [store, ci]
+    for pos in range of size:
+        append of [out, clause_store_lit of [store, ci, pos]]
+    return out
+
+define clause_store_reconstruct(store) as:
+    out is []
+    for ci in range of (clause_store_len of store):
+        append of [out, clause_store_clause of [store, ci]]
+    return out
+
+define watch_table_summary(watches) as:
+    occupied is 0
+    max_bucket is 0
+    for bucket in watches:
+        bucket_size is len of bucket
+        if bucket_size > 0:
+            occupied += 1
+        if bucket_size > max_bucket:
+            max_bucket is bucket_size
+    return {
+        "occupied": occupied,
+        "max_bucket": max_bucket
+    }
+
+define clause_store_seed_watches(nvars, store) as:
+    watches is make_watch_table of nvars
+    watch_a is []
+    watch_b is []
+    links is 0
+    for ci in range of (clause_store_len of store):
+        size is clause_store_size of [store, ci]
+        if size == 0:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif size == 1:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        else:
+            append of [watch_a, 0]
+            append of [watch_b, 1]
+            watch_add of [watches, clause_store_lit of [store, ci, 0], ci]
+            watch_add of [watches, clause_store_lit of [store, ci, 1], ci]
+            links += 2
+
+    summary is watch_table_summary of watches
+    return {
+        "watches": watches,
+        "watch_a": watch_a,
+        "watch_b": watch_b,
+        "links": links,
+        "occupied": summary.occupied,
+        "max_bucket": summary.max_bucket
+    }
+
+define clause_store_compact_by_mask(store, delete_mask) as:
+    compact is clause_store_empty of null
+    mapping is []
+    removed is 0
+    for ci in range of (clause_store_len of store):
+        if delete_mask[ci] == 0:
+            append of [mapping, clause_store_len of compact]
+            clause_store_add_clause of [compact, clause_store_clause of [store, ci]]
+        else:
+            append of [mapping, -1]
+            removed += 1
+
+    compact.mapping is mapping
+    compact.removed is removed
+    compact.kept is clause_store_len of compact
+    return compact
+
 define enqueue_watched(asg, trail, lit, stats, count_propagation) as:
     v is lit_abs of lit
     wanted is 1

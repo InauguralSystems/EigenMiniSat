@@ -161,21 +161,38 @@ storage_case is wide_clause_case of [8, 4, 5]
 storage_arena is flat_clause_arena of storage_case.clauses
 storage_list_summary is clause_list_summary of storage_case.clauses
 storage_flat_summary is flat_clause_summary of storage_arena
+storage_adapter_summary is clause_store_adapter_summary of storage_arena
 assert_eq of ["storage arena offsets", len of storage_arena.offsets, len of storage_case.clauses]
 assert_eq of ["storage arena lits", storage_flat_summary.lits, storage_list_summary.lits]
 assert_eq of ["storage arena checksum", storage_flat_summary.checksum, storage_list_summary.checksum]
+assert_eq of ["storage adapter len", clause_store_len of storage_arena, len of storage_case.clauses]
+assert_eq of ["storage adapter size", clause_store_size of [storage_arena, 0], len of storage_case.clauses[0]]
+assert_eq of ["storage adapter first lit", clause_store_lit of [storage_arena, 0, 0], storage_case.clauses[0][0]]
+assert_eq of ["storage adapter lits", storage_adapter_summary.lits, storage_list_summary.lits]
+assert_eq of ["storage adapter checksum", storage_adapter_summary.checksum, storage_list_summary.checksum]
 storage_rebuilt is reconstruct_flat_clauses of storage_arena
 assert_clauses_match of ["storage arena rebuild", storage_case.clauses, storage_rebuilt]
+storage_adapter_rebuilt is clause_store_reconstruct of storage_arena
+assert_clauses_match of ["storage adapter rebuild", storage_case.clauses, storage_adapter_rebuilt]
 storage_watch_summary is flat_watch_seed_summary of [storage_case.nvars, storage_arena]
 assert_true of ["storage arena watch links", storage_watch_summary.links > 0]
 assert_true of ["storage arena watch buckets", storage_watch_summary.occupied > 0]
+storage_adapter_watch is clause_store_seed_watches of [storage_case.nvars, storage_arena]
+assert_eq of ["storage adapter watch links", storage_adapter_watch.links, storage_watch_summary.links]
+assert_eq of ["storage adapter watch a", len of storage_adapter_watch.watch_a, len of storage_case.clauses]
+assert_eq of ["storage adapter watch b", len of storage_adapter_watch.watch_b, len of storage_case.clauses]
 storage_delete is storage_delete_mask of (len of storage_case.clauses)
 storage_list_compact is compact_list_clauses_by_mask of [storage_case.clauses, storage_delete.mask]
 storage_flat_compact is compact_flat_clause_arena of [storage_arena, storage_delete.mask]
+storage_adapter_compact is clause_store_compact_by_mask of [storage_arena, storage_delete.mask]
 assert_eq of ["storage compact removed", storage_flat_compact.removed, storage_list_compact.removed]
 assert_eq of ["storage compact kept", storage_flat_compact.kept, storage_list_compact.kept]
+assert_eq of ["storage adapter compact removed", storage_adapter_compact.removed, storage_list_compact.removed]
+assert_eq of ["storage adapter compact kept", storage_adapter_compact.kept, storage_list_compact.kept]
 storage_compact_rebuilt is reconstruct_flat_clauses of storage_flat_compact
 assert_clauses_match of ["storage compact rebuild", storage_list_compact.clauses, storage_compact_rebuilt]
+storage_adapter_compact_rebuilt is clause_store_reconstruct of storage_adapter_compact
+assert_clauses_match of ["storage adapter compact rebuild", storage_list_compact.clauses, storage_adapter_compact_rebuilt]
 storage_refs is storage_reason_refs of (len of storage_case.clauses)
 storage_remapped_refs is remap_reason_refs of [storage_flat_compact.mapping, storage_refs]
 storage_ref_summary is ref_list_summary of storage_remapped_refs
