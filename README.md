@@ -26,6 +26,7 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
+/home/jon/EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 /home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 tests/run_smoke.sh
@@ -67,6 +68,10 @@ and a C-backed integer-token fast path built on EigenScript `scan_ints`. The
 `scan_ints` path is intentionally for validated DIMACS-style input and
 benchmark pressure; the split/trim and character scanners remain the diagnostic
 parsers for malformed token/header reporting.
+`--diagnostic-bench` feeds malformed DIMACS text into the split/trim and
+character-scanning diagnostic parsers and reports error counts, diagnostic text
+lengths, and checksums. The C-backed `scan_ints` path is deliberately omitted
+because it is a fast validated-input path, not a full diagnostic parser.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
@@ -104,6 +109,7 @@ Current:
 - lightweight trend runner for repeatable pressure snapshots
 - DIMACS parser diagnostics for header/count/token problems
 - character-scanning DIMACS parser comparison path
+- malformed DIMACS diagnostic benchmark pressure
 - C-backed `scan_ints` DIMACS parser comparison path
 - fixture correctness tests
 - generated benchmark families
@@ -139,5 +145,6 @@ This repo is expected to stress:
 - manifest parsing and corpus-family metadata plumbing
 - repeatable trend-log capture without committing machine-local run output
 - parser diagnostic overhead while validating larger CNF input
+- malformed parser diagnostic text allocation and consistency checks
 - character-at-a-time scanner overhead versus split/trim tokenization
 - C-backed integer scan throughput versus EigenScript-side clause assembly

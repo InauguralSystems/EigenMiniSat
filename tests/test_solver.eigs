@@ -316,6 +316,17 @@ assert_dimacs_same of ["missing header scan parser", missing_header, missing_hea
 assert_eq of ["missing header diagnostics", missing_header.ok, 0]
 assert_eq of ["missing header flag", missing_header.header_seen, 0]
 assert_true of ["missing header message", contains of [missing_header.errors[0], "missing problem header"]]
+diagnostic_cases is diagnostic_pressure_cases of 1
+assert_eq of ["diagnostic case count", len of diagnostic_cases, 3]
+diagnostic_bad is parse_dimacs_text of diagnostic_cases[0].text
+diagnostic_bad_scan is parse_dimacs_text_scan of diagnostic_cases[0].text
+assert_dimacs_same of ["diagnostic bad token scan parser", diagnostic_bad, diagnostic_bad_scan]
+assert_eq of ["diagnostic bad token ok", diagnostic_bad.ok, 0]
+assert_true of ["diagnostic bad token errors", diagnostic_bad.error_count > 1]
+diagnostic_summary is diagnostic_error_summary of diagnostic_bad
+assert_eq of ["diagnostic summary errors", diagnostic_summary.errors, diagnostic_bad.error_count]
+assert_true of ["diagnostic summary chars", diagnostic_summary.error_chars > 0]
+assert_true of ["diagnostic summary checksum", diagnostic_summary.checksum > 0]
 print of "  DIMACS parser diagnostics: ok"
 
 manifest_entry is parse_corpus_manifest_line of ["toy|tests/fixtures/simple_sat.cnf|SAT|3|3|fixture", 1]

@@ -36,6 +36,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   pressure is clause assembly from scanned integers and whether a future
   tokenizer should expose token spans/error reporting for full diagnostics
   instead of only numeric extraction.
+- The diagnostic benchmark now feeds malformed DIMACS cases through the
+  split/trim and character-scanning parsers, checking error counts and
+  diagnostic text sizes. This isolates malformed-token/header/count overhead and
+  keeps pressure on whether EigenScript should expose tokenizer spans for
+  diagnostics instead of forcing parser-local string assembly.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - The storage benchmark now builds a flat clause arena from list-of-lists input

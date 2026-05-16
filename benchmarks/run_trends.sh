@@ -62,6 +62,7 @@ run_cmd "$EIGS" minisat.eigs --storage-bench --size "$SIZE"
 
 if [[ "$PROFILE" == "full" ]]; then
     run_cmd "$EIGS" minisat.eigs --parse-bench --size "$SIZE"
+    run_cmd "$EIGS" minisat.eigs --diagnostic-bench --size "$SIZE"
 fi
 
 run_cmd "$EIGS" minisat.eigs --scan-parse-bench --size "$SIZE"

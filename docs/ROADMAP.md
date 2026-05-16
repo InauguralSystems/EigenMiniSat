@@ -21,9 +21,12 @@ A character-scanning parser path now shares the same diagnostics and can be
 benchmarked against the split/trim parser. The benchmark also includes a
 C-backed `scan_ints` parser path on generated fixtures and corpus files to
 measure root scanner throughput separately from EigenScript-side clause
-assembly. A lightweight trend runner now records selected pressure snapshots
-under ignored local logs so parser, corpus, and metadata changes can be
-compared without committing machine-specific output.
+assembly. A malformed-DIMACS diagnostic benchmark now compares split/trim and
+character-scanning diagnostic paths on token/header/count failures while
+intentionally leaving the validated-input `scan_ints` path out of that surface.
+A lightweight trend runner now records selected pressure snapshots under
+ignored local logs so parser, corpus, and metadata changes can be compared
+without committing machine-specific output.
 
 ## Milestone 2: MiniSat Data Structures
 
@@ -66,9 +69,9 @@ pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is using the new storage and
 metadata data to decide between EigenScript root compact vector/arena support
-and an EigenMiniSat-local clause storage rewrite, plus scanner diagnostic/token
-span pressure and a larger third-party CNF corpus beyond the checked-in
-manifest fixtures.
+and an EigenMiniSat-local clause storage rewrite, plus scanner token-span
+pressure and a larger third-party CNF corpus beyond the checked-in manifest
+fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

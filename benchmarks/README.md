@@ -15,6 +15,7 @@ Profiles:
 
 - `quick`: solver tests, metadata compaction/churn, clause storage pressure,
   scan parser comparison, and the manifest corpus benchmark.
-- `full`: solver tests plus every benchmark mode.
+- `full`: solver tests plus every benchmark mode, including malformed-DIMACS
+  diagnostics.
 
 Use `EIGENSCRIPT_BIN=/path/to/eigenscript` to override the interpreter.
