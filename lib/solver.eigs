@@ -576,22 +576,11 @@ define solve_cnf_persistent(nvars, clauses) as:
         "conflicts": stats.conflicts
     }
 
-define clause_has_var(clause, v) as:
-    for lit in clause:
-        if (lit_abs of lit) == v:
-            return 1
-    return 0
-
 define clause_has_lit(clause, lit) as:
     for item in clause:
         if item == lit:
             return 1
     return 0
-
-define append_lit_unique(clause, lit) as:
-    if (clause_has_lit of [clause, lit]) == 0:
-        append of [clause, lit]
-    return null
 
 define order_better(state, a, b) as:
     if state.activity[a] > state.activity[b]:
@@ -1148,46 +1137,24 @@ define cdcl_push_level(state) as:
     append of [state.trail_lim, len of state.trail]
     return len of state.trail_lim
 
-define resolve_on_var_store(current, store, reason_ci, pivot_var, stats) as:
-    out is []
-    for lit in current:
-        if (lit_abs of lit) != pivot_var:
-            append_lit_unique of [out, lit]
-    for pos in range of (clause_store_size of [store, reason_ci]):
-        lit is clause_store_lit of [store, reason_ci, pos]
-        if (lit_abs of lit) != pivot_var:
-            append_lit_unique of [out, lit]
+define analyze_mark_store_clause(store, ci, pivot_var, state, level, seen, learnt_tail, stats) as:
+    current_count is 0
+    size is clause_store_size of [store, ci]
     if stats != null:
-        stats.analysis_rebuilds += 1
-        stats.analysis_rebuild_lits += len of out
-    return out
-
-define count_clause_level(clause, state, level) as:
-    count is 0
-    for lit in clause:
+        stats.analysis_store_scans += 1
+        stats.analysis_store_lits += size
+    for pos in range of size:
+        lit is clause_store_lit of [store, ci, pos]
         v is lit_abs of lit
-        if state.level[v] == level:
-            count += 1
-    return count
-
-define last_reason_var_in_clause(clause, state, level) as:
-    i is (len of state.trail) - 1
-    loop while i >= 0:
-        lit is state.trail[i]
-        v is lit_abs of lit
-        if state.level[v] == level:
-            if state.reason[v] >= 0:
-                if (clause_has_var of [clause, v]) != 0:
-                    return v
-        i -= 1
-    return 0
-
-define choose_assert_lit(clause, state, level) as:
-    for lit in clause:
-        v is lit_abs of lit
-        if state.level[v] == level:
-            return lit
-    return 0
+        if v != pivot_var:
+            if state.level[v] > 0:
+                if seen[v] == 0:
+                    seen[v] is 1
+                    if state.level[v] == level:
+                        current_count += 1
+                    else:
+                        append of [learnt_tail, lit]
+    return current_count
 
 define max_clause_level_except(clause, state, except_lit) as:
     max_level is 0
@@ -1199,30 +1166,51 @@ define max_clause_level_except(clause, state, except_lit) as:
                 max_level is state.level[v]
     return max_level
 
-define move_lit_first(clause, lit) as:
-    if lit == 0:
-        return clause
-    out is [lit]
-    for item in clause:
-        if item != lit:
-            append of [out, item]
-    return out
-
 define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     level is len of state.trail_lim
-    learnt is clause_store_clause_counted of [store, conflict_ci, stats]
+    seen is filled_list of [len of state.level, 0]
+    learnt_tail is []
+    path_count is analyze_mark_store_clause of [store, conflict_ci, 0, state, level, seen, learnt_tail, stats]
+    trail_idx is (len of state.trail) - 1
+    assert_lit is 0
 
-    loop while (count_clause_level of [learnt, state, level]) > 1:
-        pivot is last_reason_var_in_clause of [learnt, state, level]
-        if pivot == 0:
+    loop while path_count > 0:
+        pivot_lit is 0
+        pivot_var is 0
+        loop while trail_idx >= 0:
+            trail_lit is state.trail[trail_idx]
+            trail_idx -= 1
+            trail_var is lit_abs of trail_lit
+            if seen[trail_var] != 0:
+                pivot_lit is trail_lit
+                pivot_var is trail_var
+                break
+
+        if pivot_var == 0:
             break
-        reason_ci is state.reason[pivot]
-        learnt is resolve_on_var_store of [learnt, store, reason_ci, pivot, stats]
+
+        seen[pivot_var] is 0
+        path_count -= 1
+        if path_count == 0:
+            assert_lit is 0 - pivot_lit
+            break
+
+        reason_ci is state.reason[pivot_var]
+        if reason_ci < 0:
+            assert_lit is 0 - pivot_lit
+            break
+
+        path_count += analyze_mark_store_clause of [store, reason_ci, pivot_var, state, level, seen, learnt_tail, stats]
         stats.resolutions += 1
 
-    assert_lit is choose_assert_lit of [learnt, state, level]
-    learnt is move_lit_first of [learnt, assert_lit]
+    learnt is []
+    if assert_lit != 0:
+        append of [learnt, assert_lit]
+    for lit in learnt_tail:
+        append of [learnt, lit]
     backtrack is max_clause_level_except of [learnt, state, assert_lit]
+    if stats != null:
+        stats.analysis_native_learnts += 1
     return {
         "clause": learnt,
         "assert_lit": assert_lit,
@@ -1280,6 +1268,9 @@ define cdcl_result(status, model, stats, state) as:
         "store_clause_copy_lits": stats.store_clause_copy_lits,
         "analysis_rebuilds": stats.analysis_rebuilds,
         "analysis_rebuild_lits": stats.analysis_rebuild_lits,
+        "analysis_store_scans": stats.analysis_store_scans,
+        "analysis_store_lits": stats.analysis_store_lits,
+        "analysis_native_learnts": stats.analysis_native_learnts,
         "clause_activity_bumps": stats.clause_activity_bumps,
         "clause_activity_decays": stats.clause_activity_decays,
         "reduce_runs": stats.reduce_runs,
@@ -1327,6 +1318,9 @@ define cdcl_empty_stats() as:
         "store_clause_copy_lits": 0,
         "analysis_rebuilds": 0,
         "analysis_rebuild_lits": 0,
+        "analysis_store_scans": 0,
+        "analysis_store_lits": 0,
+        "analysis_native_learnts": 0,
         "clause_activity_bumps": 0,
         "clause_activity_decays": 0,
         "reduce_runs": 0,

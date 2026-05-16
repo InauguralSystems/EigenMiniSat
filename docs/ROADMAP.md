@@ -50,10 +50,10 @@ arena with clause length/literal lookup, reconstruction, CDCL-style watch
 seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
-reports store-to-list copies, conflict-analysis rebuild literals, and
-compaction-copy literals. A focused copy-pressure benchmark now runs
-conflict-heavy generated cases under tight restart and polarity policies before
-asking EigenScript for root arena support.
+reports store-to-list copies, store-native conflict-analysis scans, remaining
+analysis rebuild literals, and compaction-copy literals. A focused
+copy-pressure benchmark now runs conflict-heavy generated cases under tight
+restart and polarity policies before asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -76,10 +76,11 @@ allocation, database reduction, compaction, watch rebuild, and trail replay
 pressure without requiring a larger CNF corpus. It also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-clause-store reconstruction/copy counters across larger conflict cases, then
-prototyping a store-native learnt builder only if conflict-analysis rebuild
-literals remain hot, plus scanner token-span pressure and a larger third-party
-CNF corpus beyond the checked-in manifest fixtures.
+clause-store reconstruction/copy counters across larger conflict cases after
+store-native conflict analysis, then deciding whether compaction-copy pressure
+belongs in EigenMiniSat, a reusable library, or EigenScript root, plus scanner
+token-span pressure and a larger third-party CNF corpus beyond the checked-in
+manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 

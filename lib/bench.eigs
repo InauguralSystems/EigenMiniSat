@@ -434,7 +434,7 @@ define run_benchmarks(size) as:
         cdcl is solve_cnf_cdcl of [c.nvars, c.clauses]
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
-        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} learnt_lits={cdcl.learnt_literals} store_copies={cdcl.store_clause_copies} store_copy_lits={cdcl.store_clause_copy_lits} analysis_rebuilds={cdcl.analysis_rebuilds} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} clause_bumps={cdcl.clause_activity_bumps} clause_decays={cdcl.clause_activity_decays} reduce_runs={cdcl.reduce_runs} reduce_scans={cdcl.reduce_scans} learnt_deleted={cdcl.learnt_deleted} locked_kept={cdcl.learnt_kept_locked} deleted_watch_skips={cdcl.deleted_watch_skips} active_learnts={cdcl.active_learnts} compact_runs={cdcl.compact_runs} compact_removed={cdcl.compact_removed} compact_kept={cdcl.compact_kept} compact_clause_copies={cdcl.compact_clause_copies} compact_clause_lits={cdcl.compact_clause_lits} watch_rebuilds={cdcl.watch_rebuilds} compact_replays={cdcl.compact_replays} restarts={cdcl.restarts} restart_cancels={cdcl.restart_cancels} restart_budget={cdcl.restart_budget} phase_saves={cdcl.phase_saves} phase_flips={cdcl.phase_flips} phase_pos={cdcl.phase_pos_decisions} phase_neg={cdcl.phase_neg_decisions} ms={cms}"
+        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} learnt_lits={cdcl.learnt_literals} store_copies={cdcl.store_clause_copies} store_copy_lits={cdcl.store_clause_copy_lits} analysis_rebuilds={cdcl.analysis_rebuilds} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_scans={cdcl.analysis_store_scans} analysis_store_lits={cdcl.analysis_store_lits} analysis_native_learnts={cdcl.analysis_native_learnts} clause_bumps={cdcl.clause_activity_bumps} clause_decays={cdcl.clause_activity_decays} reduce_runs={cdcl.reduce_runs} reduce_scans={cdcl.reduce_scans} learnt_deleted={cdcl.learnt_deleted} locked_kept={cdcl.learnt_kept_locked} deleted_watch_skips={cdcl.deleted_watch_skips} active_learnts={cdcl.active_learnts} compact_runs={cdcl.compact_runs} compact_removed={cdcl.compact_removed} compact_kept={cdcl.compact_kept} compact_clause_copies={cdcl.compact_clause_copies} compact_clause_lits={cdcl.compact_clause_lits} watch_rebuilds={cdcl.watch_rebuilds} compact_replays={cdcl.compact_replays} restarts={cdcl.restarts} restart_cancels={cdcl.restart_cancels} restart_budget={cdcl.restart_budget} phase_saves={cdcl.phase_saves} phase_flips={cdcl.phase_flips} phase_pos={cdcl.phase_pos_decisions} phase_neg={cdcl.phase_neg_decisions} ms={cms}"
     return len of cases
 
 define run_restart_benchmarks(size) as:
@@ -535,7 +535,7 @@ define run_heuristic_benchmarks(size) as:
             if heuristic_result.compact_runs > heuristic_max_compacts:
                 heuristic_max_compacts is heuristic_result.compact_runs
 
-            print of f"heuristic {heuristic_policy.name} {heuristic_case.name}: status={heuristic_result.status} vars={heuristic_case.nvars} clauses={len of heuristic_case.clauses} decisions={heuristic_result.decisions} propagations={heuristic_result.propagations} conflicts={heuristic_result.conflicts} learnts={heuristic_result.learnts} restarts={heuristic_result.restarts} restart_budget={heuristic_result.restart_budget} restart_index={heuristic_result.restart_index} phase_saves={heuristic_result.phase_saves} phase_flips={heuristic_result.phase_flips} phase_pos={heuristic_result.phase_pos_decisions} phase_neg={heuristic_result.phase_neg_decisions} heap_pops={heuristic_result.order_pops} heap_inserts={heuristic_result.order_inserts} store_copies={heuristic_result.store_clause_copies} analysis_rebuild_lits={heuristic_result.analysis_rebuild_lits} compact_runs={heuristic_result.compact_runs} compact_removed={heuristic_result.compact_removed} compact_clause_lits={heuristic_result.compact_clause_lits} ms={hms}"
+            print of f"heuristic {heuristic_policy.name} {heuristic_case.name}: status={heuristic_result.status} vars={heuristic_case.nvars} clauses={len of heuristic_case.clauses} decisions={heuristic_result.decisions} propagations={heuristic_result.propagations} conflicts={heuristic_result.conflicts} learnts={heuristic_result.learnts} restarts={heuristic_result.restarts} restart_budget={heuristic_result.restart_budget} restart_index={heuristic_result.restart_index} phase_saves={heuristic_result.phase_saves} phase_flips={heuristic_result.phase_flips} phase_pos={heuristic_result.phase_pos_decisions} phase_neg={heuristic_result.phase_neg_decisions} heap_pops={heuristic_result.order_pops} heap_inserts={heuristic_result.order_inserts} store_copies={heuristic_result.store_clause_copies} analysis_rebuild_lits={heuristic_result.analysis_rebuild_lits} analysis_store_lits={heuristic_result.analysis_store_lits} analysis_native_learnts={heuristic_result.analysis_native_learnts} compact_runs={heuristic_result.compact_runs} compact_removed={heuristic_result.compact_removed} compact_clause_lits={heuristic_result.compact_clause_lits} ms={hms}"
 
         print of f"heuristic summary {heuristic_case.name}: policies={len of heuristic_policies_to_run} status={heuristic_expected_status} min_decisions={heuristic_min_decisions} max_decisions={heuristic_max_decisions} min_conflicts={heuristic_min_conflicts} max_conflicts={heuristic_max_conflicts} max_restarts={heuristic_max_restarts} max_compact_runs={heuristic_max_compacts}"
     return len of heuristic_cases_to_run
@@ -546,7 +546,7 @@ define run_copy_benchmarks(size) as:
     for copy_case in copy_cases_to_run:
         copy_max_conflicts is 0
         copy_max_store_lits is 0
-        copy_max_analysis_lits is 0
+        copy_max_analysis_store_lits is 0
         copy_max_compact_lits is 0
         copy_max_compacts is 0
         copy_policy_runs is 0
@@ -569,23 +569,25 @@ define run_copy_benchmarks(size) as:
                 assert of [model_satisfies of [copy_case.nvars, copy_case.clauses, copy_result.model], f"copy pressure model mismatch {copy_case.name} {copy_policy.name}"]
             else:
                 assert of [copy_result.conflicts > 0, f"copy pressure no conflicts {copy_case.name} {copy_policy.name}"]
-                assert of [copy_result.analysis_rebuild_lits > 0, f"copy pressure no analysis rebuilds {copy_case.name} {copy_policy.name}"]
+                assert of [copy_result.analysis_rebuild_lits == 0, f"copy pressure still rebuilt analysis lists {copy_case.name} {copy_policy.name}"]
+                assert of [copy_result.analysis_store_lits > 0, f"copy pressure no native analysis scan {copy_case.name} {copy_policy.name}"]
+                assert of [copy_result.analysis_native_learnts > 0, f"copy pressure no native learnts {copy_case.name} {copy_policy.name}"]
 
             if copy_result.conflicts > copy_max_conflicts:
                 copy_max_conflicts is copy_result.conflicts
             if copy_result.store_clause_copy_lits > copy_max_store_lits:
                 copy_max_store_lits is copy_result.store_clause_copy_lits
-            if copy_result.analysis_rebuild_lits > copy_max_analysis_lits:
-                copy_max_analysis_lits is copy_result.analysis_rebuild_lits
+            if copy_result.analysis_store_lits > copy_max_analysis_store_lits:
+                copy_max_analysis_store_lits is copy_result.analysis_store_lits
             if copy_result.compact_clause_lits > copy_max_compact_lits:
                 copy_max_compact_lits is copy_result.compact_clause_lits
             if copy_result.compact_runs > copy_max_compacts:
                 copy_max_compacts is copy_result.compact_runs
             copy_policy_runs += 1
 
-            print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} active_learnts={copy_result.active_learnts} ms={copy_ms}"
+            print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} analysis_store_scans={copy_result.analysis_store_scans} analysis_store_lits={copy_result.analysis_store_lits} analysis_native_learnts={copy_result.analysis_native_learnts} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} active_learnts={copy_result.active_learnts} ms={copy_ms}"
 
-        print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_rebuild_lits={copy_max_analysis_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts}"
+        print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_store_lits={copy_max_analysis_store_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts}"
     return len of copy_cases_to_run
 
 define storage_pressure_cases(size) as:
@@ -1196,5 +1198,5 @@ define run_corpus_benchmarks(manifest_path) as:
         assert of [cdcl.status == c.expected, f"corpus status mismatch {c.name}"]
         if cdcl.status == "SAT":
             assert of [model_satisfies of [parsed.nvars, parsed.clauses, cdcl.model], f"corpus model mismatch {c.name}"]
-        print of f"corpus cdcl {c.name}: family={c.family} expected={c.expected} status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} store_copies={cdcl.store_clause_copies} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} compact_clause_lits={cdcl.compact_clause_lits} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} ms={cms}"
+        print of f"corpus cdcl {c.name}: family={c.family} expected={c.expected} status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} store_copies={cdcl.store_clause_copies} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_lits={cdcl.analysis_store_lits} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} compact_clause_lits={cdcl.compact_clause_lits} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} ms={cms}"
     return len of cases

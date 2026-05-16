@@ -91,15 +91,18 @@ compaction, and synthetic reason remapping. Metadata churn also amplifies
 reference remapping, locked-clause scans, watch rebuilds, and trail replay. The
 CDCL path now uses the clause-store adapter for propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction. It also
-reports store-to-list copies, conflict-analysis rebuild literals, and direct
-compaction-copy literals. `--copy-bench` now puts those counters under
-conflict-heavy generated cases with tight restart and polarity policies. The
-evidence is strong that the solver wants clause-reference discipline, but not
-yet strong enough to demand a root arena primitive.
+reports store-to-list copies, store-native conflict-analysis scans, remaining
+analysis rebuild literals, and direct compaction-copy literals. `--copy-bench`
+now puts those counters under conflict-heavy generated cases with tight restart
+and polarity policies. Store-native conflict analysis removes the hot list
+rebuild path locally while keeping the evidence surface for remaining
+compaction-copy pressure. The evidence is strong that the solver wants
+clause-reference discipline, but not yet strong enough to demand a root arena
+primitive.
 
-Next action: grow copy-pressure cases and prototype a store-native learnt
-builder only if conflict-analysis rebuild literals stay hot before asking
-EigenScript for root arena support. The adapter preserves signed DIMACS
+Next action: grow copy-pressure cases and use the native analysis counters to
+decide whether the remaining compaction-copy pressure belongs in EigenMiniSat, a
+reusable library, or EigenScript root. The adapter preserves signed DIMACS
 literals at the boundary and should prove whether arena references simplify
 conflict analysis and database reduction.
 
@@ -117,8 +120,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
 ## Near-Term EigenMiniSat Work
 
 - Keep benchmarks as the evidence surface, not just performance demos.
-- Use `--copy-bench` counters to decide whether learnt construction needs a
-  store-native builder before promoting arena references to root.
+- Use `--copy-bench` counters to decide whether remaining clause-reference
+  pressure should stay local, become a library, or move to root.
 - Expand the checked-in corpus with larger real-shaped CNF cases before relying
   on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local
