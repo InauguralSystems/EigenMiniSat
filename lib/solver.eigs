@@ -139,6 +139,187 @@ define solve_cnf(nvars, clauses) as:
         "conflicts": stats.conflicts
     }
 
+define lit_index(lit) as:
+    v is lit_abs of lit
+    if lit > 0:
+        return v * 2
+    return (v * 2) + 1
+
+define make_watch_table(nvars) as:
+    watches is []
+    for i in range of ((nvars + 1) * 2 + 2):
+        append of [watches, []]
+    return watches
+
+define watch_add(watches, lit, clause_index) as:
+    idx is lit_index of lit
+    append of [watches[idx], clause_index]
+    return null
+
+define enqueue_watched(asg, trail, lit, stats, count_propagation) as:
+    v is lit_abs of lit
+    wanted is 1
+    if lit < 0:
+        wanted is -1
+    if v >= (len of asg):
+        stats.conflicts += 1
+        return 0
+    if asg[v] == 0:
+        asg[v] is wanted
+        append of [trail, lit]
+        if count_propagation != 0:
+            stats.propagations += 1
+        return 1
+    if asg[v] == wanted:
+        return 1
+    stats.conflicts += 1
+    return 0
+
+define seed_trail_from_assignment(nvars, asg, trail) as:
+    for v in range of (nvars + 1):
+        if v > 0:
+            if asg[v] == 1:
+                append of [trail, v]
+            elif asg[v] == -1:
+                append of [trail, 0 - v]
+    return null
+
+define build_watched_state(nvars, clauses, asg, stats) as:
+    watches is make_watch_table of nvars
+    watch_a is []
+    watch_b is []
+    trail is []
+    ok is 1
+
+    seed_trail_from_assignment of [nvars, asg, trail]
+
+    for ci in range of (len of clauses):
+        clause is clauses[ci]
+        if (len of clause) == 0:
+            stats.conflicts += 1
+            ok is 0
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif (len of clause) == 1:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+            if (enqueue_watched of [asg, trail, clause[0], stats, 1]) == 0:
+                ok is 0
+        else:
+            append of [watch_a, 0]
+            append of [watch_b, 1]
+            watch_add of [watches, clause[0], ci]
+            watch_add of [watches, clause[1], ci]
+
+    return {
+        "ok": ok,
+        "watches": watches,
+        "watch_a": watch_a,
+        "watch_b": watch_b,
+        "trail": trail,
+        "qhead": 0
+    }
+
+define run_watched_queue(nvars, clauses, asg, state, stats) as:
+    loop while state.qhead < (len of state.trail):
+        p is state.trail[state.qhead]
+        state.qhead += 1
+        false_lit is 0 - p
+        wi is lit_index of false_lit
+        old is state.watches[wi]
+        kept is []
+
+        for ci in old:
+            clause is clauses[ci]
+            wa is state.watch_a[ci]
+            wb is state.watch_b[ci]
+
+            false_pos is -1
+            other_pos is -1
+            if clause[wa] == false_lit:
+                false_pos is wa
+                other_pos is wb
+            elif clause[wb] == false_lit:
+                false_pos is wb
+                other_pos is wa
+            else:
+                append of [kept, ci]
+                continue
+
+            other_lit is clause[other_pos]
+            other_val is lit_value of [other_lit, asg]
+            if other_val == 1:
+                append of [kept, ci]
+                continue
+
+            found is 0
+            for k in range of (len of clause):
+                if k != false_pos and k != other_pos:
+                    candidate is clause[k]
+                    if (lit_value of [candidate, asg]) != -1:
+                        if state.watch_a[ci] == false_pos:
+                            state.watch_a[ci] is k
+                        else:
+                            state.watch_b[ci] is k
+                        watch_add of [state.watches, candidate, ci]
+                        found is 1
+                        break
+
+            if found == 0:
+                append of [kept, ci]
+                if other_val == -1:
+                    stats.conflicts += 1
+                    state.watches[wi] is kept
+                    return 0
+                if (enqueue_watched of [asg, state.trail, other_lit, stats, 1]) == 0:
+                    state.watches[wi] is kept
+                    return 0
+
+        state.watches[wi] is kept
+
+    return 1
+
+define propagate_units_watched(nvars, clauses, asg, stats) as:
+    state is build_watched_state of [nvars, clauses, asg, stats]
+    if state.ok == 0:
+        return 0
+    return run_watched_queue of [nvars, clauses, asg, state, stats]
+
+define dpll_rec_watched(nvars, clauses, asg, stats) as:
+    if (propagate_units_watched of [nvars, clauses, asg, stats]) == 0:
+        return null
+    if (all_clauses_satisfied of [clauses, asg]) != 0:
+        return asg
+
+    v is choose_var of asg
+    if v == 0:
+        return asg
+
+    for val in [1, -1]:
+        next is copy_assignment of asg
+        next[v] is val
+        stats.decisions += 1
+        result is dpll_rec_watched of [nvars, clauses, next, stats]
+        if result != null:
+            return result
+
+    return null
+
+define solve_cnf_watched(nvars, clauses) as:
+    stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
+    asg is make_assignment of nvars
+    model is dpll_rec_watched of [nvars, clauses, asg, stats]
+    status is "UNSAT"
+    if model != null:
+        status is "SAT"
+    return {
+        "status": status,
+        "model": model,
+        "decisions": stats.decisions,
+        "propagations": stats.propagations,
+        "conflicts": stats.conflicts
+    }
+
 define model_satisfies(nvars, clauses, model) as:
     if model == null:
         return 0
@@ -146,4 +327,3 @@ define model_satisfies(nvars, clauses, model) as:
         if (clause_satisfied of [clause, model]) == 0:
             return 0
     return 1
-

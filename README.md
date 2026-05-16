@@ -15,6 +15,7 @@ reduction.
 
 ```bash
 /home/jon/EigenScript/src/eigenscript minisat.eigs tests/fixtures/simple_sat.cnf
+/home/jon/EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 tests/run_smoke.sh
 ```
@@ -30,12 +31,12 @@ Current:
 
 - DIMACS CNF parsing
 - DPLL with unit propagation
+- watched-literal propagation path for correctness and benchmark comparison
 - fixture correctness tests
 - generated benchmark families
 
 Next:
 
-- watched-literal propagation
 - MiniSat-style trail and decision levels
 - binary heap variable ordering
 - clause allocator / arena pressure
@@ -51,4 +52,3 @@ This repo is expected to stress:
 - parser/string throughput for DIMACS
 - heap and queue library candidates
 - allocator behavior under clause churn
-
