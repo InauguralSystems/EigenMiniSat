@@ -9,7 +9,9 @@ cd "$ROOT"
 "$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/simple_sat.cnf
+"$EIGS" minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs tests/fixtures/unit_unsat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/unit_unsat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/unit_unsat.cnf
+"$EIGS" minisat.eigs --cdcl tests/fixtures/unit_unsat.cnf
 "$EIGS" minisat.eigs --bench --size "${1:-1}"

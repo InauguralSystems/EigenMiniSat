@@ -19,6 +19,24 @@ define copy_assignment(asg) as:
         append of [out, v]
     return out
 
+define copy_clause(clause) as:
+    out is []
+    for lit in clause:
+        append of [out, lit]
+    return out
+
+define copy_clauses(clauses) as:
+    out is []
+    for clause in clauses:
+        append of [out, copy_clause of clause]
+    return out
+
+define filled_list(size, value) as:
+    out is []
+    for i in range of size:
+        append of [out, value]
+    return out
+
 define lit_value(lit, asg) as:
     v is lit_abs of lit
     if v >= (len of asg):
@@ -403,6 +421,355 @@ define solve_cnf_persistent(nvars, clauses) as:
         "propagations": stats.propagations,
         "conflicts": stats.conflicts
     }
+
+define clause_has_var(clause, v) as:
+    for lit in clause:
+        if (lit_abs of lit) == v:
+            return 1
+    return 0
+
+define clause_has_lit(clause, lit) as:
+    for item in clause:
+        if item == lit:
+            return 1
+    return 0
+
+define append_lit_unique(clause, lit) as:
+    if (clause_has_lit of [clause, lit]) == 0:
+        append of [clause, lit]
+    return null
+
+define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagation) as:
+    v is lit_abs of lit
+    wanted is 1
+    if lit < 0:
+        wanted is -1
+    if v >= (len of asg):
+        stats.conflicts += 1
+        state.conflict is reason_clause
+        return 0
+    if asg[v] == 0:
+        asg[v] is wanted
+        state.reason[v] is reason_clause
+        state.level[v] is level
+        append of [state.trail, lit]
+        if count_propagation != 0:
+            stats.propagations += 1
+        return 1
+    if asg[v] == wanted:
+        return 1
+    stats.conflicts += 1
+    state.conflict is reason_clause
+    return 0
+
+define build_cdcl_state(nvars, clauses, asg, stats) as:
+    state is {
+        "ok": 1,
+        "watches": make_watch_table of nvars,
+        "watch_a": [],
+        "watch_b": [],
+        "trail": [],
+        "qhead": 0,
+        "trail_lim": [],
+        "reason": filled_list of [nvars + 1, -1],
+        "level": filled_list of [nvars + 1, 0],
+        "conflict": -1
+    }
+
+    for ci in range of (len of clauses):
+        clause is clauses[ci]
+        if (len of clause) == 0:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 0]
+            stats.conflicts += 1
+            state.conflict is ci
+            state.ok is 0
+        elif (len of clause) == 1:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 0]
+            if (enqueue_cdcl of [asg, state, clause[0], ci, 0, stats, 1]) == 0:
+                state.conflict is ci
+                state.ok is 0
+        else:
+            append of [state.watch_a, 0]
+            append of [state.watch_b, 1]
+            watch_add of [state.watches, clause[0], ci]
+            watch_add of [state.watches, clause[1], ci]
+
+    return state
+
+define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
+    level is len of state.trail_lim
+    loop while state.qhead < (len of state.trail):
+        p is state.trail[state.qhead]
+        state.qhead += 1
+        false_lit is 0 - p
+        wi is lit_index of false_lit
+        old is state.watches[wi]
+        kept is []
+
+        for ci in old:
+            clause is clauses[ci]
+            wa is state.watch_a[ci]
+            wb is state.watch_b[ci]
+
+            false_pos is -1
+            other_pos is -1
+            if clause[wa] == false_lit:
+                false_pos is wa
+                other_pos is wb
+            elif clause[wb] == false_lit:
+                false_pos is wb
+                other_pos is wa
+            else:
+                append of [kept, ci]
+                continue
+
+            other_lit is clause[other_pos]
+            other_val is lit_value of [other_lit, asg]
+            if other_val == 1:
+                append of [kept, ci]
+                continue
+
+            found is 0
+            for k in range of (len of clause):
+                if k != false_pos and k != other_pos:
+                    candidate is clause[k]
+                    if (lit_value of [candidate, asg]) != -1:
+                        if state.watch_a[ci] == false_pos:
+                            state.watch_a[ci] is k
+                        else:
+                            state.watch_b[ci] is k
+                        watch_add of [state.watches, candidate, ci]
+                        found is 1
+                        break
+
+            if found == 0:
+                append of [kept, ci]
+                if other_val == -1:
+                    stats.conflicts += 1
+                    state.conflict is ci
+                    state.watches[wi] is kept
+                    return 0
+                if (enqueue_cdcl of [asg, state, other_lit, ci, level, stats, 1]) == 0:
+                    state.conflict is ci
+                    state.watches[wi] is kept
+                    return 0
+
+        state.watches[wi] is kept
+
+    return 1
+
+define cdcl_cancel_to(state, asg, mark) as:
+    i is (len of state.trail) - 1
+    loop while i >= mark:
+        lit is state.trail[i]
+        v is lit_abs of lit
+        asg[v] is 0
+        state.reason[v] is -1
+        state.level[v] is 0
+        i -= 1
+
+    trimmed is []
+    for j in range of mark:
+        append of [trimmed, state.trail[j]]
+    state.trail is trimmed
+    if state.qhead > mark:
+        state.qhead is mark
+    return null
+
+define cdcl_cancel_until(state, asg, level) as:
+    if level >= (len of state.trail_lim):
+        return null
+    mark is state.trail_lim[level]
+    cdcl_cancel_to of [state, asg, mark]
+
+    kept is []
+    for i in range of level:
+        append of [kept, state.trail_lim[i]]
+    state.trail_lim is kept
+    return null
+
+define cdcl_push_level(state) as:
+    append of [state.trail_lim, len of state.trail]
+    return len of state.trail_lim
+
+define resolve_on_var(current, reason_clause, pivot_var) as:
+    out is []
+    for lit in current:
+        if (lit_abs of lit) != pivot_var:
+            append_lit_unique of [out, lit]
+    for lit in reason_clause:
+        if (lit_abs of lit) != pivot_var:
+            append_lit_unique of [out, lit]
+    return out
+
+define count_clause_level(clause, state, level) as:
+    count is 0
+    for lit in clause:
+        v is lit_abs of lit
+        if state.level[v] == level:
+            count += 1
+    return count
+
+define last_reason_var_in_clause(clause, state, level) as:
+    i is (len of state.trail) - 1
+    loop while i >= 0:
+        lit is state.trail[i]
+        v is lit_abs of lit
+        if state.level[v] == level:
+            if state.reason[v] >= 0:
+                if (clause_has_var of [clause, v]) != 0:
+                    return v
+        i -= 1
+    return 0
+
+define choose_assert_lit(clause, state, level) as:
+    for lit in clause:
+        v is lit_abs of lit
+        if state.level[v] == level:
+            return lit
+    return 0
+
+define max_clause_level_except(clause, state, except_lit) as:
+    max_level is 0
+    except_var is lit_abs of except_lit
+    for lit in clause:
+        v is lit_abs of lit
+        if v != except_var:
+            if state.level[v] > max_level:
+                max_level is state.level[v]
+    return max_level
+
+define move_lit_first(clause, lit) as:
+    if lit == 0:
+        return clause
+    out is [lit]
+    for item in clause:
+        if item != lit:
+            append of [out, item]
+    return out
+
+define analyze_conflict_cdcl(clauses, state, conflict_ci, stats) as:
+    level is len of state.trail_lim
+    learnt is copy_clause of clauses[conflict_ci]
+
+    loop while (count_clause_level of [learnt, state, level]) > 1:
+        pivot is last_reason_var_in_clause of [learnt, state, level]
+        if pivot == 0:
+            break
+        reason_ci is state.reason[pivot]
+        learnt is resolve_on_var of [learnt, clauses[reason_ci], pivot]
+        stats.resolutions += 1
+
+    assert_lit is choose_assert_lit of [learnt, state, level]
+    learnt is move_lit_first of [learnt, assert_lit]
+    backtrack is max_clause_level_except of [learnt, state, assert_lit]
+    return {
+        "clause": learnt,
+        "assert_lit": assert_lit,
+        "backtrack": backtrack
+    }
+
+define add_cdcl_clause(clauses, state, clause) as:
+    ci is len of clauses
+    append of [clauses, clause]
+    if (len of clause) == 0:
+        append of [state.watch_a, 0]
+        append of [state.watch_b, 0]
+        state.conflict is ci
+    elif (len of clause) == 1:
+        append of [state.watch_a, 0]
+        append of [state.watch_b, 0]
+    else:
+        append of [state.watch_a, 0]
+        append of [state.watch_b, 1]
+        watch_add of [state.watches, clause[0], ci]
+        watch_add of [state.watches, clause[1], ci]
+    return ci
+
+define solve_cnf_cdcl(nvars, input_clauses) as:
+    clauses is copy_clauses of input_clauses
+    stats is {"decisions": 0, "propagations": 0, "conflicts": 0, "learnts": 0, "backjumps": 0, "resolutions": 0}
+    asg is make_assignment of nvars
+    state is build_cdcl_state of [nvars, clauses, asg, stats]
+
+    if state.ok == 0:
+        return {
+            "status": "UNSAT",
+            "model": null,
+            "decisions": stats.decisions,
+            "propagations": stats.propagations,
+            "conflicts": stats.conflicts,
+            "learnts": stats.learnts,
+            "backjumps": stats.backjumps,
+            "resolutions": stats.resolutions
+        }
+
+    loop while 1:
+        if (run_watched_queue_cdcl of [nvars, clauses, asg, state, stats]) == 0:
+            if (len of state.trail_lim) == 0:
+                return {
+                    "status": "UNSAT",
+                    "model": null,
+                    "decisions": stats.decisions,
+                    "propagations": stats.propagations,
+                    "conflicts": stats.conflicts,
+                    "learnts": stats.learnts,
+                    "backjumps": stats.backjumps,
+                    "resolutions": stats.resolutions
+                }
+
+            analysis is analyze_conflict_cdcl of [clauses, state, state.conflict, stats]
+            if (len of analysis.clause) == 0:
+                return {
+                    "status": "UNSAT",
+                    "model": null,
+                    "decisions": stats.decisions,
+                    "propagations": stats.propagations,
+                    "conflicts": stats.conflicts,
+                    "learnts": stats.learnts,
+                    "backjumps": stats.backjumps,
+                    "resolutions": stats.resolutions
+                }
+
+            learned_ci is add_cdcl_clause of [clauses, state, analysis.clause]
+            stats.learnts += 1
+            cdcl_cancel_until of [state, asg, analysis.backtrack]
+            stats.backjumps += 1
+
+            if analysis.assert_lit != 0:
+                enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
+            continue
+
+        if (all_clauses_satisfied of [input_clauses, asg]) != 0:
+            return {
+                "status": "SAT",
+                "model": copy_assignment of asg,
+                "decisions": stats.decisions,
+                "propagations": stats.propagations,
+                "conflicts": stats.conflicts,
+                "learnts": stats.learnts,
+                "backjumps": stats.backjumps,
+                "resolutions": stats.resolutions
+            }
+
+        v is choose_var of asg
+        if v == 0:
+            return {
+                "status": "SAT",
+                "model": copy_assignment of asg,
+                "decisions": stats.decisions,
+                "propagations": stats.propagations,
+                "conflicts": stats.conflicts,
+                "learnts": stats.learnts,
+                "backjumps": stats.backjumps,
+                "resolutions": stats.resolutions
+            }
+
+        cdcl_push_level of state
+        stats.decisions += 1
+        enqueue_cdcl of [asg, state, v, -1, len of state.trail_lim, stats, 0]
 
 define model_satisfies(nvars, clauses, model) as:
     if model == null:

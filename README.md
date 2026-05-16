@@ -17,14 +17,16 @@ reduction.
 /home/jon/EigenScript/src/eigenscript minisat.eigs tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
+/home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
 /home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
 tests/run_smoke.sh
 ```
 
 The CLI prints MiniSat-like `s SATISFIABLE` or `s UNSATISFIABLE` lines for CNF
-files, plus baseline counters. Benchmarks print `scan`, `watched`, and
-`persistent` lines per generated case with elapsed milliseconds, variable
-count, clause count, decisions, and propagations.
+files, plus baseline counters. Benchmarks print `scan`, `watched`,
+`persistent`, and `cdcl` lines per generated case with elapsed milliseconds,
+variable count, clause count, decisions, propagations, and conflicts. The CDCL
+line also reports learnt clauses, backjumps, and conflict-resolution steps.
 
 ## Scope
 
@@ -34,15 +36,16 @@ Current:
 - DPLL with unit propagation
 - watched-literal propagation path for correctness and benchmark comparison
 - persistent watched trail/backtracking path
+- first CDCL path with reason/level arrays, learnt clauses, and backjumping
 - fixture correctness tests
 - generated benchmark families
 
 Next:
 
-- MiniSat-style trail and decision levels
 - binary heap variable ordering
+- VSIDS-style activity bumping and decay
 - clause allocator / arena pressure
-- conflict analysis and learnt clauses
+- restarts and learnt-clause database reduction
 
 ## EigenScript Pressure
 
