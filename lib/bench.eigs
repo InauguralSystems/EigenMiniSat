@@ -232,6 +232,36 @@ define run_restart_benchmarks(size) as:
         print of f"restart luby {c.name}: status={luby.status} vars={c.nvars} clauses={len of c.clauses} decisions={luby.decisions} propagations={luby.propagations} conflicts={luby.conflicts} learnts={luby.learnts} restarts={luby.restarts} restart_budget={luby.restart_budget} restart_index={luby.restart_index} restart_cancels={luby.restart_cancels} compact_runs={luby.compact_runs} ms={lms}"
     return len of cases
 
+define run_phase_benchmarks(size) as:
+    cases is benchmark_cases of size
+    for c in cases:
+        st0 is monotonic_ns of null
+        saved is solve_cnf_cdcl_with_options of [c.nvars, c.clauses, {"phase_policy": "saved"}]
+        st1 is monotonic_ns of null
+        sms is (st1 - st0) / 1000000
+
+        pt0 is monotonic_ns of null
+        positive is solve_cnf_cdcl_with_options of [c.nvars, c.clauses, {"phase_policy": "positive"}]
+        pt1 is monotonic_ns of null
+        pms is (pt1 - pt0) / 1000000
+
+        nt0 is monotonic_ns of null
+        negative is solve_cnf_cdcl_with_options of [c.nvars, c.clauses, {"phase_policy": "negative"}]
+        nt1 is monotonic_ns of null
+        nms is (nt1 - nt0) / 1000000
+
+        assert of [saved.status == positive.status, f"phase positive status mismatch {c.name}"]
+        assert of [saved.status == negative.status, f"phase negative status mismatch {c.name}"]
+        if saved.status == "SAT":
+            assert of [model_satisfies of [c.nvars, c.clauses, saved.model], f"saved phase model mismatch {c.name}"]
+            assert of [model_satisfies of [c.nvars, c.clauses, positive.model], f"positive phase model mismatch {c.name}"]
+            assert of [model_satisfies of [c.nvars, c.clauses, negative.model], f"negative phase model mismatch {c.name}"]
+
+        print of f"phase saved {c.name}: status={saved.status} vars={c.nvars} clauses={len of c.clauses} decisions={saved.decisions} propagations={saved.propagations} conflicts={saved.conflicts} learnts={saved.learnts} restarts={saved.restarts} phase_saves={saved.phase_saves} phase_flips={saved.phase_flips} phase_pos={saved.phase_pos_decisions} phase_neg={saved.phase_neg_decisions} ms={sms}"
+        print of f"phase positive {c.name}: status={positive.status} vars={c.nvars} clauses={len of c.clauses} decisions={positive.decisions} propagations={positive.propagations} conflicts={positive.conflicts} learnts={positive.learnts} restarts={positive.restarts} phase_saves={positive.phase_saves} phase_flips={positive.phase_flips} phase_pos={positive.phase_pos_decisions} phase_neg={positive.phase_neg_decisions} ms={pms}"
+        print of f"phase negative {c.name}: status={negative.status} vars={c.nvars} clauses={len of c.clauses} decisions={negative.decisions} propagations={negative.propagations} conflicts={negative.conflicts} learnts={negative.learnts} restarts={negative.restarts} phase_saves={negative.phase_saves} phase_flips={negative.phase_flips} phase_pos={negative.phase_pos_decisions} phase_neg={negative.phase_neg_decisions} ms={nms}"
+    return len of cases
+
 define run_parse_benchmarks(size) as:
     cases is large_fixture_cases of size
     for c in cases:

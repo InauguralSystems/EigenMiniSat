@@ -65,6 +65,23 @@ assert_eq of ["phase negative count", phase_stats.phase_neg_decisions, 1]
 assert_eq of ["phase positive count", phase_stats.phase_pos_decisions, 1]
 print of "  phase decisions: ok"
 
+phase_case is xor_triangle_case of 1
+phase_saved is solve_cnf_cdcl_with_options of [phase_case.nvars, phase_case.clauses, {"phase_policy": "saved"}]
+phase_positive is solve_cnf_cdcl_with_options of [phase_case.nvars, phase_case.clauses, {"phase_policy": "positive"}]
+phase_negative is solve_cnf_cdcl_with_options of [phase_case.nvars, phase_case.clauses, {"phase_policy": "negative"}]
+assert_eq of ["saved phase policy", phase_saved.phase_policy, "saved"]
+assert_eq of ["positive phase policy", phase_positive.phase_policy, "positive"]
+assert_eq of ["negative phase policy", phase_negative.phase_policy, "negative"]
+assert_eq of ["phase saved SAT", phase_saved.status, "SAT"]
+assert_eq of ["phase positive SAT", phase_positive.status, "SAT"]
+assert_eq of ["phase negative SAT", phase_negative.status, "SAT"]
+assert_true of ["saved phase saves", phase_saved.phase_saves > 0]
+assert_eq of ["fixed positive no saves", phase_positive.phase_saves, 0]
+assert_eq of ["fixed negative no saves", phase_negative.phase_saves, 0]
+assert_true of ["fixed negative decisions", phase_negative.phase_neg_decisions > 0]
+assert_true of ["fixed negative model", model_satisfies of [phase_case.nvars, phase_case.clauses, phase_negative.model]]
+print of "  phase policies: ok"
+
 reduce_state is {
     "clause_learnt": [0, 1, 1, 1],
     "clause_deleted": [0, 0, 0, 0],
