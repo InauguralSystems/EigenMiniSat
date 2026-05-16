@@ -549,6 +549,8 @@ define run_copy_benchmarks(size) as:
         copy_max_analysis_store_lits is 0
         copy_max_compact_lits is 0
         copy_max_compacts is 0
+        copy_max_deferred is 0
+        copy_max_pending_deleted is 0
         copy_policy_runs is 0
 
         for copy_policy in copy_policies_to_run:
@@ -583,11 +585,15 @@ define run_copy_benchmarks(size) as:
                 copy_max_compact_lits is copy_result.compact_clause_lits
             if copy_result.compact_runs > copy_max_compacts:
                 copy_max_compacts is copy_result.compact_runs
+            if copy_result.compact_deferred > copy_max_deferred:
+                copy_max_deferred is copy_result.compact_deferred
+            if copy_result.compact_pending_deleted > copy_max_pending_deleted:
+                copy_max_pending_deleted is copy_result.compact_pending_deleted
             copy_policy_runs += 1
 
-            print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} analysis_store_scans={copy_result.analysis_store_scans} analysis_store_lits={copy_result.analysis_store_lits} analysis_native_learnts={copy_result.analysis_native_learnts} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} active_learnts={copy_result.active_learnts} ms={copy_ms}"
+            print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} analysis_store_scans={copy_result.analysis_store_scans} analysis_store_lits={copy_result.analysis_store_lits} analysis_native_learnts={copy_result.analysis_native_learnts} compact_policy={copy_result.compact_policy} compact_checks={copy_result.compact_checks} compact_deferred={copy_result.compact_deferred} pending_deleted={copy_result.compact_pending_deleted} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} watch_rebuilds={copy_result.watch_rebuilds} compact_replays={copy_result.compact_replays} active_learnts={copy_result.active_learnts} ms={copy_ms}"
 
-        print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_store_lits={copy_max_analysis_store_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts}"
+        print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_store_lits={copy_max_analysis_store_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts} max_compact_deferred={copy_max_deferred} max_pending_deleted={copy_max_pending_deleted}"
     return len of copy_cases_to_run
 
 define storage_pressure_cases(size) as:

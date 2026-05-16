@@ -756,6 +756,13 @@ define count_active_learnts(state) as:
                 active += 1
     return active
 
+define count_deleted_clauses(state) as:
+    deleted is 0
+    for flag in state.clause_deleted:
+        if flag != 0:
+            deleted += 1
+    return deleted
+
 define find_low_activity_learnt(store, state, stats) as:
     best is -1
     best_activity is 1000000000
@@ -800,10 +807,29 @@ define remap_clause_ref(mapping, ci) as:
     return mapping[ci]
 
 define rebuild_watches(nvars, store, state, stats) as:
-    seeded is clause_store_seed_watches of [nvars, store]
-    state.watches is seeded.watches
-    state.watch_a is seeded.watch_a
-    state.watch_b is seeded.watch_b
+    watches is make_watch_table of nvars
+    watch_a is []
+    watch_b is []
+    for ci in range of (clause_store_len of store):
+        size is clause_store_size of [store, ci]
+        if state.clause_deleted[ci] != 0:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif size == 0:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif size == 1:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        else:
+            append of [watch_a, 0]
+            append of [watch_b, 1]
+            watch_add of [watches, clause_store_lit of [store, ci, 0], ci]
+            watch_add of [watches, clause_store_lit of [store, ci, 1], ci]
+
+    state.watches is watches
+    state.watch_a is watch_a
+    state.watch_b is watch_b
 
     state.qhead is 0
     stats.watch_rebuilds += 1
@@ -847,7 +873,22 @@ define compact_deleted_clauses(nvars, store, state, stats) as:
     stats.compact_runs += 1
     stats.compact_removed += removed
     stats.compact_kept += clause_store_len of compact_store
+    stats.compact_pending_deleted is 0
     return compact_store
+
+define should_compact_deleted_clauses(store, state, stats) as:
+    deleted is count_deleted_clauses of state
+    stats.compact_checks += 1
+    stats.compact_pending_deleted is deleted
+    if deleted == 0:
+        return 0
+    if deleted < state.compact_min_deleted:
+        stats.compact_deferred += 1
+        return 0
+    if (deleted * 100) < ((clause_store_len of store) * state.compact_waste_percent):
+        stats.compact_deferred += 1
+        return 0
+    return 1
 
 define save_phase_cdcl(state, v, wanted, stats) as:
     if v >= (len of state.phase):
@@ -898,7 +939,10 @@ define cdcl_default_options() as:
         "restart_growth": 2,
         "phase_policy": "saved",
         "phase_initial": 1,
-        "phase_saving": 1
+        "phase_saving": 1,
+        "compact_policy": "deferred",
+        "compact_min_deleted": 32,
+        "compact_waste_percent": 25
     }
 
 define cdcl_merge_options(opts) as:
@@ -932,6 +976,23 @@ define cdcl_merge_options(opts) as:
             merged_opts.phase_policy is "saved"
             merged_opts.phase_initial is 1
             merged_opts.phase_saving is 1
+    if (has_key of [opts, "compact_policy"]) != 0:
+        merged_opts.compact_policy is opts.compact_policy
+        if merged_opts.compact_policy == "eager":
+            merged_opts.compact_min_deleted is 1
+            merged_opts.compact_waste_percent is 0
+        else:
+            merged_opts.compact_policy is "deferred"
+    if (has_key of [opts, "compact_min_deleted"]) != 0:
+        merged_opts.compact_min_deleted is floor of opts.compact_min_deleted
+        if merged_opts.compact_min_deleted < 1:
+            merged_opts.compact_min_deleted is 1
+    if (has_key of [opts, "compact_waste_percent"]) != 0:
+        merged_opts.compact_waste_percent is floor of opts.compact_waste_percent
+        if merged_opts.compact_waste_percent < 0:
+            merged_opts.compact_waste_percent is 0
+        if merged_opts.compact_waste_percent > 100:
+            merged_opts.compact_waste_percent is 100
     return merged_opts
 
 define cdcl_restart(state, asg, stats) as:
@@ -1013,6 +1074,9 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "restart_budget": cdcl_opts.restart_first,
         "restart_growth": cdcl_opts.restart_growth,
         "restart_index": 0,
+        "compact_policy": cdcl_opts.compact_policy,
+        "compact_min_deleted": cdcl_opts.compact_min_deleted,
+        "compact_waste_percent": cdcl_opts.compact_waste_percent,
         "conflicts_since_restart": 0,
         "order_heap": [],
         "order_pos": filled_list of [nvars + 1, -1],
@@ -1241,12 +1305,20 @@ define cdcl_result(status, model, stats, state) as:
     restart_budget is 0
     restart_index is 0
     phase_policy is ""
+    compact_policy is ""
+    compact_min_deleted is 0
+    compact_waste_percent is 0
+    pending_deleted is 0
     if state != null:
         active is count_active_learnts of state
         restart_policy is state.restart_policy
         restart_budget is state.restart_budget
         restart_index is state.restart_index
         phase_policy is state.phase_policy
+        compact_policy is state.compact_policy
+        compact_min_deleted is state.compact_min_deleted
+        compact_waste_percent is state.compact_waste_percent
+        pending_deleted is count_deleted_clauses of state
     return {
         "status": status,
         "model": model,
@@ -1280,6 +1352,9 @@ define cdcl_result(status, model, stats, state) as:
         "deleted_watch_skips": stats.deleted_watch_skips,
         "active_learnts": active,
         "compact_runs": stats.compact_runs,
+        "compact_checks": stats.compact_checks,
+        "compact_deferred": stats.compact_deferred,
+        "compact_pending_deleted": pending_deleted,
         "compact_removed": stats.compact_removed,
         "compact_kept": stats.compact_kept,
         "compact_clause_copies": stats.compact_clause_copies,
@@ -1291,6 +1366,9 @@ define cdcl_result(status, model, stats, state) as:
         "restart_policy": restart_policy,
         "restart_budget": restart_budget,
         "restart_index": restart_index,
+        "compact_policy": compact_policy,
+        "compact_min_deleted": compact_min_deleted,
+        "compact_waste_percent": compact_waste_percent,
         "phase_policy": phase_policy,
         "phase_saves": stats.phase_saves,
         "phase_flips": stats.phase_flips,
@@ -1330,6 +1408,9 @@ define cdcl_empty_stats() as:
         "deleted_watch_skips": 0,
         "active_learnts": 0,
         "compact_runs": 0,
+        "compact_checks": 0,
+        "compact_deferred": 0,
+        "compact_pending_deleted": 0,
         "compact_removed": 0,
         "compact_kept": 0,
         "compact_clause_copies": 0,
@@ -1380,7 +1461,10 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
             removed_learnts is reduce_learnt_db of [store, state, stats]
             if removed_learnts > 0:
-                store is compact_deleted_clauses of [nvars, store, state, stats]
+                if (should_compact_deleted_clauses of [store, state, stats]) != 0:
+                    store is compact_deleted_clauses of [nvars, store, state, stats]
+                else:
+                    rebuild_watches of [nvars, store, state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 

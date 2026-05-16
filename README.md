@@ -43,8 +43,9 @@ activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
 Clause-store counters show store-to-list copies, store-native conflict-analysis
 scans, any remaining analysis list rebuilds, and direct compaction copies.
-Compaction counters show when deleted learnt clauses are removed and watch
-lists are rebuilt.
+Compaction counters show when deleted learnt clauses are deferred or physically
+removed, how many deleted clauses remain pending, and when watch lists are
+rebuilt.
 `--restart-bench` compares the default geometric CDCL restart schedule with a
 Luby schedule on the same generated cases and reports restart budgets, restart
 indexes, cancellations, compaction, and elapsed milliseconds.
@@ -56,9 +57,9 @@ pigeonhole, complete-graph coloring, and XOR pressure cases, then prints
 per-policy counters plus per-case decision/conflict/restart ranges.
 `--copy-bench` runs conflict-heavy generated cases through tight restart and
 polarity policies, then reports store-to-list copy, store-native analysis scan,
-remaining analysis rebuild, and direct compaction-copy counters for deciding
-whether clause references should stay local or become an EigenScript root
-primitive.
+remaining analysis rebuild, deferred compaction, active watch rebuild, and
+direct compaction-copy counters for deciding whether clause references should
+stay local or become an EigenScript root primitive.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
@@ -119,6 +120,7 @@ Current:
 - CDCL propagation, conflict analysis, learnt insertion, reduction, and
   compaction over the solver-local clause-store adapter
 - store-native CDCL conflict analysis over clause references
+- deferred CDCL clause-store compaction with active watch rebuilds
 - clause-store copy/native-scan/rebuild counters for conflict analysis and
   direct compaction-copy pressure
 - synthetic learnt metadata compaction and churn benchmark pressure
@@ -137,7 +139,7 @@ Current:
 Next:
 
 - larger heuristic and copy-pressure stress cases
-- use the native analysis counters to decide whether remaining compaction-copy
+- use deferred compaction counters to decide whether watch rebuild/replay
   pressure belongs in EigenMiniSat, a library, or EigenScript root
 - larger third-party CNF corpus once checked-in corpus pressure stabilizes
 
@@ -163,6 +165,8 @@ This repo is expected to stress:
 - CDCL clause-store propagation and conflict-analysis access patterns
 - store-to-list copy counts, store-native analysis scans, remaining
   conflict-analysis rebuild literals, and direct compaction-copy literals
+- deferred deleted-clause pressure, pending deleted clauses, and active watch
+  rebuild/replay churn
 - synthetic learnt-clause allocation, deletion, compaction, and churn pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput

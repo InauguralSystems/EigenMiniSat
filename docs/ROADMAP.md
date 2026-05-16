@@ -51,9 +51,10 @@ seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
 reports store-to-list copies, store-native conflict-analysis scans, remaining
-analysis rebuild literals, and compaction-copy literals. A focused
-copy-pressure benchmark now runs conflict-heavy generated cases under tight
-restart and polarity policies before asking EigenScript for root arena support.
+analysis rebuild literals, deferred compaction checks, pending deleted clauses,
+active watch rebuilds, and compaction-copy literals. A focused copy-pressure
+benchmark now runs conflict-heavy generated cases under tight restart and
+polarity policies before asking EigenScript for root arena support.
 
 ## Milestone 3: CDCL
 
@@ -71,16 +72,18 @@ fixed-polarity comparison, geometric restarts, and a Luby restart comparison
 path are in place. A combined heuristic benchmark now sweeps restart and phase
 policies over pigeonhole, complete-graph coloring, and XOR pressure cases.
 Deleted learnt clauses are now eagerly compacted by remapping clause references
-and rebuilding watch lists. A synthetic metadata benchmark now isolates learnt
-allocation, database reduction, compaction, watch rebuild, and trail replay
-pressure without requiring a larger CNF corpus. It also runs repeated
+and rebuilding watch lists in the synthetic metadata path, while the CDCL solve
+path now defers physical compaction behind deleted-clause thresholds and
+rebuilds active watches without copying the clause store. A synthetic metadata
+benchmark now isolates learnt allocation, database reduction, compaction, watch
+rebuild, and trail replay pressure without requiring a larger CNF corpus. It
+also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-clause-store reconstruction/copy counters across larger conflict cases after
-store-native conflict analysis, then deciding whether compaction-copy pressure
-belongs in EigenMiniSat, a reusable library, or EigenScript root, plus scanner
-token-span pressure and a larger third-party CNF corpus beyond the checked-in
-manifest fixtures.
+watch rebuild/replay pressure across larger conflict cases after deferred
+compaction, then deciding whether that pressure belongs in EigenMiniSat, a
+reusable library, or EigenScript root, plus scanner token-span pressure and a
+larger third-party CNF corpus beyond the checked-in manifest fixtures.
 
 ## Milestone 4: EigenScript Feedback
 
