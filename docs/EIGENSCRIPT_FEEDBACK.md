@@ -133,10 +133,13 @@ parse totals are `split=36.006ms`, `scan=45.676ms`, `scan_ints=5.328ms`;
 corpus parse totals are `split=26.689ms`, `scan=37.823ms`,
 `scan_ints=4.708ms`; diagnostic scan is slower than split/trim on 20 malformed
 errors; storage adapter scans total `9.816ms` versus `5.849ms` flat scans; and
-metadata churn reports 996 compacted literals, 5 watch rebuilds, 227 watch
-detaches, and 168 trail replays. These activate diagnostic-tokenizer,
-validated-scan, storage-adapter, and compact-vector pressure flags without
-turning them into final root requests.
+the storage overhead summary breaks that into `3.967ms` adapter scan overhead,
+`2.559ms` adapter watch-seeding overhead, `0.649ms` adapter compaction
+overhead, and `1.639ms` flat-vs-list compaction overhead. Metadata churn
+reports 996 compacted literals, 5 watch rebuilds, 227 watch detaches, and 168
+trail replays. These activate diagnostic-tokenizer, validated-scan,
+storage-adapter, and compact-vector pressure flags without turning them into
+final root requests.
 
 ### Bitwise Integer Operations
 
@@ -154,6 +157,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
 - Keep benchmarks as the evidence surface, not just performance demos.
 - Use `--copy-bench` counters to decide whether remaining clause-reference
   pressure should stay local, become a library, or move to root.
+- Use storage overhead rows to separate adapter lookup, watch seeding, and
+  compaction costs before asking EigenScript for root arena/reference support.
 - Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
   snapshots before opening root or stdlib issues. Use
   `benchmarks/summarize_trend.sh` when comparing saved logs. Its

@@ -65,7 +65,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 - A solver-local clause-store adapter now wraps the flat arena with length,
   literal lookup, clause reconstruction, CDCL-style watch seeding, and
   compaction mapping. The benchmark compares direct flat-array scans against
-  adapter-mediated access.
+  adapter-mediated access and now prints scan, watch-seeding, and compaction
+  overhead deltas so adapter pressure can be reduced locally before becoming a
+  root arena/reference request.
 - CDCL propagation, conflict analysis, learnt insertion, reduction scans, and
   deleted-clause compaction now operate over the solver-local clause store.
   The solver now reports store-to-list copies, conflict-analysis rebuild

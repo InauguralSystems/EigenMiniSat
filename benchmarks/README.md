@@ -22,7 +22,8 @@ Profiles:
 - `evidence`: quick profile coverage plus malformed-DIMACS diagnostics, with
   default size `2` for bounded larger-case pressure. It appends a compact
   evidence summary with copy, metadata, storage, parser, diagnostic, and corpus
-  totals plus decision flags and active candidate-decision rows.
+  totals, storage overhead deltas, decision flags, and active
+  candidate-decision rows.
 - `full`: solver tests plus every benchmark mode, including malformed-DIMACS
   diagnostics.
 

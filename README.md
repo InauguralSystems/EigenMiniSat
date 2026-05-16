@@ -69,7 +69,9 @@ rebuilds, pending deleted clauses, watch-detach scans, and trail replays.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
-reconstruction, deletion compaction, and reason-reference remapping costs.
+reconstruction, deletion compaction, and reason-reference remapping costs. It
+also prints per-case adapter overhead deltas for scan, watch seeding, and
+compaction before treating arena pressure as a root request.
 `--metadata-bench` builds synthetic learnt-clause pressure, runs database
 reduction, compacts deleted clauses, then runs repeated learnt-churn waves with
 pinned reason references. It reports allocation, deletion, locked-clause, watch
@@ -183,6 +185,7 @@ This repo is expected to stress:
 - no-physical-compaction comparison pressure
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
+- per-case clause-store adapter overhead deltas
 - CDCL clause-store propagation and conflict-analysis access patterns
 - store-to-list copy counts, store-native analysis scans, remaining
   conflict-analysis rebuild literals, and direct compaction-copy literals

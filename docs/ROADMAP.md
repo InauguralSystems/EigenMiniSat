@@ -56,7 +56,9 @@ targeted watch-detach scans/removals, and compaction-copy literals. A focused
 copy-pressure benchmark now runs conflict-heavy generated cases under tight
 restart and polarity policies, including larger evidence cases and lazy
 no-physical-compaction variants. It also emits deferred-vs-lazy delta summaries
-before asking EigenScript for root arena support.
+before asking EigenScript for root arena support. Storage pressure now also
+prints adapter scan, watch-seeding, and compaction overhead deltas to separate
+solver-local adapter costs from root/runtime storage needs.
 
 ## Milestone 3: CDCL
 
