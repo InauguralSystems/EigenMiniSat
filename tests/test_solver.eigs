@@ -138,6 +138,7 @@ grid_text is case_to_dimacs_text of grid_case
 grid_parsed is parse_dimacs_text of grid_text
 assert_eq of ["grid DIMACS vars", grid_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid DIMACS clauses", len of grid_parsed.clauses, len of grid_case.clauses]
+assert_eq of ["grid DIMACS diagnostics", grid_parsed.ok, 1]
 grid_cdcl is solve_cnf_cdcl of [grid_parsed.nvars, grid_parsed.clauses]
 assert_eq of ["grid parsed cdcl UNSAT", grid_cdcl.status, "UNSAT"]
 grid_path is mktemp of null
@@ -146,6 +147,7 @@ assert_eq of ["grid write DIMACS file", write_text of [grid_path, grid_text], 1]
 grid_file_parsed is parse_dimacs_file of grid_path
 assert_eq of ["grid file DIMACS vars", grid_file_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid file DIMACS clauses", len of grid_file_parsed.clauses, len of grid_case.clauses]
+assert_eq of ["grid file DIMACS diagnostics", grid_file_parsed.ok, 1]
 assert_eq of ["grid rm DIMACS file", rm of grid_path, 1]
 
 wide_case is wide_clause_case of [18, 6, 7]
@@ -153,9 +155,31 @@ wide_text is case_to_dimacs_text of wide_case
 wide_parsed is parse_dimacs_text of wide_text
 assert_eq of ["wide DIMACS vars", wide_parsed.nvars, wide_case.nvars]
 assert_eq of ["wide DIMACS clauses", len of wide_parsed.clauses, len of wide_case.clauses]
+assert_eq of ["wide DIMACS diagnostics", wide_parsed.ok, 1]
 wide_cdcl is solve_cnf_cdcl of [wide_parsed.nvars, wide_parsed.clauses]
 assert_eq of ["wide parsed cdcl SAT", wide_cdcl.status, "SAT"]
 print of "  generated DIMACS fixtures: ok"
+
+bad_count is parse_dimacs_text of "p cnf 1 2\n1 0\n"
+assert_eq of ["bad count diagnostics", bad_count.ok, 0]
+assert_eq of ["bad count flag", bad_count.clause_count_ok, 0]
+assert_true of ["bad count message", contains of [bad_count.errors[0], "declared_clauses=2"]]
+
+bad_var is parse_dimacs_text of "p cnf 1 1\n2 0\n"
+assert_eq of ["bad var diagnostics", bad_var.ok, 0]
+assert_eq of ["bad var flag", bad_var.var_count_ok, 0]
+assert_eq of ["bad var max", bad_var.max_var, 2]
+assert_true of ["bad var message", contains of [bad_var.errors[0], "declared_vars=1"]]
+
+bad_token is parse_dimacs_text of "p cnf 1 1\nx 0\n"
+assert_eq of ["bad token diagnostics", bad_token.ok, 0]
+assert_true of ["bad token message", contains of [bad_token.errors[0], "non-integer token"]]
+
+missing_header is parse_dimacs_text of "1 0\n"
+assert_eq of ["missing header diagnostics", missing_header.ok, 0]
+assert_eq of ["missing header flag", missing_header.header_seen, 0]
+assert_true of ["missing header message", contains of [missing_header.errors[0], "missing problem header"]]
+print of "  DIMACS parser diagnostics: ok"
 
 corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
@@ -165,6 +189,7 @@ for corpus in corpus_cases:
     assert_eq of [f"corpus clauses {corpus.name}", len of corpus_parsed.clauses, corpus.nclauses]
     assert_eq of [f"corpus declared vars {corpus.name}", corpus_parsed.declared_vars, corpus.nvars]
     assert_eq of [f"corpus declared clauses {corpus.name}", corpus_parsed.declared_clauses, corpus.nclauses]
+    assert_eq of [f"corpus diagnostics {corpus.name}", corpus_parsed.ok, 1]
     corpus_cdcl is solve_cnf_cdcl of [corpus_parsed.nvars, corpus_parsed.clauses]
     assert_eq of [f"corpus status {corpus.name}", corpus_cdcl.status, corpus.expected]
     if corpus_cdcl.status == "SAT":

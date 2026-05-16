@@ -41,6 +41,8 @@ I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
 `--corpus-bench` parses checked-in DIMACS files with comments, multiline
 clauses, multi-clause lines, and small graph-coloring SAT/UNSAT instances.
+Parser results include `ok`, `errors`, `error_count`, `max_var`, and declared
+count checks so malformed DIMACS headers are reported before solving.
 
 ## Scope
 
@@ -58,6 +60,7 @@ Current:
 - larger generated DIMACS fixture families for parser and scale pressure
 - file-backed generated DIMACS fixtures for write/read/temp cleanup pressure
 - checked-in DIMACS corpus fixtures for real file-shape coverage
+- DIMACS parser diagnostics for header/count/token problems
 - fixture correctness tests
 - generated benchmark families
 
@@ -82,3 +85,4 @@ This repo is expected to stress:
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
 - parser robustness across checked-in DIMACS formatting variants
+- parser diagnostic overhead while validating larger CNF input

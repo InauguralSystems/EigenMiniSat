@@ -15,9 +15,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   from file I/O cost and may expose whether EigenScript needs streaming file
   parsing or buffered write helpers for larger CNF corpora.
 - The checked-in DIMACS corpus adds multiline clauses, multiple clauses on one
-  physical line, comment-heavy files, and graph-coloring instances. If this
-  grows, parser diagnostics should report declared-vs-parsed count mismatches
-  directly instead of requiring benchmark-side assertions.
+  physical line, comment-heavy files, and graph-coloring instances. Parser
+  diagnostics now report header/count/token problems directly, and benchmark
+  parse lines expose `ok`/`errors` counts. If larger corpora amplify the extra
+  validation cost, EigenScript may need cheaper character classification or a
+  streaming tokenizer.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - Priority queue / binary heap as a standard library candidate.

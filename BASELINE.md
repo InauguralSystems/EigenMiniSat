@@ -53,16 +53,16 @@ Parse benchmark command:
 Result:
 
 ```text
-parse fixture grid-sat-6x6: text_len=559 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ms=2.24255
-fixture cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.61288
-parse fixture grid-unsat-6x6: text_len=562 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ms=2.09651
-fixture cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=3.79157
-parse fixture chain-sat-120: text_len=1145 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ms=3.97127
-fixture cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=12.4941
-parse fixture chain-unsat-120: text_len=1148 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ms=3.8202
-fixture cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=9.52976
-parse fixture wide-48-8-20: text_len=575 vars=48 clauses=20 declared_vars=48 declared_clauses=20 ms=1.51745
-fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=11.4635
+parse fixture grid-sat-6x6: text_len=559 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ok=1 errors=0 ms=4.72074
+fixture cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=11.2563
+parse fixture grid-unsat-6x6: text_len=562 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ok=1 errors=0 ms=6.66856
+fixture cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=6.3806
+parse fixture chain-sat-120: text_len=1145 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ok=1 errors=0 ms=9.33596
+fixture cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=18.1059
+parse fixture chain-unsat-120: text_len=1148 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ok=1 errors=0 ms=13.737
+fixture cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=32.8037
+parse fixture wide-48-8-20: text_len=575 vars=48 clauses=20 declared_vars=48 declared_clauses=20 ok=1 errors=0 ms=7.84979
+fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=24.5102
 ```
 
 File-backed benchmark command:
@@ -74,16 +74,16 @@ File-backed benchmark command:
 Result:
 
 ```text
-file fixture grid-sat-6x6: text_len=559 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 write_ms=0.21658 parse_file_ms=2.16879
-file cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=4.73778
-file fixture grid-unsat-6x6: text_len=562 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 write_ms=0.2295 parse_file_ms=2.12466
-file cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=4.08448
-file fixture chain-sat-120: text_len=1145 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 write_ms=0.205195 parse_file_ms=5.20998
-file cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=14.5854
-file fixture chain-unsat-120: text_len=1148 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 write_ms=0.263583 parse_file_ms=5.0476
-file cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=10.6663
-file fixture wide-48-8-20: text_len=575 wrote=1 removed=1 vars=48 clauses=20 declared_vars=48 declared_clauses=20 write_ms=0.292288 parse_file_ms=1.7767
-file cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.94931
+file fixture grid-sat-6x6: text_len=559 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ok=1 errors=0 write_ms=10.5863 parse_file_ms=5.25936
+file cdcl grid-sat-6x6: status=SAT decisions=0 propagations=36 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.94386
+file fixture grid-unsat-6x6: text_len=562 wrote=1 removed=1 vars=36 clauses=62 declared_vars=36 declared_clauses=62 ok=1 errors=0 write_ms=16.1515 parse_file_ms=8.35636
+file cdcl grid-unsat-6x6: status=UNSAT decisions=0 propagations=36 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=8.61337
+file fixture chain-sat-120: text_len=1145 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ok=1 errors=0 write_ms=0.430016 parse_file_ms=13.1423
+file cdcl chain-sat-120: status=SAT decisions=0 propagations=120 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=12.5546
+file fixture chain-unsat-120: text_len=1148 wrote=1 removed=1 vars=120 clauses=121 declared_vars=120 declared_clauses=121 ok=1 errors=0 write_ms=0.202332 parse_file_ms=8.4651
+file cdcl chain-unsat-120: status=UNSAT decisions=0 propagations=120 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=14.6798
+file fixture wide-48-8-20: text_len=575 wrote=1 removed=1 vars=48 clauses=20 declared_vars=48 declared_clauses=20 ok=1 errors=0 write_ms=0.407876 parse_file_ms=8.50966
+file cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=12.0022
 ```
 
 Corpus benchmark command:
@@ -95,14 +95,14 @@ Corpus benchmark command:
 Result:
 
 ```text
-corpus parse multiline-sat: path=tests/corpus/multiline_sat.cnf vars=4 clauses=4 declared_vars=4 declared_clauses=4 ms=0.322389
-corpus cdcl multiline-sat: status=SAT decisions=1 propagations=2 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=2.30715
-corpus parse multi-clause-line-unsat: path=tests/corpus/multi_clause_line_unsat.cnf vars=2 clauses=4 declared_vars=2 declared_clauses=4 ms=1.49755
-corpus cdcl multi-clause-line-unsat: status=UNSAT decisions=0 propagations=2 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=0.396491
-corpus parse triangle-3color-sat: path=tests/corpus/triangle_3color_sat.cnf vars=9 clauses=21 declared_vars=9 declared_clauses=21 ms=0.967517
-corpus cdcl triangle-3color-sat: status=SAT decisions=2 propagations=7 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=6.20795
-corpus parse k4-3color-unsat: path=tests/corpus/k4_3color_unsat.cnf vars=12 clauses=34 declared_vars=12 declared_clauses=34 ms=3.06368
-corpus cdcl k4-3color-unsat: status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 compact_runs=1 ms=15.4044
+corpus parse multiline-sat: path=tests/corpus/multiline_sat.cnf vars=4 clauses=4 declared_vars=4 declared_clauses=4 ok=1 errors=0 ms=0.578708
+corpus cdcl multiline-sat: status=SAT decisions=1 propagations=2 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=0.520391
+corpus parse multi-clause-line-unsat: path=tests/corpus/multi_clause_line_unsat.cnf vars=2 clauses=4 declared_vars=2 declared_clauses=4 ok=1 errors=0 ms=0.32665
+corpus cdcl multi-clause-line-unsat: status=UNSAT decisions=0 propagations=2 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=0.285862
+corpus parse triangle-3color-sat: path=tests/corpus/triangle_3color_sat.cnf vars=9 clauses=21 declared_vars=9 declared_clauses=21 ok=1 errors=0 ms=1.47052
+corpus cdcl triangle-3color-sat: status=SAT decisions=2 propagations=7 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=1.84738
+corpus parse k4-3color-unsat: path=tests/corpus/k4_3color_unsat.cnf vars=12 clauses=34 declared_vars=12 declared_clauses=34 ok=1 errors=0 ms=2.32322
+corpus cdcl k4-3color-unsat: status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 compact_runs=1 ms=11.5785
 ```
 
 Smoke command:
