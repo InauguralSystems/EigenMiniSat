@@ -95,4 +95,10 @@ define run_benchmarks(size) as:
         wt1 is monotonic_ns of null
         wms is (wt1 - wt0) / 1000000
         print of f"bench watched {c.name}: status={watched.status} vars={c.nvars} clauses={len of c.clauses} decisions={watched.decisions} propagations={watched.propagations} conflicts={watched.conflicts} ms={wms}"
+
+        pt0 is monotonic_ns of null
+        persistent is solve_cnf_persistent of [c.nvars, c.clauses]
+        pt1 is monotonic_ns of null
+        pms is (pt1 - pt0) / 1000000
+        print of f"bench persistent {c.name}: status={persistent.status} vars={c.nvars} clauses={len of c.clauses} decisions={persistent.decisions} propagations={persistent.propagations} conflicts={persistent.conflicts} ms={pms}"
     return len of cases

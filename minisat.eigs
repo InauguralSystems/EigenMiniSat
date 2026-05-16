@@ -16,6 +16,8 @@ define parse_args() as:
             cfg.mode is "bench"
         elif arg == "--watched":
             cfg.solver is "watched"
+        elif arg == "--persistent":
+            cfg.solver is "persistent"
         elif arg == "--size":
             if i + 1 < (len of argv):
                 i += 1
@@ -31,7 +33,7 @@ define parse_args() as:
 
 define print_help() as:
     print of "Usage:"
-    print of "  eigenscript minisat.eigs [--watched] <file.cnf>"
+    print of "  eigenscript minisat.eigs [--watched|--persistent] <file.cnf>"
     print of "  eigenscript minisat.eigs --bench --size N"
     return null
 
@@ -50,6 +52,8 @@ else:
     result is solve_cnf of [parsed.nvars, parsed.clauses]
     if cfg.solver == "watched":
         result is solve_cnf_watched of [parsed.nvars, parsed.clauses]
+    elif cfg.solver == "persistent":
+        result is solve_cnf_persistent of [parsed.nvars, parsed.clauses]
     t1 is monotonic_ns of null
     ms is (t1 - t0) / 1000000
 
