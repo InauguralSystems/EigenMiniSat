@@ -306,6 +306,69 @@ define case_to_dimacs_text(c) as:
         text is text + line + "0\n"
     return text
 
+define diagnostic_bad_token_text(size) as:
+    nvars is 8 * size
+    rows is 8 * size
+    text is f"c diagnostic bad-token burst\np cnf {nvars} {rows}\n"
+    for i in range of rows:
+        v is (i % nvars) + 1
+        text is text + f"{v} bad_token_{i} 0\n"
+    return text
+
+define diagnostic_count_bound_text(size) as:
+    nvars is 6 * size
+    rows is 5 * size
+    text is f"c diagnostic count and var bounds\np cnf {nvars} {rows + 2}\n"
+    for i in range of rows:
+        v is nvars + i + 1
+        text is text + f"{v} 0\n"
+    return text
+
+define diagnostic_header_unterminated_text(size) as:
+    nvars is 4 * size
+    declared is 2 * size
+    text is f"c diagnostic duplicate header and unterminated final clause\np cnf {nvars} {declared}\n"
+    text is text + f"p cnf {nvars} {declared}\n"
+    for i in range of declared:
+        v is (i % nvars) + 1
+        if i + 1 < declared:
+            text is text + f"{v} 0\n"
+        else:
+            text is text + f"{v} "
+    return text
+
+define diagnostic_pressure_cases(size) as:
+    if size < 1:
+        size is 1
+    cases is []
+    append of [cases, {
+        "name": f"bad-token-burst-{size}",
+        "text": diagnostic_bad_token_text of size
+    }]
+    append of [cases, {
+        "name": f"count-bound-{size}",
+        "text": diagnostic_count_bound_text of size
+    }]
+    append of [cases, {
+        "name": f"header-unterminated-{size}",
+        "text": diagnostic_header_unterminated_text of size
+    }]
+    return cases
+
+define diagnostic_error_summary(parsed) as:
+    error_chars is 0
+    checksum is 0
+    pos is 1
+    for err in parsed.errors:
+        error_chars += len of err
+        checksum += (len of err) * pos
+        pos += 1
+    return {
+        "errors": parsed.error_count,
+        "error_chars": error_chars,
+        "checksum": checksum
+    }
+
 define run_benchmarks(size) as:
     cases is benchmark_cases of size
     for c in cases:
@@ -915,6 +978,28 @@ define run_scan_parse_benchmarks(size) as:
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
         print of f"ints fixture cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+    return len of cases
+
+define run_diagnostic_benchmarks(size) as:
+    cases is diagnostic_pressure_cases of size
+    for c in cases:
+        split_t0 is monotonic_ns of null
+        split_parsed is parse_dimacs_text of c.text
+        split_t1 is monotonic_ns of null
+        split_ms is (split_t1 - split_t0) / 1000000
+        assert of [split_parsed.ok == 0, f"diagnostic split unexpectedly ok {c.name}"]
+        split_summary is diagnostic_error_summary of split_parsed
+
+        scan_t0 is monotonic_ns of null
+        scan_parsed is parse_dimacs_text_scan of c.text
+        scan_t1 is monotonic_ns of null
+        scan_ms is (scan_t1 - scan_t0) / 1000000
+        assert of [scan_parsed.ok == 0, f"diagnostic scan unexpectedly ok {c.name}"]
+        assert_dimacs_same of [f"diagnostic scan parser {c.name}", split_parsed, scan_parsed]
+        scan_summary is diagnostic_error_summary of scan_parsed
+
+        print of f"diagnostic split {c.name}: text_len={len of c.text} clauses={len of split_parsed.clauses} declared_vars={split_parsed.declared_vars} declared_clauses={split_parsed.declared_clauses} max_var={split_parsed.max_var} ok={split_parsed.ok} errors={split_summary.errors} error_chars={split_summary.error_chars} error_checksum={split_summary.checksum} ms={split_ms}"
+        print of f"diagnostic scan {c.name}: text_len={len of c.text} clauses={len of scan_parsed.clauses} declared_vars={scan_parsed.declared_vars} declared_clauses={scan_parsed.declared_clauses} max_var={scan_parsed.max_var} ok={scan_parsed.ok} errors={scan_summary.errors} error_chars={scan_summary.error_chars} error_checksum={scan_summary.checksum} ms={scan_ms}"
     return len of cases
 
 define run_file_benchmarks(size) as:

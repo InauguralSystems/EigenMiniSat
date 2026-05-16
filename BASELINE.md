@@ -206,6 +206,23 @@ parse ints wide-48-8-20: text_len=575 vars=48 clauses=20 ok=1 errors=0 ms=0.7985
 ints fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=8.98758
 ```
 
+Diagnostic benchmark command:
+
+```bash
+/home/jon/EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 2
+```
+
+Result:
+
+```text
+diagnostic split bad-token-burst-2: text_len=310 clauses=16 declared_vars=16 declared_clauses=16 max_var=16 ok=0 errors=16 error_chars=607 error_checksum=5221 ms=1.70567
+diagnostic scan bad-token-burst-2: text_len=310 clauses=16 declared_vars=16 declared_clauses=16 max_var=16 ok=0 errors=16 error_chars=607 error_checksum=5221 ms=2.66251
+diagnostic split count-bound-2: text_len=96 clauses=10 declared_vars=12 declared_clauses=12 max_var=22 ok=0 errors=2 error_chars=64 error_checksum=91 ms=0.683751
+diagnostic scan count-bound-2: text_len=96 clauses=10 declared_vars=12 declared_clauses=12 max_var=22 ok=0 errors=2 error_chars=64 error_checksum=91 ms=0.806672
+diagnostic split header-unterminated-2: text_len=94 clauses=4 declared_vars=8 declared_clauses=4 max_var=4 ok=0 errors=2 error_chars=57 error_checksum=82 ms=0.32616
+diagnostic scan header-unterminated-2: text_len=94 clauses=4 declared_vars=8 declared_clauses=4 max_var=4 ok=0 errors=2 error_chars=57 error_checksum=82 ms=0.567604
+```
+
 File-backed benchmark command:
 
 ```bash

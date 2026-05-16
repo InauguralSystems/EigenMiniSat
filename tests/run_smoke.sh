@@ -21,5 +21,6 @@ cd "$ROOT"
 "$EIGS" minisat.eigs --metadata-bench --size "${1:-1}"
 "$EIGS" minisat.eigs --parse-bench --size "${1:-1}"
 "$EIGS" minisat.eigs --scan-parse-bench --size "${1:-1}"
+"$EIGS" minisat.eigs --diagnostic-bench --size "${1:-1}"
 "$EIGS" minisat.eigs --file-bench --size "${1:-1}"
 "$EIGS" minisat.eigs --corpus-bench
