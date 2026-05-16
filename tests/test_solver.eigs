@@ -254,9 +254,22 @@ assert_eq of ["missing header flag", missing_header.header_seen, 0]
 assert_true of ["missing header message", contains of [missing_header.errors[0], "missing problem header"]]
 print of "  DIMACS parser diagnostics: ok"
 
+manifest_entry is parse_corpus_manifest_line of ["toy|tests/fixtures/simple_sat.cnf|SAT|3|3|fixture", 1]
+assert_eq of ["manifest entry name", manifest_entry.name, "toy"]
+assert_eq of ["manifest entry expected", manifest_entry.expected, "SAT"]
+assert_eq of ["manifest entry vars", manifest_entry.nvars, 3]
+assert_eq of ["manifest entry clauses", manifest_entry.nclauses, 3]
+assert_eq of ["manifest entry family", manifest_entry.family, "fixture"]
+manifest_comment is parse_corpus_manifest_line of ["# comment", 2]
+assert_true of ["manifest comment skipped", manifest_comment == null]
+print of "  corpus manifest parser: ok"
+
 corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
+assert_true of ["external corpus expanded", (len of corpus_cases) >= 8]
 for corpus in corpus_cases:
+    assert_true of [f"corpus file exists {corpus.name}", (file_exists of corpus.path) == 1]
+    assert_true of [f"corpus family {corpus.name}", (len of corpus.family) > 0]
     corpus_parsed is parse_dimacs_file of corpus.path
     corpus_scan_parsed is parse_dimacs_file_scan of corpus.path
     corpus_ints_parsed is parse_dimacs_file_ints of corpus.path

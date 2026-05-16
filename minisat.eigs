@@ -8,7 +8,7 @@ load_file of "lib/bench.eigs"
 
 define parse_args() as:
     argv is args of null
-    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan"}
+    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": ""}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
@@ -40,6 +40,10 @@ define parse_args() as:
                 cfg.size is floor of (num of argv[i])
                 if cfg.size < 1:
                     cfg.size is 1
+        elif arg == "--manifest":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.corpus_manifest is argv[i]
         elif arg == "--help" or arg == "-h":
             cfg.mode is "help"
         else:
@@ -57,7 +61,7 @@ define print_help() as:
     print of "  eigenscript minisat.eigs --parse-bench --size N"
     print of "  eigenscript minisat.eigs --scan-parse-bench --size N"
     print of "  eigenscript minisat.eigs --file-bench --size N"
-    print of "  eigenscript minisat.eigs --corpus-bench"
+    print of "  eigenscript minisat.eigs --corpus-bench [--manifest PATH]"
     return null
 
 cfg is parse_args of null
@@ -79,7 +83,7 @@ elif cfg.mode == "scan_parse_bench":
 elif cfg.mode == "file_bench":
     run_file_benchmarks of cfg.size
 elif cfg.mode == "corpus_bench":
-    run_corpus_benchmarks of null
+    run_corpus_benchmarks of cfg.corpus_manifest
 elif cfg.path == "":
     print_help of null
     assert of [0, "missing DIMACS path"]

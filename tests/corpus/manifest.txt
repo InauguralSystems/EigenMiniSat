@@ -1,0 +1,9 @@
+# name|path|expected|nvars|nclauses|family
+multiline-sat|tests/corpus/multiline_sat.cnf|SAT|4|4|layout
+multi-clause-line-unsat|tests/corpus/multi_clause_line_unsat.cnf|UNSAT|2|4|layout
+triangle-3color-sat|tests/corpus/triangle_3color_sat.cnf|SAT|9|21|graph-coloring
+k4-3color-unsat|tests/corpus/k4_3color_unsat.cnf|UNSAT|12|34|graph-coloring
+pigeonhole-4-3-unsat|tests/corpus/pigeonhole_4_3.cnf|UNSAT|12|34|pigeonhole
+long-clause-sat|tests/corpus/long_clause_sat.cnf|SAT|20|6|wide
+xor-contradiction-unsat|tests/corpus/xor_contradiction_unsat.cnf|UNSAT|2|4|parity
+xor-ladder-sat|tests/corpus/xor_ladder_sat.cnf|SAT|6|10|parity

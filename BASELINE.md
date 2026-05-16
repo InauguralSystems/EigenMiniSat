@@ -183,14 +183,39 @@ Corpus benchmark command:
 Result:
 
 ```text
-corpus parse multiline-sat: path=tests/corpus/multiline_sat.cnf vars=4 clauses=4 declared_vars=4 declared_clauses=4 ok=1 errors=0 ms=0.578708
-corpus cdcl multiline-sat: status=SAT decisions=1 propagations=2 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=0.520391
-corpus parse multi-clause-line-unsat: path=tests/corpus/multi_clause_line_unsat.cnf vars=2 clauses=4 declared_vars=2 declared_clauses=4 ok=1 errors=0 ms=0.32665
-corpus cdcl multi-clause-line-unsat: status=UNSAT decisions=0 propagations=2 conflicts=1 learnts=0 restarts=0 compact_runs=0 ms=0.285862
-corpus parse triangle-3color-sat: path=tests/corpus/triangle_3color_sat.cnf vars=9 clauses=21 declared_vars=9 declared_clauses=21 ok=1 errors=0 ms=1.47052
-corpus cdcl triangle-3color-sat: status=SAT decisions=2 propagations=7 conflicts=0 learnts=0 restarts=0 compact_runs=0 ms=1.84738
-corpus parse k4-3color-unsat: path=tests/corpus/k4_3color_unsat.cnf vars=12 clauses=34 declared_vars=12 declared_clauses=34 ok=1 errors=0 ms=2.32322
-corpus cdcl k4-3color-unsat: status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 restarts=1 compact_runs=1 ms=11.5785
+corpus manifest path=tests/corpus/manifest.txt cases=8
+corpus parse split multiline-sat: family=layout path=tests/corpus/multiline_sat.cnf text_len=128 vars=4 clauses=4 declared_vars=4 declared_clauses=4 ok=1 errors=0 ms=0.489173
+corpus parse scan multiline-sat: family=layout text_len=128 vars=4 clauses=4 ok=1 errors=0 ms=0.938255
+corpus parse ints multiline-sat: family=layout text_len=128 vars=4 clauses=4 ok=1 errors=0 ms=0.10574
+corpus cdcl multiline-sat: family=layout expected=SAT status=SAT decisions=1 propagations=2 conflicts=0 learnts=0 backjumps=0 heap_pops=1 heap_inserts=0 restarts=0 compact_runs=0 clause_allocs=4 learnt_allocs=0 ms=0.713993
+corpus parse split multi-clause-line-unsat: family=layout path=tests/corpus/multi_clause_line_unsat.cnf text_len=80 vars=2 clauses=4 declared_vars=2 declared_clauses=4 ok=1 errors=0 ms=0.436232
+corpus parse scan multi-clause-line-unsat: family=layout text_len=80 vars=2 clauses=4 ok=1 errors=0 ms=0.529332
+corpus parse ints multi-clause-line-unsat: family=layout text_len=80 vars=2 clauses=4 ok=1 errors=0 ms=0.101829
+corpus cdcl multi-clause-line-unsat: family=layout expected=UNSAT status=UNSAT decisions=0 propagations=2 conflicts=1 learnts=0 backjumps=0 heap_pops=0 heap_inserts=0 restarts=0 compact_runs=0 clause_allocs=4 learnt_allocs=0 ms=0.454531
+corpus parse split triangle-3color-sat: family=graph-coloring path=tests/corpus/triangle_3color_sat.cnf text_len=399 vars=9 clauses=21 declared_vars=9 declared_clauses=21 ok=1 errors=0 ms=1.71483
+corpus parse scan triangle-3color-sat: family=graph-coloring text_len=399 vars=9 clauses=21 ok=1 errors=0 ms=2.76211
+corpus parse ints triangle-3color-sat: family=graph-coloring text_len=399 vars=9 clauses=21 ok=1 errors=0 ms=0.36632
+corpus cdcl triangle-3color-sat: family=graph-coloring expected=SAT status=SAT decisions=2 propagations=7 conflicts=0 learnts=0 backjumps=0 heap_pops=5 heap_inserts=0 restarts=0 compact_runs=0 clause_allocs=21 learnt_allocs=0 ms=3.04971
+corpus parse split k4-3color-unsat: family=graph-coloring path=tests/corpus/k4_3color_unsat.cnf text_len=546 vars=12 clauses=34 declared_vars=12 declared_clauses=34 ok=1 errors=0 ms=4.31441
+corpus parse scan k4-3color-unsat: family=graph-coloring text_len=546 vars=12 clauses=34 ok=1 errors=0 ms=5.00103
+corpus parse ints k4-3color-unsat: family=graph-coloring text_len=546 vars=12 clauses=34 ok=1 errors=0 ms=0.500976
+corpus cdcl k4-3color-unsat: family=graph-coloring expected=UNSAT status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 backjumps=7 heap_pops=17 heap_inserts=14 restarts=1 compact_runs=1 clause_allocs=41 learnt_allocs=7 ms=12.4291
+corpus parse split pigeonhole-4-3-unsat: family=pigeonhole path=tests/corpus/pigeonhole_4_3.cnf text_len=521 vars=12 clauses=34 declared_vars=12 declared_clauses=34 ok=1 errors=0 ms=2.5479
+corpus parse scan pigeonhole-4-3-unsat: family=pigeonhole text_len=521 vars=12 clauses=34 ok=1 errors=0 ms=3.85366
+corpus parse ints pigeonhole-4-3-unsat: family=pigeonhole text_len=521 vars=12 clauses=34 ok=1 errors=0 ms=0.414023
+corpus cdcl pigeonhole-4-3-unsat: family=pigeonhole expected=UNSAT status=UNSAT decisions=10 propagations=64 conflicts=8 learnts=7 backjumps=7 heap_pops=17 heap_inserts=14 restarts=1 compact_runs=1 clause_allocs=41 learnt_allocs=7 ms=11.6686
+corpus parse split long-clause-sat: family=wide path=tests/corpus/long_clause_sat.cnf text_len=213 vars=20 clauses=6 declared_vars=20 declared_clauses=6 ok=1 errors=0 ms=0.982815
+corpus parse scan long-clause-sat: family=wide text_len=213 vars=20 clauses=6 ok=1 errors=0 ms=1.50852
+corpus parse ints long-clause-sat: family=wide text_len=213 vars=20 clauses=6 ok=1 errors=0 ms=0.208688
+corpus cdcl long-clause-sat: family=wide expected=SAT status=SAT decisions=16 propagations=1 conflicts=0 learnts=0 backjumps=0 heap_pops=16 heap_inserts=0 restarts=0 compact_runs=0 clause_allocs=6 learnt_allocs=0 ms=2.91045
+corpus parse split xor-contradiction-unsat: family=parity path=tests/corpus/xor_contradiction_unsat.cnf text_len=98 vars=2 clauses=4 declared_vars=2 declared_clauses=4 ok=1 errors=0 ms=0.503909
+corpus parse scan xor-contradiction-unsat: family=parity text_len=98 vars=2 clauses=4 ok=1 errors=0 ms=0.620475
+corpus parse ints xor-contradiction-unsat: family=parity text_len=98 vars=2 clauses=4 ok=1 errors=0 ms=0.134306
+corpus cdcl xor-contradiction-unsat: family=parity expected=UNSAT status=UNSAT decisions=1 propagations=3 conflicts=2 learnts=1 backjumps=1 heap_pops=1 heap_inserts=1 restarts=0 compact_runs=0 clause_allocs=5 learnt_allocs=1 ms=0.711689
+corpus parse split xor-ladder-sat: family=parity path=tests/corpus/xor_ladder_sat.cnf text_len=136 vars=6 clauses=10 declared_vars=6 declared_clauses=10 ok=1 errors=0 ms=0.824763
+corpus parse scan xor-ladder-sat: family=parity text_len=136 vars=6 clauses=10 ok=1 errors=0 ms=1.24416
+corpus parse ints xor-ladder-sat: family=parity text_len=136 vars=6 clauses=10 ok=1 errors=0 ms=0.170833
+corpus cdcl xor-ladder-sat: family=parity expected=SAT status=SAT decisions=1 propagations=5 conflicts=0 learnts=0 backjumps=0 heap_pops=1 heap_inserts=0 restarts=0 compact_runs=0 clause_allocs=10 learnt_allocs=0 ms=1.18598
 ```
 
 Smoke command:

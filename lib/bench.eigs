@@ -140,37 +140,78 @@ define large_fixture_cases(size) as:
     append of [cases, wide_clause_case of [24 * size, 8, 10 * size]]
     return cases
 
-define external_corpus_cases() as:
+DEFAULT_CORPUS_MANIFEST is "tests/corpus/manifest.txt"
+
+define corpus_manifest_path(path) as:
+    if path == null:
+        return DEFAULT_CORPUS_MANIFEST
+    if path == "":
+        return DEFAULT_CORPUS_MANIFEST
+    return path
+
+define _manifest_cell(parts, idx) as:
+    if idx >= (len of parts):
+        return ""
+    return trim of parts[idx]
+
+define parse_corpus_manifest_line(raw_line, line_no) as:
+    manifest_line is trim of raw_line
+    if manifest_line == "":
+        return null
+    first is substr of [manifest_line, 0, 1]
+    if first == "#":
+        return null
+
+    parts is split of [manifest_line, "|"]
+    assert of [(len of parts) >= 6, f"manifest line {line_no}: expected name|path|expected|nvars|nclauses|family"]
+
+    entry_name is _manifest_cell of [parts, 0]
+    entry_path is _manifest_cell of [parts, 1]
+    entry_expected is _manifest_cell of [parts, 2]
+    entry_vars_text is _manifest_cell of [parts, 3]
+    entry_clauses_text is _manifest_cell of [parts, 4]
+    entry_family is _manifest_cell of [parts, 5]
+
+    assert of [entry_name != "", f"manifest line {line_no}: empty name"]
+    assert of [entry_path != "", f"manifest line {line_no}: empty path"]
+    assert of [entry_expected == "SAT" or entry_expected == "UNSAT", f"manifest line {line_no}: expected SAT or UNSAT"]
+    assert of [(_is_int_token of entry_vars_text) != 0, f"manifest line {line_no}: non-integer var count"]
+    assert of [(_is_int_token of entry_clauses_text) != 0, f"manifest line {line_no}: non-integer clause count"]
+    assert of [entry_family != "", f"manifest line {line_no}: empty family"]
+
+    entry_vars is floor of (num of entry_vars_text)
+    entry_clauses is floor of (num of entry_clauses_text)
+    assert of [entry_vars >= 0, f"manifest line {line_no}: negative var count"]
+    assert of [entry_clauses >= 0, f"manifest line {line_no}: negative clause count"]
+
+    return {
+        "name": entry_name,
+        "path": entry_path,
+        "expected": entry_expected,
+        "nvars": entry_vars,
+        "nclauses": entry_clauses,
+        "family": entry_family
+    }
+
+define load_corpus_manifest(manifest_path) as:
+    selected_manifest is corpus_manifest_path of manifest_path
+    assert of [(file_exists of selected_manifest) == 1, f"missing corpus manifest {selected_manifest}"]
+
+    text is read_text of selected_manifest
+    lines is split of [text, "\n"]
     cases is []
-    append of [cases, {
-        "name": "multiline-sat",
-        "path": "tests/corpus/multiline_sat.cnf",
-        "expected": "SAT",
-        "nvars": 4,
-        "nclauses": 4
-    }]
-    append of [cases, {
-        "name": "multi-clause-line-unsat",
-        "path": "tests/corpus/multi_clause_line_unsat.cnf",
-        "expected": "UNSAT",
-        "nvars": 2,
-        "nclauses": 4
-    }]
-    append of [cases, {
-        "name": "triangle-3color-sat",
-        "path": "tests/corpus/triangle_3color_sat.cnf",
-        "expected": "SAT",
-        "nvars": 9,
-        "nclauses": 21
-    }]
-    append of [cases, {
-        "name": "k4-3color-unsat",
-        "path": "tests/corpus/k4_3color_unsat.cnf",
-        "expected": "UNSAT",
-        "nvars": 12,
-        "nclauses": 34
-    }]
+    line_no is 0
+    for raw_line in lines:
+        line_no += 1
+        entry is parse_corpus_manifest_line of [raw_line, line_no]
+        if entry != null:
+            append of [cases, entry]
+
+    assert of [(len of cases) > 0, f"empty corpus manifest {selected_manifest}"]
     return cases
+
+define external_corpus_cases(manifest_path) as:
+    return load_corpus_manifest of manifest_path
 
 define case_to_dimacs_text(c) as:
     text is f"c generated {c.name}\n"
@@ -418,13 +459,16 @@ define run_file_benchmarks(size) as:
         print of f"file cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
     return len of cases
 
-define run_corpus_benchmarks() as:
-    cases is external_corpus_cases of null
+define run_corpus_benchmarks(manifest_path) as:
+    selected_manifest is corpus_manifest_path of manifest_path
+    cases is external_corpus_cases of selected_manifest
+    print of f"corpus manifest path={selected_manifest} cases={len of cases}"
     for c in cases:
         assert of [(file_exists of c.path) == 1, f"missing corpus file {c.path}"]
 
         pt0 is monotonic_ns of null
-        parsed is parse_dimacs_file of c.path
+        text is read_text of c.path
+        parsed is parse_dimacs_text of text
         pt1 is monotonic_ns of null
         pms is (pt1 - pt0) / 1000000
         assert_dimacs_ok of parsed
@@ -432,7 +476,21 @@ define run_corpus_benchmarks() as:
         assert of [(len of parsed.clauses) == c.nclauses, f"corpus clause mismatch {c.name}"]
         assert of [parsed.declared_vars == c.nvars, f"corpus declared var mismatch {c.name}"]
         assert of [parsed.declared_clauses == c.nclauses, f"corpus declared clause mismatch {c.name}"]
-        print of f"corpus parse {c.name}: path={c.path} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ok={parsed.ok} errors={parsed.error_count} ms={pms}"
+        print of f"corpus parse split {c.name}: family={c.family} path={c.path} text_len={len of text} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ok={parsed.ok} errors={parsed.error_count} ms={pms}"
+
+        st0 is monotonic_ns of null
+        scan_parsed is parse_dimacs_text_scan of text
+        st1 is monotonic_ns of null
+        sms is (st1 - st0) / 1000000
+        assert_dimacs_same of [f"corpus scan parser {c.name}", parsed, scan_parsed]
+        print of f"corpus parse scan {c.name}: family={c.family} text_len={len of text} vars={scan_parsed.nvars} clauses={len of scan_parsed.clauses} ok={scan_parsed.ok} errors={scan_parsed.error_count} ms={sms}"
+
+        it0 is monotonic_ns of null
+        ints_parsed is parse_dimacs_text_ints of text
+        it1 is monotonic_ns of null
+        ims is (it1 - it0) / 1000000
+        assert_dimacs_same of [f"corpus ints parser {c.name}", parsed, ints_parsed]
+        print of f"corpus parse ints {c.name}: family={c.family} text_len={len of text} vars={ints_parsed.nvars} clauses={len of ints_parsed.clauses} ok={ints_parsed.ok} errors={ints_parsed.error_count} ms={ims}"
 
         ct0 is monotonic_ns of null
         cdcl is solve_cnf_cdcl of [parsed.nvars, parsed.clauses]
@@ -441,5 +499,5 @@ define run_corpus_benchmarks() as:
         assert of [cdcl.status == c.expected, f"corpus status mismatch {c.name}"]
         if cdcl.status == "SAT":
             assert of [model_satisfies of [parsed.nvars, parsed.clauses, cdcl.model], f"corpus model mismatch {c.name}"]
-        print of f"corpus cdcl {c.name}: status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} ms={cms}"
+        print of f"corpus cdcl {c.name}: family={c.family} expected={c.expected} status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} ms={cms}"
     return len of cases
