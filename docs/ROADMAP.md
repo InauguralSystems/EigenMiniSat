@@ -21,7 +21,9 @@ A character-scanning parser path now shares the same diagnostics and can be
 benchmarked against the split/trim parser. The benchmark also includes a
 C-backed `scan_ints` parser path on generated fixtures and corpus files to
 measure root scanner throughput separately from EigenScript-side clause
-assembly.
+assembly. A lightweight trend runner now records selected pressure snapshots
+under ignored local logs so parser, corpus, and metadata changes can be
+compared without committing machine-specific output.
 
 ## Milestone 2: MiniSat Data Structures
 

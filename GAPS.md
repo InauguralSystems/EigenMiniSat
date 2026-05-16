@@ -25,6 +25,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   metadata itself instead of relying on a host-side runner. This exposes
   repeated split/trim/numeric conversion and validates whether simple
   structured-data ingestion belongs in the standard library.
+- The benchmark trend runner captures repeatable pressure snapshots without
+  committing machine-local logs. This should make regressions easier to compare
+  while keeping the constrained dev machine's output explicit and local.
 - A character-scanning DIMACS parser now matches the split/trim parser's
   diagnostics and clauses, but repeated `substr` and token string concatenation
   are often slower than split/trim on these fixtures. EigenScript now exposes
