@@ -262,6 +262,73 @@ define run_phase_benchmarks(size) as:
         print of f"phase negative {c.name}: status={negative.status} vars={c.nvars} clauses={len of c.clauses} decisions={negative.decisions} propagations={negative.propagations} conflicts={negative.conflicts} learnts={negative.learnts} restarts={negative.restarts} phase_saves={negative.phase_saves} phase_flips={negative.phase_flips} phase_pos={negative.phase_pos_decisions} phase_neg={negative.phase_neg_decisions} ms={nms}"
     return len of cases
 
+define metadata_pressure_config(size) as:
+    if size < 1:
+        size is 1
+    return {
+        "name": f"metadata-{size}",
+        "nvars": 20 * size,
+        "learnts": 80 * size,
+        "width": 3
+    }
+
+define metadata_pressure_base_clauses(nvars) as:
+    clauses is []
+    for v in range of (nvars + 1):
+        if v > 0:
+            append of [clauses, [v]]
+    return clauses
+
+define metadata_pressure_learnt(nvars, idx, width) as:
+    clause is []
+    for off in range of width:
+        v is ((idx + off) % nvars) + 1
+        lit is v
+        if ((idx + off) % 2) == 1:
+            lit is 0 - v
+        append of [clause, lit]
+    return clause
+
+define run_metadata_benchmarks(size) as:
+    metadata_cfg is metadata_pressure_config of size
+    clauses is metadata_pressure_base_clauses of metadata_cfg.nvars
+    stats is cdcl_empty_stats of null
+    asg is make_assignment of metadata_cfg.nvars
+
+    t0 is monotonic_ns of null
+    state is build_cdcl_state of [metadata_cfg.nvars, clauses, asg, stats, null]
+    assert of [state.ok != 0, "metadata pressure build failed"]
+    state.learnt_limit is floor of (metadata_cfg.learnts / 4)
+    if state.learnt_limit < 1:
+        state.learnt_limit is 1
+
+    for i in range of metadata_cfg.learnts:
+        clause is metadata_pressure_learnt of [metadata_cfg.nvars, i, metadata_cfg.width]
+        ci is add_cdcl_clause of [clauses, state, clause, 1, stats]
+        state.clause_activity[ci] is (i % 17) / 17
+        stats.learnts += 1
+
+    t1 is monotonic_ns of null
+    add_ms is (t1 - t0) / 1000000
+
+    rt0 is monotonic_ns of null
+    removed_learnts is reduce_learnt_db of [clauses, state, stats]
+    rt1 is monotonic_ns of null
+    reduce_ms is (rt1 - rt0) / 1000000
+
+    ct0 is monotonic_ns of null
+    if removed_learnts > 0:
+        clauses is compact_deleted_clauses of [metadata_cfg.nvars, clauses, state, stats]
+    ct1 is monotonic_ns of null
+    compact_ms is (ct1 - ct0) / 1000000
+
+    active is count_active_learnts of state
+    assert of [active == stats.active_learnts, "metadata active learnt mismatch"]
+    assert of [stats.learnt_deleted == removed_learnts, "metadata deleted mismatch"]
+    assert of [stats.compact_removed == removed_learnts, "metadata compact removed mismatch"]
+    print of f"metadata compaction {metadata_cfg.name}: vars={metadata_cfg.nvars} base={metadata_cfg.nvars} learnts_added={metadata_cfg.learnts} clauses_after={len of clauses} active_learnts={active} clause_allocs={stats.clause_allocs} learnt_allocs={stats.learnt_allocs} learnt_lits={stats.learnt_literals} reduce_runs={stats.reduce_runs} reduce_scans={stats.reduce_scans} learnt_deleted={stats.learnt_deleted} compact_runs={stats.compact_runs} compact_removed={stats.compact_removed} compact_kept={stats.compact_kept} watch_rebuilds={stats.watch_rebuilds} compact_replays={stats.compact_replays} build_add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
+    return 1
+
 define run_parse_benchmarks(size) as:
     cases is large_fixture_cases of size
     for c in cases:

@@ -50,6 +50,16 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   `compact_runs`, `compact_removed`, `watch_rebuilds`, and `compact_replays`
   counters should guide whether root EigenScript needs better in-place list
   compaction or arena/reference primitives.
+- The metadata compaction benchmark now creates synthetic learnt clauses,
+  reduces the learnt database, and forces compaction without depending on a
+  large external CNF. This isolates parallel metadata arrays, clause allocation
+  churn, deleted-clause filtering, reason remapping, watch rebuilds, and trail
+  replay cost as their own benchmark surface.
+- CDCL option handling exposed a real EigenScript scoping hazard: generic local
+  names such as `cfg` can mutate an outer binding through the language's
+  outward assignment semantics. That behavior is intentional today, but solver
+  helpers need specific local names until EigenScript has a clearer local-only
+  binding form or convention.
 - Restarts now cancel trail levels back to root and reinsert variables into the
   order heap while preserving phase state. The `restarts`, `restart_cancels`,
   and phase counters make repeated backtracking churn visible.
