@@ -52,7 +52,7 @@ learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
 reports store-to-list copies, store-native conflict-analysis scans, remaining
 analysis rebuild literals, deferred compaction checks, pending deleted clauses,
-active watch rebuilds, and compaction-copy literals. A focused copy-pressure
+deleted-watch prune scans/removals, and compaction-copy literals. A focused copy-pressure
 benchmark now runs conflict-heavy generated cases under tight restart and
 polarity policies before asking EigenScript for root arena support.
 
@@ -74,13 +74,16 @@ policies over pigeonhole, complete-graph coloring, and XOR pressure cases.
 Deleted learnt clauses are now eagerly compacted by remapping clause references
 and rebuilding watch lists in the synthetic metadata path, while the CDCL solve
 path now defers physical compaction behind deleted-clause thresholds and
-rebuilds active watches without copying the clause store. A synthetic metadata
+prunes deleted refs from watch buckets without copying the clause store or
+replaying the trail. Watched propagation also preserves unprocessed bucket
+tails when a conflict stops propagation early, so deferred compaction no longer
+depends on a full watch rebuild to repair missing watcher entries. A synthetic metadata
 benchmark now isolates learnt allocation, database reduction, compaction, watch
 rebuild, and trail replay pressure without requiring a larger CNF corpus. It
 also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
-watch rebuild/replay pressure across larger conflict cases after deferred
+deleted-watch prune pressure across larger conflict cases after deferred
 compaction, then deciding whether that pressure belongs in EigenMiniSat, a
 reusable library, or EigenScript root, plus scanner token-span pressure and a
 larger third-party CNF corpus beyond the checked-in manifest fixtures.
