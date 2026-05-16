@@ -265,6 +265,7 @@ storage_arena is flat_clause_arena of storage_case.clauses
 storage_list_summary is clause_list_summary of storage_case.clauses
 storage_flat_summary is flat_clause_summary of storage_arena
 storage_adapter_summary is clause_store_adapter_summary of storage_arena
+storage_inline_summary is clause_store_inline_summary of storage_arena
 assert_eq of ["storage arena offsets", len of storage_arena.offsets, len of storage_case.clauses]
 assert_eq of ["storage arena lits", storage_flat_summary.lits, storage_list_summary.lits]
 assert_eq of ["storage arena checksum", storage_flat_summary.checksum, storage_list_summary.checksum]
@@ -273,6 +274,8 @@ assert_eq of ["storage adapter size", clause_store_size of [storage_arena, 0], l
 assert_eq of ["storage adapter first lit", clause_store_lit of [storage_arena, 0, 0], storage_case.clauses[0][0]]
 assert_eq of ["storage adapter lits", storage_adapter_summary.lits, storage_list_summary.lits]
 assert_eq of ["storage adapter checksum", storage_adapter_summary.checksum, storage_list_summary.checksum]
+assert_eq of ["storage inline adapter lits", storage_inline_summary.lits, storage_list_summary.lits]
+assert_eq of ["storage inline adapter checksum", storage_inline_summary.checksum, storage_list_summary.checksum]
 storage_rebuilt is reconstruct_flat_clauses of storage_arena
 assert_clauses_match of ["storage arena rebuild", storage_case.clauses, storage_rebuilt]
 storage_adapter_rebuilt is clause_store_reconstruct of storage_arena
@@ -284,6 +287,11 @@ storage_adapter_watch is clause_store_seed_watches of [storage_case.nvars, stora
 assert_eq of ["storage adapter watch links", storage_adapter_watch.links, storage_watch_summary.links]
 assert_eq of ["storage adapter watch a", len of storage_adapter_watch.watch_a, len of storage_case.clauses]
 assert_eq of ["storage adapter watch b", len of storage_adapter_watch.watch_b, len of storage_case.clauses]
+storage_inline_watch is clause_store_inline_seed_watches of [storage_case.nvars, storage_arena]
+assert_eq of ["storage inline adapter watch links", storage_inline_watch.links, storage_watch_summary.links]
+assert_eq of ["storage inline adapter watch a", len of storage_inline_watch.watch_a, len of storage_case.clauses]
+assert_eq of ["storage inline adapter watch b", len of storage_inline_watch.watch_b, len of storage_case.clauses]
+assert_eq of ["storage inline adapter watch buckets", storage_inline_watch.occupied, storage_adapter_watch.occupied]
 storage_delete is storage_delete_mask of (len of storage_case.clauses)
 storage_list_compact is compact_list_clauses_by_mask of [storage_case.clauses, storage_delete.mask]
 storage_flat_compact is compact_flat_clause_arena of [storage_arena, storage_delete.mask]

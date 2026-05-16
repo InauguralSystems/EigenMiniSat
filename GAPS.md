@@ -67,7 +67,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   compaction mapping. The benchmark compares direct flat-array scans against
   adapter-mediated access and now prints scan, watch-seeding, and compaction
   overhead deltas so adapter pressure can be reduced locally before becoming a
-  root arena/reference request.
+  root arena/reference request. Inline adapter scan/watch rows keep the same
+  clause-store shape while avoiding helper calls inside the hot literal loop,
+  separating data-shape pressure from helper-call overhead.
 - CDCL propagation, conflict analysis, learnt insertion, reduction scans, and
   deleted-clause compaction now operate over the solver-local clause store.
   The solver now reports store-to-list copies, conflict-analysis rebuild

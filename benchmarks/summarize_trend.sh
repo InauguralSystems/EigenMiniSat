@@ -105,6 +105,12 @@ stop != 0 {
     storage_adapter_watch_seed_ms += field_value("adapter_watch_seed_ms")
 }
 
+/^storage adapter inline / {
+    storage_inline_scan_ms += field_value("inline_scan_ms")
+    storage_inline_watch_seed_ms += field_value("inline_watch_seed_ms")
+    storage_inline_rows += 1
+}
+
 /^storage compact / {
     storage_list_compact_ms += field_value("list_compact_ms")
     storage_flat_compact_ms += field_value("flat_compact_ms")
@@ -152,15 +158,24 @@ stop != 0 {
 }
 
 END {
+    if (storage_inline_rows == 0) {
+        storage_inline_scan_ms = storage_adapter_scan_ms
+        storage_inline_watch_seed_ms = storage_adapter_watch_seed_ms
+    }
+
     adapter_scan_overhead_ms = storage_adapter_scan_ms - storage_flat_scan_ms
+    inline_scan_overhead_ms = storage_inline_scan_ms - storage_flat_scan_ms
+    helper_scan_overhead_ms = storage_adapter_scan_ms - storage_inline_scan_ms
     adapter_watch_overhead_ms = storage_adapter_watch_seed_ms - storage_watch_seed_ms
+    inline_watch_overhead_ms = storage_inline_watch_seed_ms - storage_watch_seed_ms
+    helper_watch_overhead_ms = storage_adapter_watch_seed_ms - storage_inline_watch_seed_ms
     adapter_compact_overhead_ms = storage_adapter_compact_ms - storage_flat_compact_ms
     flat_compact_overhead_ms = storage_flat_compact_ms - storage_list_compact_ms
 
     printf "copy_delta_totals cases=%d compact_lit_savings=%d watch_rebuild_savings=%d replay_savings=%d pending_deleted_debt=%d watch_detach_scan_debt=%d\n", cases, compact_lit_savings, watch_rebuild_savings, replay_savings, pending_deleted_debt, watch_detach_scan_debt
     printf "metadata_totals rows=%d compact_clause_lits=%d watch_rebuilds=%d watch_detaches=%d compact_replays=%d locked_kept=%d\n", metadata_rows, metadata_compact_clause_lits, metadata_watch_rebuilds, metadata_watch_detaches, metadata_compact_replays, metadata_locked_kept
     printf "storage_totals rows=%d list_scan_ms=%.3f flat_scan_ms=%.3f adapter_scan_ms=%.3f arena_build_ms=%.3f reconstruct_ms=%.3f list_compact_ms=%.3f flat_compact_ms=%.3f adapter_compact_ms=%.3f remap_ms=%.3f\n", storage_rows, storage_list_scan_ms, storage_flat_scan_ms, storage_adapter_scan_ms, storage_arena_build_ms, storage_reconstruct_ms, storage_list_compact_ms, storage_flat_compact_ms, storage_adapter_compact_ms, storage_remap_ms
-    printf "storage_overhead_totals rows=%d adapter_scan_overhead_ms=%.3f adapter_watch_overhead_ms=%.3f adapter_compact_overhead_ms=%.3f flat_compact_overhead_ms=%.3f\n", storage_rows, adapter_scan_overhead_ms, adapter_watch_overhead_ms, adapter_compact_overhead_ms, flat_compact_overhead_ms
+    printf "storage_overhead_totals rows=%d inline_rows=%d adapter_scan_overhead_ms=%.3f inline_scan_overhead_ms=%.3f helper_scan_overhead_ms=%.3f adapter_watch_overhead_ms=%.3f inline_watch_overhead_ms=%.3f helper_watch_overhead_ms=%.3f adapter_compact_overhead_ms=%.3f flat_compact_overhead_ms=%.3f\n", storage_rows, storage_inline_rows, adapter_scan_overhead_ms, inline_scan_overhead_ms, helper_scan_overhead_ms, adapter_watch_overhead_ms, inline_watch_overhead_ms, helper_watch_overhead_ms, adapter_compact_overhead_ms, flat_compact_overhead_ms
     printf "parse_totals generated_cases=%d split_ms=%.3f scan_ms=%.3f ints_ms=%.3f diagnostic_cases=%d diagnostic_errors=%d diagnostic_split_ms=%.3f diagnostic_scan_ms=%.3f corpus_cases=%d corpus_split_ms=%.3f corpus_scan_ms=%.3f corpus_ints_ms=%.3f\n", parse_rows, parse_split_ms, parse_scan_ms, parse_ints_ms, diagnostic_rows, diagnostic_errors, diagnostic_split_ms, diagnostic_scan_ms, corpus_rows, corpus_split_ms, corpus_scan_ms, corpus_ints_ms
     if (compact_lit_savings > 0 || watch_rebuild_savings > 0 || replay_savings > 0) {
         physical_compaction_pressure = 1
@@ -207,7 +222,7 @@ END {
         emit_candidate("validated_integer_scan", "root_runtime", "active", "keep_fast_path_and_measure_clause_assembly")
     }
     if (storage_adapter_pressure != 0) {
-        emit_candidate("clause_store_adapter", "eigenminisat_local", "active", "separate_lookup_watch_and_compaction_overhead_before_root_arena_request")
+        emit_candidate("clause_store_adapter", "eigenminisat_local", "active", "compare_inline_helper_overhead_before_root_arena_request")
     }
     if (compact_vector_pressure != 0) {
         emit_candidate("compact_integer_vectors", "root_or_stdlib", "active", "prototype_reusable_int_vector_before_solver_wrappers")

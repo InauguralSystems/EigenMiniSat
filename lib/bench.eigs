@@ -739,6 +739,23 @@ define clause_store_adapter_summary(store) as:
         "checksum": checksum
     }
 
+define clause_store_inline_summary(store) as:
+    lit_count is 0
+    checksum is 0
+    pos is 1
+    for ci in range of (len of store.offsets):
+        start is store.offsets[ci]
+        size is store.sizes[ci]
+        for li in range of size:
+            lit is store.lits[start + li]
+            lit_count += 1
+            checksum += clause_checksum_value of [lit, pos]
+            pos += 1
+    return {
+        "lits": lit_count,
+        "checksum": checksum
+    }
+
 define flat_clause_at(arena, ci) as:
     out is []
     start is arena.offsets[ci]
@@ -786,6 +803,37 @@ define flat_watch_seed_summary(nvars, arena) as:
         "links": links,
         "occupied": occupied,
         "max_bucket": max_bucket
+    }
+
+define clause_store_inline_seed_watches(nvars, store) as:
+    watches is make_watch_table of nvars
+    watch_a is []
+    watch_b is []
+    links is 0
+    for ci in range of (len of store.offsets):
+        start is store.offsets[ci]
+        size is store.sizes[ci]
+        if size == 0:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif size == 1:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        else:
+            append of [watch_a, 0]
+            append of [watch_b, 1]
+            watch_add of [watches, store.lits[start], ci]
+            watch_add of [watches, store.lits[start + 1], ci]
+            links += 2
+
+    summary is watch_table_summary of watches
+    return {
+        "watches": watches,
+        "watch_a": watch_a,
+        "watch_b": watch_b,
+        "links": links,
+        "occupied": summary.occupied,
+        "max_bucket": summary.max_bucket
     }
 
 define storage_delete_mask(count) as:
@@ -900,6 +948,11 @@ define run_storage_benchmarks(size) as:
         adapter_t1 is monotonic_ns of null
         adapter_ms is (adapter_t1 - adapter_t0) / 1000000
 
+        inline_t0 is monotonic_ns of null
+        inline_summary is clause_store_inline_summary of arena
+        inline_t1 is monotonic_ns of null
+        inline_ms is (inline_t1 - inline_t0) / 1000000
+
         watch_t0 is monotonic_ns of null
         watch_summary is flat_watch_seed_summary of [c.nvars, arena]
         watch_t1 is monotonic_ns of null
@@ -910,6 +963,11 @@ define run_storage_benchmarks(size) as:
         adapter_watch_t1 is monotonic_ns of null
         adapter_watch_ms is (adapter_watch_t1 - adapter_watch_t0) / 1000000
 
+        inline_watch_t0 is monotonic_ns of null
+        inline_watch is clause_store_inline_seed_watches of [c.nvars, arena]
+        inline_watch_t1 is monotonic_ns of null
+        inline_watch_ms is (inline_watch_t1 - inline_watch_t0) / 1000000
+
         rebuild_t0 is monotonic_ns of null
         rebuilt is reconstruct_flat_clauses of arena
         rebuild_t1 is monotonic_ns of null
@@ -919,9 +977,15 @@ define run_storage_benchmarks(size) as:
         assert of [list_summary.checksum == flat_summary.checksum, f"storage checksum mismatch {c.name}"]
         assert of [list_summary.lits == adapter_summary.lits, f"storage adapter lit count mismatch {c.name}"]
         assert of [list_summary.checksum == adapter_summary.checksum, f"storage adapter checksum mismatch {c.name}"]
+        assert of [list_summary.lits == inline_summary.lits, f"storage inline adapter lit count mismatch {c.name}"]
+        assert of [list_summary.checksum == inline_summary.checksum, f"storage inline adapter checksum mismatch {c.name}"]
+        assert of [adapter_watch.links == inline_watch.links, f"storage inline adapter watch links mismatch {c.name}"]
+        assert of [adapter_watch.occupied == inline_watch.occupied, f"storage inline adapter watch buckets mismatch {c.name}"]
+        assert of [adapter_watch.max_bucket == inline_watch.max_bucket, f"storage inline adapter watch max mismatch {c.name}"]
         assert_clauses_match of [f"storage rebuild {c.name}", c.clauses, rebuilt]
         print of f"storage arena {c.name}: vars={c.nvars} clauses={len of c.clauses} lits={list_summary.lits} flat_lits={len of arena.lits} offsets={len of arena.offsets} list_scan_ms={list_ms} build_ms={build_ms} flat_scan_ms={flat_ms} watch_seed_ms={watch_ms} reconstruct_ms={rebuild_ms} watch_links={watch_summary.links} watch_buckets={watch_summary.occupied} max_watch_bucket={watch_summary.max_bucket} checksum={flat_summary.checksum}"
         print of f"storage adapter {c.name}: clauses={clause_store_len of arena} lits={adapter_summary.lits} adapter_scan_ms={adapter_ms} adapter_watch_seed_ms={adapter_watch_ms} watch_links={adapter_watch.links} watch_a={len of adapter_watch.watch_a} watch_b={len of adapter_watch.watch_b} watch_buckets={adapter_watch.occupied} max_watch_bucket={adapter_watch.max_bucket} checksum={adapter_summary.checksum}"
+        print of f"storage adapter inline {c.name}: clauses={len of arena.offsets} lits={inline_summary.lits} inline_scan_ms={inline_ms} inline_watch_seed_ms={inline_watch_ms} watch_links={inline_watch.links} watch_a={len of inline_watch.watch_a} watch_b={len of inline_watch.watch_b} watch_buckets={inline_watch.occupied} max_watch_bucket={inline_watch.max_bucket} checksum={inline_summary.checksum}"
 
         delete_plan is storage_delete_mask of (len of c.clauses)
 
@@ -965,7 +1029,7 @@ define run_storage_benchmarks(size) as:
         assert_clauses_match of [f"storage adapter compact rebuild {c.name}", compact_list.clauses, adapter_compact_rebuilt]
         print of f"storage compact {c.name}: clauses={len of c.clauses} removed={compact_arena.removed} kept={compact_arena.kept} kept_lits={compact_flat_summary.lits} list_compact_ms={list_compact_ms} flat_compact_ms={flat_compact_ms} remap_ms={remap_ms} remap_active={remap_summary.active} remap_checksum={remap_summary.checksum} compact_checksum={compact_flat_summary.checksum}"
         print of f"storage adapter compact {c.name}: removed={adapter_compact.removed} kept={adapter_compact.kept} kept_lits={compact_adapter_summary.lits} adapter_compact_ms={adapter_compact_ms} compact_checksum={compact_adapter_summary.checksum}"
-        print of f"storage overhead {c.name}: clauses={len of c.clauses} lits={list_summary.lits} kept_lits={compact_flat_summary.lits} adapter_scan_overhead_ms={adapter_ms - flat_ms} adapter_watch_overhead_ms={adapter_watch_ms - watch_ms} adapter_compact_overhead_ms={adapter_compact_ms - flat_compact_ms} flat_compact_overhead_ms={flat_compact_ms - list_compact_ms}"
+        print of f"storage overhead {c.name}: clauses={len of c.clauses} lits={list_summary.lits} kept_lits={compact_flat_summary.lits} adapter_scan_overhead_ms={adapter_ms - flat_ms} inline_scan_overhead_ms={inline_ms - flat_ms} helper_scan_overhead_ms={adapter_ms - inline_ms} adapter_watch_overhead_ms={adapter_watch_ms - watch_ms} inline_watch_overhead_ms={inline_watch_ms - watch_ms} helper_watch_overhead_ms={adapter_watch_ms - inline_watch_ms} adapter_compact_overhead_ms={adapter_compact_ms - flat_compact_ms} flat_compact_overhead_ms={flat_compact_ms - list_compact_ms}"
     return len of cases
 
 define metadata_pressure_config(size) as:

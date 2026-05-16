@@ -58,7 +58,9 @@ restart and polarity policies, including larger evidence cases and lazy
 no-physical-compaction variants. It also emits deferred-vs-lazy delta summaries
 before asking EigenScript for root arena support. Storage pressure now also
 prints adapter scan, watch-seeding, and compaction overhead deltas to separate
-solver-local adapter costs from root/runtime storage needs.
+solver-local adapter costs from root/runtime storage needs. Inline adapter
+scan/watch rows further split helper-call overhead from the clause-store data
+shape.
 
 ## Milestone 3: CDCL
 

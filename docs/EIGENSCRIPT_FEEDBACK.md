@@ -141,6 +141,13 @@ trail replays. These activate diagnostic-tokenizer, validated-scan,
 storage-adapter, and compact-vector pressure flags without turning them into
 final root requests.
 
+A fresh size-1 inline-overhead check reports `inline_rows=4`, with storage
+adapter scan overhead split into `1.240ms` inline data-shape overhead and
+`0.860ms` helper-call overhead. Watch seeding similarly splits into `0.136ms`
+inline overhead and `0.239ms` helper-call overhead. This keeps the
+clause-store adapter decision local for now: reduce or inline hot helper paths
+before asking EigenScript for root arena/reference support.
+
 ### Bitwise Integer Operations
 
 Classification: root runtime candidate, lower priority.
@@ -159,6 +166,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
   pressure should stay local, become a library, or move to root.
 - Use storage overhead rows to separate adapter lookup, watch seeding, and
   compaction costs before asking EigenScript for root arena/reference support.
+  Prefer new logs with `inline_rows > 0` when deciding whether the pressure is
+  data shape, helper-call overhead, or both.
 - Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
   snapshots before opening root or stdlib issues. Use
   `benchmarks/summarize_trend.sh` when comparing saved logs. Its

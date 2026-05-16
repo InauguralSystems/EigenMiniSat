@@ -34,3 +34,8 @@ The summary flags are evidence markers, not automatic root decisions.
 EigenMiniSat-local, root/runtime, or root-or-standard-library exploration. They
 are intended to keep the next EigenMiniSat-vs-EigenScript decision grounded in
 small repeatable counters instead of full raw logs.
+
+Storage overhead summaries include `inline_rows`. When it is nonzero, the log
+has inline adapter scan/watch rows that use the clause-store shape without
+helper calls in the hot loop, so `helper_*` and `inline_*` overhead can be read
+separately. Older logs summarize with `inline_rows=0`.
