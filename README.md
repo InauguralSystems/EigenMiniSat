@@ -26,7 +26,8 @@ The CLI prints MiniSat-like `s SATISFIABLE` or `s UNSATISFIABLE` lines for CNF
 files, plus baseline counters. Benchmarks print `scan`, `watched`,
 `persistent`, and `cdcl` lines per generated case with elapsed milliseconds,
 variable count, clause count, decisions, propagations, and conflicts. The CDCL
-line also reports learnt clauses, backjumps, and conflict-resolution steps.
+line also reports learnt clauses, backjumps, conflict-resolution steps, variable
+activity bumps/decays, and heap operation counters.
 
 ## Scope
 
@@ -37,15 +38,15 @@ Current:
 - watched-literal propagation path for correctness and benchmark comparison
 - persistent watched trail/backtracking path
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
+- MiniSat-style variable activity and a binary heap order structure for CDCL
 - fixture correctness tests
 - generated benchmark families
 
 Next:
 
-- binary heap variable ordering
-- VSIDS-style activity bumping and decay
 - clause allocator / arena pressure
 - restarts and learnt-clause database reduction
+- richer phase selection and polarity state
 
 ## EigenScript Pressure
 
@@ -55,5 +56,5 @@ This repo is expected to stress:
 - mutable list and dict state
 - recursive search and backtracking
 - parser/string throughput for DIMACS
-- heap and queue library candidates
+- heap and queue library candidates, including pop/reinsert churn
 - allocator behavior under clause churn

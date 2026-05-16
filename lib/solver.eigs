@@ -37,6 +37,12 @@ define filled_list(size, value) as:
         append of [out, value]
     return out
 
+define copy_prefix(items, count) as:
+    out is []
+    for i in range of count:
+        append of [out, items[i]]
+    return out
+
 define lit_value(lit, asg) as:
     v is lit_abs of lit
     if v >= (len of asg):
@@ -439,6 +445,131 @@ define append_lit_unique(clause, lit) as:
         append of [clause, lit]
     return null
 
+define order_better(state, a, b) as:
+    if state.activity[a] > state.activity[b]:
+        return 1
+    if state.activity[a] == state.activity[b]:
+        if a < b:
+            return 1
+    return 0
+
+define order_swap(state, i, j) as:
+    vi is state.order_heap[i]
+    vj is state.order_heap[j]
+    state.order_heap[i] is vj
+    state.order_heap[j] is vi
+    state.order_pos[vi] is j
+    state.order_pos[vj] is i
+    return null
+
+define order_sift_up(state, idx) as:
+    i is idx
+    loop while i > 0:
+        parent is floor of ((i - 1) / 2)
+        if (order_better of [state, state.order_heap[i], state.order_heap[parent]]) != 0:
+            order_swap of [state, i, parent]
+            i is parent
+        else:
+            break
+    return null
+
+define order_sift_down(state, idx) as:
+    i is idx
+    loop while 1:
+        best is i
+        left is (i * 2) + 1
+        right is left + 1
+        size is len of state.order_heap
+
+        if left < size:
+            if (order_better of [state, state.order_heap[left], state.order_heap[best]]) != 0:
+                best is left
+        if right < size:
+            if (order_better of [state, state.order_heap[right], state.order_heap[best]]) != 0:
+                best is right
+
+        if best == i:
+            break
+        order_swap of [state, i, best]
+        i is best
+    return null
+
+define order_insert(state, v, stats) as:
+    if v <= 0:
+        return null
+    if state.order_pos[v] >= 0:
+        return null
+
+    append of [state.order_heap, v]
+    idx is (len of state.order_heap) - 1
+    state.order_pos[v] is idx
+    order_sift_up of [state, idx]
+    if stats != null:
+        stats.order_inserts += 1
+    return null
+
+define order_update_var(state, v) as:
+    idx is state.order_pos[v]
+    if idx < 0:
+        return null
+    order_sift_up of [state, idx]
+    idx is state.order_pos[v]
+    order_sift_down of [state, idx]
+    return null
+
+define order_pop_best(state, stats) as:
+    size is len of state.order_heap
+    if size == 0:
+        return 0
+
+    best is state.order_heap[0]
+    last is state.order_heap[size - 1]
+    state.order_pos[best] is -1
+    state.order_heap is copy_prefix of [state.order_heap, size - 1]
+    if (len of state.order_heap) > 0:
+        state.order_heap[0] is last
+        state.order_pos[last] is 0
+        order_sift_down of [state, 0]
+    if stats != null:
+        stats.order_pops += 1
+    return best
+
+define init_order_heap(nvars, asg, state) as:
+    for v in range of (nvars + 1):
+        if v > 0:
+            if asg[v] == 0:
+                order_insert of [state, v, null]
+    return null
+
+define choose_var_cdcl(asg, state, stats) as:
+    loop while (len of state.order_heap) > 0:
+        v is order_pop_best of [state, stats]
+        if v > 0:
+            if asg[v] == 0:
+                return v
+            stats.order_skips += 1
+    return choose_var of asg
+
+define bump_var_activity(state, v, stats) as:
+    state.activity[v] is state.activity[v] + state.var_inc
+    stats.activity_bumps += 1
+    order_update_var of [state, v]
+    return null
+
+define bump_clause_activity(state, clause, stats) as:
+    seen is []
+    for lit in clause:
+        v is lit_abs of lit
+        if (clause_has_lit of [seen, v]) == 0:
+            append of [seen, v]
+            bump_var_activity of [state, v, stats]
+    return null
+
+define decay_var_activity(state, stats) as:
+    state.var_inc is state.var_inc / state.var_decay
+    stats.activity_decays += 1
+    return null
+
 define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagation) as:
     v is lit_abs of lit
     wanted is 1
@@ -473,6 +604,11 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
         "trail_lim": [],
         "reason": filled_list of [nvars + 1, -1],
         "level": filled_list of [nvars + 1, 0],
+        "activity": filled_list of [nvars + 1, 0],
+        "var_inc": 1,
+        "var_decay": 0.95,
+        "order_heap": [],
+        "order_pos": filled_list of [nvars + 1, -1],
         "conflict": -1
     }
 
@@ -496,6 +632,7 @@ define build_cdcl_state(nvars, clauses, asg, stats) as:
             watch_add of [state.watches, clause[0], ci]
             watch_add of [state.watches, clause[1], ci]
 
+    init_order_heap of [nvars, asg, state]
     return state
 
 define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
@@ -560,7 +697,7 @@ define run_watched_queue_cdcl(nvars, clauses, asg, state, stats) as:
 
     return 1
 
-define cdcl_cancel_to(state, asg, mark) as:
+define cdcl_cancel_to(state, asg, mark, stats) as:
     i is (len of state.trail) - 1
     loop while i >= mark:
         lit is state.trail[i]
@@ -568,26 +705,20 @@ define cdcl_cancel_to(state, asg, mark) as:
         asg[v] is 0
         state.reason[v] is -1
         state.level[v] is 0
+        order_insert of [state, v, stats]
         i -= 1
 
-    trimmed is []
-    for j in range of mark:
-        append of [trimmed, state.trail[j]]
-    state.trail is trimmed
+    state.trail is copy_prefix of [state.trail, mark]
     if state.qhead > mark:
         state.qhead is mark
     return null
 
-define cdcl_cancel_until(state, asg, level) as:
+define cdcl_cancel_until(state, asg, level, stats) as:
     if level >= (len of state.trail_lim):
         return null
     mark is state.trail_lim[level]
-    cdcl_cancel_to of [state, asg, mark]
-
-    kept is []
-    for i in range of level:
-        append of [kept, state.trail_lim[i]]
-    state.trail_lim is kept
+    cdcl_cancel_to of [state, asg, mark, stats]
+    state.trail_lim is copy_prefix of [state.trail_lim, level]
     return null
 
 define cdcl_push_level(state) as:
@@ -690,7 +821,19 @@ define add_cdcl_clause(clauses, state, clause) as:
 
 define solve_cnf_cdcl(nvars, input_clauses) as:
     clauses is copy_clauses of input_clauses
-    stats is {"decisions": 0, "propagations": 0, "conflicts": 0, "learnts": 0, "backjumps": 0, "resolutions": 0}
+    stats is {
+        "decisions": 0,
+        "propagations": 0,
+        "conflicts": 0,
+        "learnts": 0,
+        "backjumps": 0,
+        "resolutions": 0,
+        "activity_bumps": 0,
+        "activity_decays": 0,
+        "order_pops": 0,
+        "order_inserts": 0,
+        "order_skips": 0
+    }
     asg is make_assignment of nvars
     state is build_cdcl_state of [nvars, clauses, asg, stats]
 
@@ -703,7 +846,12 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
             "conflicts": stats.conflicts,
             "learnts": stats.learnts,
             "backjumps": stats.backjumps,
-            "resolutions": stats.resolutions
+            "resolutions": stats.resolutions,
+            "activity_bumps": stats.activity_bumps,
+            "activity_decays": stats.activity_decays,
+            "order_pops": stats.order_pops,
+            "order_inserts": stats.order_inserts,
+            "order_skips": stats.order_skips
         }
 
     loop while 1:
@@ -717,7 +865,12 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
                     "conflicts": stats.conflicts,
                     "learnts": stats.learnts,
                     "backjumps": stats.backjumps,
-                    "resolutions": stats.resolutions
+                    "resolutions": stats.resolutions,
+                    "activity_bumps": stats.activity_bumps,
+                    "activity_decays": stats.activity_decays,
+                    "order_pops": stats.order_pops,
+                    "order_inserts": stats.order_inserts,
+                    "order_skips": stats.order_skips
                 }
 
             analysis is analyze_conflict_cdcl of [clauses, state, state.conflict, stats]
@@ -730,12 +883,19 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
                     "conflicts": stats.conflicts,
                     "learnts": stats.learnts,
                     "backjumps": stats.backjumps,
-                    "resolutions": stats.resolutions
+                    "resolutions": stats.resolutions,
+                    "activity_bumps": stats.activity_bumps,
+                    "activity_decays": stats.activity_decays,
+                    "order_pops": stats.order_pops,
+                    "order_inserts": stats.order_inserts,
+                    "order_skips": stats.order_skips
                 }
 
+            bump_clause_activity of [state, analysis.clause, stats]
+            decay_var_activity of [state, stats]
             learned_ci is add_cdcl_clause of [clauses, state, analysis.clause]
             stats.learnts += 1
-            cdcl_cancel_until of [state, asg, analysis.backtrack]
+            cdcl_cancel_until of [state, asg, analysis.backtrack, stats]
             stats.backjumps += 1
 
             if analysis.assert_lit != 0:
@@ -751,10 +911,15 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
                 "conflicts": stats.conflicts,
                 "learnts": stats.learnts,
                 "backjumps": stats.backjumps,
-                "resolutions": stats.resolutions
+                "resolutions": stats.resolutions,
+                "activity_bumps": stats.activity_bumps,
+                "activity_decays": stats.activity_decays,
+                "order_pops": stats.order_pops,
+                "order_inserts": stats.order_inserts,
+                "order_skips": stats.order_skips
             }
 
-        v is choose_var of asg
+        v is choose_var_cdcl of [asg, state, stats]
         if v == 0:
             return {
                 "status": "SAT",
@@ -764,7 +929,12 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
                 "conflicts": stats.conflicts,
                 "learnts": stats.learnts,
                 "backjumps": stats.backjumps,
-                "resolutions": stats.resolutions
+                "resolutions": stats.resolutions,
+                "activity_bumps": stats.activity_bumps,
+                "activity_decays": stats.activity_decays,
+                "order_pops": stats.order_pops,
+                "order_inserts": stats.order_inserts,
+                "order_skips": stats.order_skips
             }
 
         cdcl_push_level of state
