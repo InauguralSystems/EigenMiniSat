@@ -43,3 +43,8 @@ separately. Older logs summarize with `inline_rows=0`.
 Parse summaries include `tokens_ms` fields when logs contain the
 `scan_tokens`-backed DIMACS parser. Older logs summarize those fields as zero,
 so split/scan/ints comparisons remain readable across checkpoints.
+
+Text build summaries include `concat_ms` and `text_builder_ms` when generated
+fixture logs contain stdlib text-builder rows. This keeps string-assembly
+pressure visible after the main generated-DIMACS path moves to the shared
+EigenScript builder library.

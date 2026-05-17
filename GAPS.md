@@ -12,17 +12,21 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   or a deliberate library abstraction addresses it.
 - `docs/EIGENSCRIPT_FEEDBACK.md` now classifies current pressure into
   EigenScript root/runtime candidates, standard-library candidates, and
-  EigenMiniSat-local work. Local-only binding is now a root-language fix in
-  progress in EigenScript PR #117 and is exercised by EigenMiniSat CDCL
-  sentinel tests. Diagnostic token spans are now a root-runtime fix in
-  progress in EigenScript PR #118 and are exercised by a DIMACS token-span
-  parser. String builders and priority queues are standard-library candidates,
-  compact integer vectors are root-vs-stdlib pressure, and clause arenas remain
-  an EigenMiniSat-local prototype first.
+  EigenMiniSat-local work. Local-only binding is now a merged root-language fix
+  from EigenScript PR #117 and is exercised by EigenMiniSat CDCL sentinel
+  tests. Diagnostic token spans are now a merged root-runtime fix from
+  EigenScript PR #118 and are exercised by a DIMACS token-span parser. String
+  builders are now a standard-library fix in progress in
+  EigenScript PR #119 and are exercised by generated DIMACS text construction.
+  Priority queues are a standard-library candidate, compact integer vectors are
+  root-vs-stdlib pressure, and clause arenas remain an EigenMiniSat-local
+  prototype first.
 - DIMACS parser throughput is now measured with generated text fixtures. The
-  current path builds strings by repeated concatenation and tokenizes each line
-  through split/trim/num conversion, so larger fixtures should tell us whether
-  EigenScript needs string-builder or streaming-tokenizer support.
+  current path builds generated fixtures through EigenScript's stdlib
+  text-builder candidate, keeps repeated concatenation as benchmark comparison,
+  and tokenizes each line through split/trim/num conversion, so larger fixtures
+  should tell us whether the library builder is enough or EigenScript needs
+  lower-level buffered text or streaming-tokenizer support.
 - File-backed DIMACS fixtures now add `mktemp`, `write_text`, `read_text`
   through `parse_dimacs_file`, and `rm` pressure. This separates parser cost
   from file I/O cost and may expose whether EigenScript needs streaming file

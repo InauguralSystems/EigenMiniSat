@@ -420,6 +420,8 @@ print of "  restart policies: ok"
 
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case
+grid_concat_text is case_to_dimacs_text_concat of grid_case
+assert_eq of ["grid text builder equivalence", grid_text, grid_concat_text]
 grid_parsed is parse_dimacs_text of grid_text
 grid_scan_parsed is parse_dimacs_text_scan of grid_text
 grid_token_parsed is parse_dimacs_text_tokens of grid_text
@@ -504,6 +506,9 @@ assert_eq of ["missing header flag", missing_header.header_seen, 0]
 assert_true of ["missing header message", contains of [missing_header.errors[0], "missing problem header"]]
 diagnostic_cases is diagnostic_pressure_cases of 1
 assert_eq of ["diagnostic case count", len of diagnostic_cases, 3]
+assert_eq of ["diagnostic bad-token builder equivalence", diagnostic_bad_token_text of 1, diagnostic_bad_token_text_concat of 1]
+assert_eq of ["diagnostic count-bound builder equivalence", diagnostic_count_bound_text of 1, diagnostic_count_bound_text_concat of 1]
+assert_eq of ["diagnostic header builder equivalence", diagnostic_header_unterminated_text of 1, diagnostic_header_unterminated_text_concat of 1]
 diagnostic_bad is parse_dimacs_text of diagnostic_cases[0].text
 diagnostic_bad_scan is parse_dimacs_text_scan of diagnostic_cases[0].text
 diagnostic_bad_token is parse_dimacs_text_tokens of diagnostic_cases[0].text
