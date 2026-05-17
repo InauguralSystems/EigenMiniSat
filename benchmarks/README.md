@@ -39,3 +39,7 @@ Storage overhead summaries include `inline_rows`. When it is nonzero, the log
 has inline adapter scan/watch rows that use the clause-store shape without
 helper calls in the hot loop, so `helper_*` and `inline_*` overhead can be read
 separately. Older logs summarize with `inline_rows=0`.
+
+Parse summaries include `tokens_ms` fields when logs contain the
+`scan_tokens`-backed DIMACS parser. Older logs summarize those fields as zero,
+so split/scan/ints comparisons remain readable across checkpoints.
