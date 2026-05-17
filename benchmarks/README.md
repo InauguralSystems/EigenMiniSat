@@ -45,6 +45,8 @@ Parse summaries include `tokens_ms` fields when logs contain the
 zero, so split/scan/ints comparisons remain readable across checkpoints.
 
 Text build summaries include `concat_ms`, `text_builder_ms`, and
-`text_builder_overhead_ms` when generated fixture logs contain stdlib
-text-builder rows. This keeps string-assembly pressure visible after the main
-generated-DIMACS path moves to the shared EigenScript builder library.
+`text_builder_overhead_ms` when generated fixture logs contain text-builder
+rows. Negative overhead marks a native-builder win over repeated concat, and
+the summary reports that as `text_builder_native_win=1`. This keeps
+string-assembly pressure visible after the main generated-DIMACS path moves to
+EigenScript's root-backed builder API.

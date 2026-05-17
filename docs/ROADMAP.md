@@ -116,10 +116,10 @@ benchmarks until the right root or library abstraction is clear.
 
 Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
 ledger. Local-only binding, diagnostic token spans, integer-aware token spans,
-the text builder, and compact integer vectors are merged root or stdlib paths
-that EigenMiniSat now consumes as stress evidence. Priority queues remain a
-standard-library candidate, and clause arenas are being prototyped and measured
-locally in EigenMiniSat before asking for a root primitive. The trend runner
-now has an evidence profile for bounded larger-case decision runs, and its
-summary emits active candidate-decision rows so the next experiment is scoped
-before any root or stdlib request is made.
+the native text builder, and compact integer vectors are merged root or stdlib
+paths that EigenMiniSat now consumes as stress evidence. Priority queues remain
+a standard-library candidate, and clause arenas are being prototyped and
+measured locally in EigenMiniSat before asking for a root primitive. The trend
+runner now has an evidence profile for bounded larger-case decision runs, and
+its summary emits active candidate-decision rows so the next experiment is
+scoped before any root or stdlib request is made.
