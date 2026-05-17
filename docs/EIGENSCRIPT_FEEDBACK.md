@@ -53,18 +53,22 @@ domain-specific parser or richer recoverable-error API.
 
 ### String Builder Or Buffered Text Output
 
-Classification: standard-library fix in progress.
+Classification: standard-library path active; root runtime still under
+measurement.
 
 Evidence: generated DIMACS fixtures and malformed diagnostic cases build text
-with repeated string concatenation. EigenScript PR #119 adds a shared
+with repeated string concatenation. EigenScript PR #119 added a shared
 `lib/text_builder.eigs` module. EigenMiniSat now uses that builder for the main
 generated-DIMACS and diagnostic text paths while `--parse-bench` keeps concat
-generation rows as comparison evidence. This is not solver-specific; it affects
-any EigenScript program producing structured text.
+generation rows as comparison evidence. The `evidence` profile runs that
+bounded parse benchmark so `text_build_totals` and `text_builder_overhead_ms`
+stay visible in the same decision summary as parser, storage, and copy
+pressure. This is not solver-specific; it affects any EigenScript program
+producing structured text.
 
-Next action: merge the stdlib builder, keep measuring builder-vs-concat rows,
-and decide from larger evidence whether the pure EigenScript builder is enough
-or whether EigenScript root needs a lower-level text buffer.
+Next action: keep measuring builder-vs-concat rows in evidence runs, and decide
+from larger logs whether the pure EigenScript builder is enough or whether
+EigenScript root needs a lower-level text buffer.
 
 ### Compact Mutable Integer Vectors
 

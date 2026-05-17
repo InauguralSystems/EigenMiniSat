@@ -21,12 +21,14 @@ A character-scanning parser path now shares the same diagnostics and can be
 benchmarked against the split/trim parser. The benchmark also includes a
 C-backed `scan_ints` parser path on generated fixtures and corpus files to
 measure root scanner throughput separately from EigenScript-side clause
-assembly. A malformed-DIMACS diagnostic benchmark now compares split/trim and
-character-scanning diagnostic paths on token/header/count failures while
-intentionally leaving the validated-input `scan_ints` path out of that surface.
-A lightweight trend runner now records selected pressure snapshots under
-ignored local logs so parser, corpus, and metadata changes can be compared
-without committing machine-specific output.
+assembly, plus an integer-aware token-span path through `scan_int_tokens` for
+recoverable diagnostics. A malformed-DIMACS diagnostic benchmark now compares
+split/trim, character-scanning, and token-span diagnostic paths on
+token/header/count failures while intentionally leaving the validated-input
+`scan_ints` path out of that surface. A lightweight trend runner now records
+selected pressure snapshots under ignored local logs so parser, text-builder,
+corpus, and metadata changes can be compared without committing
+machine-specific output.
 
 ## Milestone 2: MiniSat Data Structures
 
@@ -113,11 +115,11 @@ to make EigenMiniSat faster. Alternate implementations belong in comparison
 benchmarks until the right root or library abstraction is clear.
 
 Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
-ledger. Local-only binding and diagnostic token spans are root/runtime
-candidates, string builders and priority queues are standard-library
-candidates, compact integer vectors are still root-vs-stdlib pressure, and
-clause arenas are being prototyped and measured locally in EigenMiniSat before
-asking for a root primitive. The trend runner now has an evidence profile for
-bounded larger-case decision runs, and its summary emits active
-candidate-decision rows so the next experiment is scoped before any root or
-stdlib request is made.
+ledger. Local-only binding, diagnostic token spans, integer-aware token spans,
+the text builder, and compact integer vectors are merged root or stdlib paths
+that EigenMiniSat now consumes as stress evidence. Priority queues remain a
+standard-library candidate, and clause arenas are being prototyped and measured
+locally in EigenMiniSat before asking for a root primitive. The trend runner
+now has an evidence profile for bounded larger-case decision runs, and its
+summary emits active candidate-decision rows so the next experiment is scoped
+before any root or stdlib request is made.

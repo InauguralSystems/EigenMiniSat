@@ -68,7 +68,7 @@ run_cmd "$EIGS" minisat.eigs --metadata-bench --size "$SIZE"
 run_cmd "$EIGS" minisat.eigs --copy-bench --size "$SIZE"
 run_cmd "$EIGS" minisat.eigs --storage-bench --size "$SIZE"
 
-if [[ "$PROFILE" == "full" ]]; then
+if [[ "$PROFILE" == "evidence" || "$PROFILE" == "full" ]]; then
     run_cmd "$EIGS" minisat.eigs --parse-bench --size "$SIZE"
 fi
 
