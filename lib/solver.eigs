@@ -8,7 +8,7 @@ define lit_abs(lit) as:
     return lit
 
 define lit_encode(lit) as:
-    v is lit_abs of lit
+    local v is lit_abs of lit
     if v <= 0:
         return -1
     idx is (v - 1) * 2
@@ -17,8 +17,8 @@ define lit_encode(lit) as:
     return idx
 
 define lit_decode(idx) as:
-    v is floor of (idx / 2)
-    lit is v + 1
+    local v is floor of (idx / 2)
+    local lit is v + 1
     if (idx % 2) == 1:
         lit is 0 - lit
     return lit
@@ -29,7 +29,7 @@ define lit_neg_index(idx) as:
     return idx - 1
 
 define make_assignment(nvars) as:
-    asg is []
+    local asg is []
     for i in range of (nvars + 1):
         append of [asg, 0]
     return asg
@@ -65,7 +65,7 @@ define copy_prefix(items, count) as:
     return out
 
 define lit_value(lit, asg) as:
-    v is lit_abs of lit
+    local v is lit_abs of lit
     if v >= (len of asg):
         return 0
     assigned is asg[v]
@@ -80,8 +80,8 @@ define lit_value(lit, asg) as:
     return -1
 
 define assign_lit(asg, lit) as:
-    v is lit_abs of lit
-    wanted is 1
+    local v is lit_abs of lit
+    local wanted is 1
     if lit < 0:
         wanted is -1
     if v >= (len of asg):
@@ -155,7 +155,7 @@ define dpll_rec(clauses, asg, stats) as:
     if (all_clauses_satisfied of [clauses, asg]) != 0:
         return asg
 
-    v is choose_var of asg
+    local v is choose_var of asg
     if v == 0:
         return asg
 
@@ -170,10 +170,10 @@ define dpll_rec(clauses, asg, stats) as:
     return null
 
 define solve_cnf(nvars, clauses) as:
-    stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
-    asg is make_assignment of nvars
-    model is dpll_rec of [clauses, asg, stats]
-    status is "UNSAT"
+    local stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
+    local asg is make_assignment of nvars
+    local model is dpll_rec of [clauses, asg, stats]
+    local status is "UNSAT"
     if model != null:
         status is "SAT"
     return {
@@ -212,7 +212,7 @@ define clause_store_empty() as:
     }
 
 define clause_store_add_clause(store, clause) as:
-    ci is len of store.offsets
+    local ci is len of store.offsets
     append of [store.offsets, len of store.lits]
     append of [store.sizes, len of clause]
     for lit in clause:
@@ -220,7 +220,7 @@ define clause_store_add_clause(store, clause) as:
     return ci
 
 define clause_store_from_clauses(clauses) as:
-    store is clause_store_empty of null
+    local store is clause_store_empty of null
     for clause in clauses:
         clause_store_add_clause of [store, clause]
     return store
@@ -335,8 +335,8 @@ define clause_store_compact_by_mask(store, delete_mask) as:
     return clause_store_compact_by_mask_counted of [store, delete_mask, null]
 
 define enqueue_watched(asg, trail, lit, stats, count_propagation) as:
-    v is lit_abs of lit
-    wanted is 1
+    local v is lit_abs of lit
+    local wanted is 1
     if lit < 0:
         wanted is -1
     if v >= (len of asg):
@@ -408,7 +408,7 @@ define run_watched_queue(nvars, clauses, asg, state, stats) as:
         kept is []
 
         for old_pos in range of (len of old):
-            ci is old[old_pos]
+            local ci is old[old_pos]
             clause is clauses[ci]
             wa is state.watch_a[ci]
             wb is state.watch_b[ci]
@@ -461,7 +461,7 @@ define run_watched_queue(nvars, clauses, asg, state, stats) as:
     return 1
 
 define propagate_units_watched(nvars, clauses, asg, stats) as:
-    state is build_watched_state of [nvars, clauses, asg, stats]
+    local state is build_watched_state of [nvars, clauses, asg, stats]
     if state.ok == 0:
         return 0
     return run_watched_queue of [nvars, clauses, asg, state, stats]
@@ -472,7 +472,7 @@ define dpll_rec_watched(nvars, clauses, asg, stats) as:
     if (all_clauses_satisfied of [clauses, asg]) != 0:
         return asg
 
-    v is choose_var of asg
+    local v is choose_var of asg
     if v == 0:
         return asg
 
@@ -487,10 +487,10 @@ define dpll_rec_watched(nvars, clauses, asg, stats) as:
     return null
 
 define solve_cnf_watched(nvars, clauses) as:
-    stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
-    asg is make_assignment of nvars
-    model is dpll_rec_watched of [nvars, clauses, asg, stats]
-    status is "UNSAT"
+    local stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
+    local asg is make_assignment of nvars
+    local model is dpll_rec_watched of [nvars, clauses, asg, stats]
+    local status is "UNSAT"
     if model != null:
         status is "SAT"
     return {
@@ -523,7 +523,7 @@ define watched_push_level(state) as:
 define watched_cancel_until(state, asg, level) as:
     if level >= (len of state.trail_lim):
         return null
-    mark is state.trail_lim[level]
+    local mark is state.trail_lim[level]
     watched_cancel_to of [state, asg, mark]
 
     kept is []
@@ -533,7 +533,7 @@ define watched_cancel_until(state, asg, level) as:
     return null
 
 define build_persistent_watched_state(nvars, clauses, asg, stats) as:
-    state is build_watched_state of [nvars, clauses, asg, stats]
+    local state is build_watched_state of [nvars, clauses, asg, stats]
     state.trail_lim is []
     return state
 
@@ -543,7 +543,7 @@ define dpll_rec_persistent(nvars, clauses, asg, state, stats) as:
     if (all_clauses_satisfied of [clauses, asg]) != 0:
         return copy_assignment of asg
 
-    v is choose_var of asg
+    local v is choose_var of asg
     if v == 0:
         return copy_assignment of asg
 
@@ -568,13 +568,13 @@ define dpll_rec_persistent(nvars, clauses, asg, state, stats) as:
     return null
 
 define solve_cnf_persistent(nvars, clauses) as:
-    stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
-    asg is make_assignment of nvars
-    state is build_persistent_watched_state of [nvars, clauses, asg, stats]
-    model is null
+    local stats is {"decisions": 0, "propagations": 0, "conflicts": 0}
+    local asg is make_assignment of nvars
+    local state is build_persistent_watched_state of [nvars, clauses, asg, stats]
+    local model is null
     if state.ok != 0:
         model is dpll_rec_persistent of [nvars, clauses, asg, state, stats]
-    status is "UNSAT"
+    local status is "UNSAT"
     if model != null:
         status is "SAT"
     return {
@@ -689,7 +689,7 @@ define init_order_heap(nvars, asg, state) as:
 
 define choose_var_cdcl(asg, state, stats) as:
     loop while (len of state.order_heap) > 0:
-        v is order_pop_best of [state, stats]
+        local v is order_pop_best of [state, stats]
         if v > 0:
             if asg[v] == 0:
                 return v
@@ -705,7 +705,7 @@ define bump_var_activity(state, v, stats) as:
 define bump_clause_activity(state, clause, stats) as:
     seen is []
     for lit in clause:
-        v is lit_abs of lit
+        local v is lit_abs of lit
         if (clause_has_lit of [seen, v]) == 0:
             append of [seen, v]
             bump_var_activity of [state, v, stats]
@@ -775,7 +775,7 @@ define count_deleted_clauses(state) as:
 define append_active_watch_tail(kept, old, start, state, stats) as:
     for tail_pos in range of (len of old):
         if tail_pos >= start:
-            ci is old[tail_pos]
+            local ci is old[tail_pos]
             if state.clause_deleted[ci] != 0:
                 stats.deleted_watch_skips += 1
             else:
@@ -1104,8 +1104,8 @@ define cdcl_maybe_restart(state, asg, stats) as:
     return 0
 
 define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagation) as:
-    v is lit_abs of lit
-    wanted is 1
+    local v is lit_abs of lit
+    local wanted is 1
     if lit < 0:
         wanted is -1
     if v >= (len of asg):
@@ -1128,8 +1128,8 @@ define enqueue_cdcl(asg, state, lit, reason_clause, level, stats, count_propagat
     return 0
 
 define build_cdcl_state(nvars, store, asg, stats, opts) as:
-    cdcl_opts is cdcl_merge_options of opts
-    state is {
+    local cdcl_opts is cdcl_merge_options of opts
+    local state is {
         "ok": 1,
         "watches": make_watch_table of nvars,
         "watch_a": [],
@@ -1168,9 +1168,9 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
     }
 
     for ci in range of (clause_store_len of store):
-        clause is clause_store_clause_counted of [store, ci, stats]
+        local clause is clause_store_clause_counted of [store, ci, stats]
         init_clause_metadata of [state, clause, 0, stats]
-        clause_size is clause_store_size of [store, ci]
+        local clause_size is clause_store_size of [store, ci]
         if clause_size == 0:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
@@ -1193,26 +1193,26 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
     return state
 
 define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
-    level is len of state.trail_lim
+    local level is len of state.trail_lim
     loop while state.qhead < (len of state.trail):
-        p is state.trail[state.qhead]
+        local p is state.trail[state.qhead]
         state.qhead += 1
-        false_lit is 0 - p
-        wi is lit_index of false_lit
-        old is state.watches[wi]
-        kept is []
+        local false_lit is 0 - p
+        local wi is lit_index of false_lit
+        local old is state.watches[wi]
+        local kept is []
 
         for old_pos in range of (len of old):
-            ci is old[old_pos]
+            local ci is old[old_pos]
             if state.clause_deleted[ci] != 0:
                 stats.deleted_watch_skips += 1
                 continue
 
-            wa is state.watch_a[ci]
-            wb is state.watch_b[ci]
+            local wa is state.watch_a[ci]
+            local wb is state.watch_b[ci]
 
-            false_pos is -1
-            other_pos is -1
+            local false_pos is -1
+            local other_pos is -1
             if (clause_store_lit of [store, ci, wa]) == false_lit:
                 false_pos is wa
                 other_pos is wb
@@ -1223,16 +1223,16 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
                 append of [kept, ci]
                 continue
 
-            other_lit is clause_store_lit of [store, ci, other_pos]
-            other_val is lit_value of [other_lit, asg]
+            local other_lit is clause_store_lit of [store, ci, other_pos]
+            local other_val is lit_value of [other_lit, asg]
             if other_val == 1:
                 append of [kept, ci]
                 continue
 
-            found is 0
+            local found is 0
             for k in range of (clause_store_size of [store, ci]):
                 if k != false_pos and k != other_pos:
-                    candidate is clause_store_lit of [store, ci, k]
+                    local candidate is clause_store_lit of [store, ci, k]
                     if (lit_value of [candidate, asg]) != -1:
                         if state.watch_a[ci] == false_pos:
                             state.watch_a[ci] is k
@@ -1261,10 +1261,10 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
     return 1
 
 define cdcl_cancel_to(state, asg, mark, stats) as:
-    i is (len of state.trail) - 1
+    local i is (len of state.trail) - 1
     loop while i >= mark:
-        lit is state.trail[i]
-        v is lit_abs of lit
+        local lit is state.trail[i]
+        local v is lit_abs of lit
         asg[v] is 0
         state.reason[v] is -1
         state.level[v] is 0
@@ -1279,7 +1279,7 @@ define cdcl_cancel_to(state, asg, mark, stats) as:
 define cdcl_cancel_until(state, asg, level, stats) as:
     if level >= (len of state.trail_lim):
         return null
-    mark is state.trail_lim[level]
+    local mark is state.trail_lim[level]
     cdcl_cancel_to of [state, asg, mark, stats]
     state.trail_lim is copy_prefix of [state.trail_lim, level]
     return null
@@ -1289,14 +1289,14 @@ define cdcl_push_level(state) as:
     return len of state.trail_lim
 
 define analyze_mark_store_clause(store, ci, pivot_var, state, level, seen, learnt_tail, stats) as:
-    current_count is 0
-    size is clause_store_size of [store, ci]
+    local current_count is 0
+    local size is clause_store_size of [store, ci]
     if stats != null:
         stats.analysis_store_scans += 1
         stats.analysis_store_lits += size
     for pos in range of size:
-        lit is clause_store_lit of [store, ci, pos]
-        v is lit_abs of lit
+        local lit is clause_store_lit of [store, ci, pos]
+        local v is lit_abs of lit
         if v != pivot_var:
             if state.level[v] > 0:
                 if seen[v] == 0:
@@ -1308,30 +1308,30 @@ define analyze_mark_store_clause(store, ci, pivot_var, state, level, seen, learn
     return current_count
 
 define max_clause_level_except(clause, state, except_lit) as:
-    max_level is 0
-    except_var is lit_abs of except_lit
+    local max_level is 0
+    local except_var is lit_abs of except_lit
     for lit in clause:
-        v is lit_abs of lit
+        local v is lit_abs of lit
         if v != except_var:
             if state.level[v] > max_level:
                 max_level is state.level[v]
     return max_level
 
 define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
-    level is len of state.trail_lim
-    seen is filled_list of [len of state.level, 0]
-    learnt_tail is []
-    path_count is analyze_mark_store_clause of [store, conflict_ci, 0, state, level, seen, learnt_tail, stats]
-    trail_idx is (len of state.trail) - 1
-    assert_lit is 0
+    local level is len of state.trail_lim
+    local seen is filled_list of [len of state.level, 0]
+    local learnt_tail is []
+    local path_count is analyze_mark_store_clause of [store, conflict_ci, 0, state, level, seen, learnt_tail, stats]
+    local trail_idx is (len of state.trail) - 1
+    local assert_lit is 0
 
     loop while path_count > 0:
-        pivot_lit is 0
-        pivot_var is 0
+        local pivot_lit is 0
+        local pivot_var is 0
         loop while trail_idx >= 0:
-            trail_lit is state.trail[trail_idx]
+            local trail_lit is state.trail[trail_idx]
             trail_idx -= 1
-            trail_var is lit_abs of trail_lit
+            local trail_var is lit_abs of trail_lit
             if seen[trail_var] != 0:
                 pivot_lit is trail_lit
                 pivot_var is trail_var
@@ -1346,7 +1346,7 @@ define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
             assert_lit is 0 - pivot_lit
             break
 
-        reason_ci is state.reason[pivot_var]
+        local reason_ci is state.reason[pivot_var]
         if reason_ci < 0:
             assert_lit is 0 - pivot_lit
             break
@@ -1354,12 +1354,12 @@ define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
         path_count += analyze_mark_store_clause of [store, reason_ci, pivot_var, state, level, seen, learnt_tail, stats]
         stats.resolutions += 1
 
-    learnt is []
+    local learnt is []
     if assert_lit != 0:
         append of [learnt, assert_lit]
     for lit in learnt_tail:
         append of [learnt, lit]
-    backtrack is max_clause_level_except of [learnt, state, assert_lit]
+    local backtrack is max_clause_level_except of [learnt, state, assert_lit]
     if stats != null:
         stats.analysis_native_learnts += 1
     return {
@@ -1369,7 +1369,7 @@ define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     }
 
 define add_cdcl_clause(store, state, clause, learnt, stats) as:
-    ci is clause_store_add_clause of [store, clause]
+    local ci is clause_store_add_clause of [store, clause]
     init_clause_metadata of [state, clause, learnt, stats]
     state.clause_lbd[ci] is clause_level_span of [clause, state]
     if (len of clause) == 0:
@@ -1387,15 +1387,15 @@ define add_cdcl_clause(store, state, clause, learnt, stats) as:
     return ci
 
 define cdcl_result(status, model, stats, state) as:
-    active is 0
-    restart_policy is ""
-    restart_budget is 0
-    restart_index is 0
-    phase_policy is ""
-    compact_policy is ""
-    compact_min_deleted is 0
-    compact_waste_percent is 0
-    pending_deleted is 0
+    local active is 0
+    local restart_policy is ""
+    local restart_budget is 0
+    local restart_index is 0
+    local phase_policy is ""
+    local compact_policy is ""
+    local compact_min_deleted is 0
+    local compact_waste_percent is 0
+    local pending_deleted is 0
     if state != null:
         active is count_active_learnts of state
         restart_policy is state.restart_policy
@@ -1528,10 +1528,10 @@ define solve_cnf_cdcl(nvars, input_clauses) as:
     return solve_cnf_cdcl_with_options of [nvars, input_clauses, null]
 
 define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
-    store is clause_store_from_clauses of input_clauses
-    stats is cdcl_empty_stats of null
-    asg is make_assignment of nvars
-    state is build_cdcl_state of [nvars, store, asg, stats, opts]
+    local store is clause_store_from_clauses of input_clauses
+    local stats is cdcl_empty_stats of null
+    local asg is make_assignment of nvars
+    local state is build_cdcl_state of [nvars, store, asg, stats, opts]
 
     if state.ok == 0:
         return cdcl_result of ["UNSAT", null, stats, state]
@@ -1544,13 +1544,13 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
             bump_clause_db_activity of [state, state.conflict, stats]
             decay_clause_activity of [state, stats]
             state.conflicts_since_restart += 1
-            analysis is analyze_conflict_cdcl of [store, state, state.conflict, stats]
+            local analysis is analyze_conflict_cdcl of [store, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
                 return cdcl_result of ["UNSAT", null, stats, state]
 
             bump_clause_activity of [state, analysis.clause, stats]
             decay_var_activity of [state, stats]
-            learned_ci is add_cdcl_clause of [store, state, analysis.clause, 1, stats]
+            local learned_ci is add_cdcl_clause of [store, state, analysis.clause, 1, stats]
             bump_clause_db_activity of [state, learned_ci, stats]
             stats.learnts += 1
             cdcl_cancel_until of [state, asg, analysis.backtrack, stats]
@@ -1558,7 +1558,7 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
-            removed_learnts is reduce_learnt_db of [store, state, stats]
+            local removed_learnts is reduce_learnt_db of [store, state, stats]
             if removed_learnts > 0:
                 if (should_compact_deleted_clauses of [store, state, stats]) != 0:
                     store is compact_deleted_clauses of [nvars, store, state, stats]
@@ -1568,13 +1568,13 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
         if (all_clauses_satisfied of [input_clauses, asg]) != 0:
             return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
 
-        v is choose_var_cdcl of [asg, state, stats]
+        local v is choose_var_cdcl of [asg, state, stats]
         if v == 0:
             return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
 
         cdcl_push_level of state
         stats.decisions += 1
-        decision_lit is decision_lit_cdcl of [state, v, stats]
+        local decision_lit is decision_lit_cdcl of [state, v, stats]
         enqueue_cdcl of [asg, state, decision_lit, -1, len of state.trail_lim, stats, 0]
 
 define model_satisfies(nvars, clauses, model) as:

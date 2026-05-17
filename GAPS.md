@@ -12,10 +12,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   or a deliberate library abstraction addresses it.
 - `docs/EIGENSCRIPT_FEEDBACK.md` now classifies current pressure into
   EigenScript root/runtime candidates, standard-library candidates, and
-  EigenMiniSat-local work. The current direction is local-only binding and
-  diagnostic token spans as root candidates, string builders and priority
-  queues as standard-library candidates, compact integer vectors as root-vs
-  stdlib pressure, and clause arenas as an EigenMiniSat-local prototype first.
+  EigenMiniSat-local work. Local-only binding is now a root-language fix in
+  progress in EigenScript PR #117 and is exercised by EigenMiniSat CDCL
+  sentinel tests. Diagnostic token spans remain a root candidate, string
+  builders and priority queues are standard-library candidates, compact integer
+  vectors are root-vs-stdlib pressure, and clause arenas remain an
+  EigenMiniSat-local prototype first.
 - DIMACS parser throughput is now measured with generated text fixtures. The
   current path builds strings by repeated concatenation and tokenizes each line
   through split/trim/num conversion, so larger fixtures should tell us whether

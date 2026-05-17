@@ -327,6 +327,35 @@ assert_eq of ["simple cdcl SAT", simple_cdcl.status, "SAT"]
 assert_true of ["simple cdcl model satisfies", model_satisfies of [simple.nvars, simple.clauses, simple_cdcl.model]]
 print of "  simple SAT: ok"
 
+store is "outer-store"
+stats is "outer-stats"
+asg is "outer-asg"
+state is "outer-state"
+level is "outer-level"
+analysis is "outer-analysis"
+learned_ci is "outer-learned-ci"
+removed_learnts is "outer-removed-learnts"
+decision_lit is "outer-decision-lit"
+v is "outer-v"
+ci is "outer-ci"
+mark is "outer-mark"
+local_pressure_case is pigeonhole_case of [4, 3]
+local_pressure_result is solve_cnf_cdcl of [local_pressure_case.nvars, local_pressure_case.clauses]
+assert_eq of ["local pressure cdcl UNSAT", local_pressure_result.status, "UNSAT"]
+assert_eq of ["local pressure store sentinel", store, "outer-store"]
+assert_eq of ["local pressure stats sentinel", stats, "outer-stats"]
+assert_eq of ["local pressure asg sentinel", asg, "outer-asg"]
+assert_eq of ["local pressure state sentinel", state, "outer-state"]
+assert_eq of ["local pressure level sentinel", level, "outer-level"]
+assert_eq of ["local pressure analysis sentinel", analysis, "outer-analysis"]
+assert_eq of ["local pressure learned sentinel", learned_ci, "outer-learned-ci"]
+assert_eq of ["local pressure reduce sentinel", removed_learnts, "outer-removed-learnts"]
+assert_eq of ["local pressure decision sentinel", decision_lit, "outer-decision-lit"]
+assert_eq of ["local pressure v sentinel", v, "outer-v"]
+assert_eq of ["local pressure ci sentinel", ci, "outer-ci"]
+assert_eq of ["local pressure mark sentinel", mark, "outer-mark"]
+print of "  CDCL local binding pressure: ok"
+
 unit_unsat is parse_dimacs_file of "tests/fixtures/unit_unsat.cnf"
 unit_result is solve_cnf of [unit_unsat.nvars, unit_unsat.clauses]
 assert_eq of ["unit UNSAT", unit_result.status, "UNSAT"]

@@ -20,16 +20,18 @@ the right place to fix a repeated cost.
 
 ### Local Binding Form
 
-Classification: root language candidate.
+Classification: root language fix in progress.
 
 Evidence: CDCL option handling exposed outward assignment hazards when generic
-helper-local names collided with outer bindings. EigenMiniSat now uses specific
-local names, but that is a convention, not a durable language boundary.
+helper-local names collided with outer bindings. EigenScript PR #117 adds
+`local name is expr` so a helper can bind in the active evaluator scope without
+mutating a parent binding.
 
-Next action: EigenScript should consider an explicit local-only binding form or
-a stricter assignment mode. Until then, EigenMiniSat should keep helper-local
-names specific and avoid generic `cfg`, `state`, or `result` names in broad
-scope.
+Next action: keep the EigenMiniSat CDCL stress path on `local` for genuine
+function-local temporaries, and keep sentinel tests that prove common solver
+names like `store`, `state`, `level`, and `analysis` do not mutate outer scope.
+Do not reintroduce name-avoidance conventions as a substitute for the root
+language feature.
 
 ### Token Spans And Diagnostic Tokenizer
 
