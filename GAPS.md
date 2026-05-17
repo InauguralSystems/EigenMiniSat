@@ -77,6 +77,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   reconstruction still needed for learnt-clause assembly. Larger copy-pressure
   cases and deferred-vs-lazy summary deltas should decide whether that pressure
   stays local or justifies EigenScript root arena/reference primitives.
+- The CDCL hot paths now read clause-store `offsets`, `sizes`, and `lits`
+  directly in propagation, conflict analysis, watch rebuilds, and learnt
+  deletion scans. This applies the inline/helper overhead evidence locally
+  before treating clause-store adapter pressure as an EigenScript root issue.
 - Watch-list slots now use MiniSat-style encoded literal indexes, but
   conversion still uses arithmetic helpers around signed DIMACS literals. If
   encoded-literal churn becomes hot, EigenScript may need cheaper bitwise

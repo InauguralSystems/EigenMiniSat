@@ -60,7 +60,8 @@ before asking EigenScript for root arena support. Storage pressure now also
 prints adapter scan, watch-seeding, and compaction overhead deltas to separate
 solver-local adapter costs from root/runtime storage needs. Inline adapter
 scan/watch rows further split helper-call overhead from the clause-store data
-shape.
+shape, and CDCL hot loops now use direct clause-store field access where that
+helper overhead was already isolated.
 
 ## Milestone 3: CDCL
 

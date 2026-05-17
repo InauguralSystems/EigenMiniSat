@@ -146,7 +146,10 @@ adapter scan overhead split into `1.240ms` inline data-shape overhead and
 `0.860ms` helper-call overhead. Watch seeding similarly splits into `0.136ms`
 inline overhead and `0.239ms` helper-call overhead. This keeps the
 clause-store adapter decision local for now: reduce or inline hot helper paths
-before asking EigenScript for root arena/reference support.
+before asking EigenScript for root arena/reference support. EigenMiniSat now
+applies that result in CDCL propagation, conflict analysis, watch rebuilds, and
+learnt deletion scans by reading clause-store fields directly in those hot
+loops.
 
 ### Bitwise Integer Operations
 

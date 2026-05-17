@@ -809,13 +809,14 @@ define detach_clause_watches(store, state, ci, stats) as:
         return 0
     if ci >= (len of state.watch_a):
         return 0
-    if (clause_store_size of [store, ci]) < 2:
+    if store.sizes[ci] < 2:
         return 0
 
     wa is state.watch_a[ci]
     wb is state.watch_b[ci]
-    wi_a is lit_index of (clause_store_lit of [store, ci, wa])
-    wi_b is lit_index of (clause_store_lit of [store, ci, wb])
+    start is store.offsets[ci]
+    wi_a is lit_index of store.lits[start + wa]
+    wi_b is lit_index of store.lits[start + wb]
     removed is detach_watch_bucket of [state, wi_a, ci, stats]
     if wi_b != wi_a:
         removed += detach_watch_bucket of [state, wi_b, ci, stats]
@@ -825,10 +826,10 @@ define detach_clause_watches(store, state, ci, stats) as:
 define find_low_activity_learnt(store, state, stats) as:
     best is -1
     best_activity is 1000000000
-    for ci in range of (clause_store_len of store):
+    for ci in range of (len of store.offsets):
         if state.clause_learnt[ci] != 0:
             if state.clause_deleted[ci] == 0:
-                if (clause_store_size of [store, ci]) > 2:
+                if store.sizes[ci] > 2:
                     if (clause_locked of [state, ci]) != 0:
                         stats.learnt_kept_locked += 1
                     elif state.clause_activity[ci] < best_activity:
@@ -870,8 +871,9 @@ define rebuild_watches(nvars, store, state, stats) as:
     watches is make_watch_table of nvars
     watch_a is []
     watch_b is []
-    for ci in range of (clause_store_len of store):
-        size is clause_store_size of [store, ci]
+    for ci in range of (len of store.offsets):
+        size is store.sizes[ci]
+        start is store.offsets[ci]
         if state.clause_deleted[ci] != 0:
             append of [watch_a, 0]
             append of [watch_b, 0]
@@ -884,8 +886,8 @@ define rebuild_watches(nvars, store, state, stats) as:
         else:
             append of [watch_a, 0]
             append of [watch_b, 1]
-            watch_add of [watches, clause_store_lit of [store, ci, 0], ci]
-            watch_add of [watches, clause_store_lit of [store, ci, 1], ci]
+            watch_add of [watches, store.lits[start], ci]
+            watch_add of [watches, store.lits[start + 1], ci]
 
     state.watches is watches
     state.watch_a is watch_a
@@ -923,7 +925,7 @@ define compact_deleted_clauses(nvars, store, state, stats) as:
     new_lbd is []
     removed is 0
 
-    for ci in range of (clause_store_len of store):
+    for ci in range of (len of store.offsets):
         if state.clause_deleted[ci] == 0:
             append of [delete_mask, 0]
             append of [new_learnt, state.clause_learnt[ci]]
@@ -951,7 +953,7 @@ define compact_deleted_clauses(nvars, store, state, stats) as:
 
     stats.compact_runs += 1
     stats.compact_removed += removed
-    stats.compact_kept += clause_store_len of compact_store
+    stats.compact_kept += len of compact_store.offsets
     stats.compact_pending_deleted is 0
     return compact_store
 
@@ -967,7 +969,7 @@ define should_compact_deleted_clauses(store, state, stats) as:
     if deleted < state.compact_min_deleted:
         stats.compact_deferred += 1
         return 0
-    if (deleted * 100) < ((clause_store_len of store) * state.compact_waste_percent):
+    if (deleted * 100) < ((len of store.offsets) * state.compact_waste_percent):
         stats.compact_deferred += 1
         return 0
     return 1
@@ -1167,10 +1169,11 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "conflict": -1
     }
 
-    for ci in range of (clause_store_len of store):
+    for ci in range of (len of store.offsets):
         clause is clause_store_clause_counted of [store, ci, stats]
         init_clause_metadata of [state, clause, 0, stats]
-        clause_size is clause_store_size of [store, ci]
+        clause_size is store.sizes[ci]
+        clause_start is store.offsets[ci]
         if clause_size == 0:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
@@ -1180,14 +1183,14 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         elif clause_size == 1:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
-            if (enqueue_cdcl of [asg, state, clause_store_lit of [store, ci, 0], ci, 0, stats, 1]) == 0:
+            if (enqueue_cdcl of [asg, state, store.lits[clause_start], ci, 0, stats, 1]) == 0:
                 state.conflict is ci
                 state.ok is 0
         else:
             append of [state.watch_a, 0]
             append of [state.watch_b, 1]
-            watch_add of [state.watches, clause_store_lit of [store, ci, 0], ci]
-            watch_add of [state.watches, clause_store_lit of [store, ci, 1], ci]
+            watch_add of [state.watches, store.lits[clause_start], ci]
+            watch_add of [state.watches, store.lits[clause_start + 1], ci]
 
     init_order_heap of [nvars, asg, state]
     return state
@@ -1210,29 +1213,33 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
 
             wa is state.watch_a[ci]
             wb is state.watch_b[ci]
+            clause_start is store.offsets[ci]
+            clause_size is store.sizes[ci]
+            wa_lit is store.lits[clause_start + wa]
+            wb_lit is store.lits[clause_start + wb]
 
             false_pos is -1
             other_pos is -1
-            if (clause_store_lit of [store, ci, wa]) == false_lit:
+            if wa_lit == false_lit:
                 false_pos is wa
                 other_pos is wb
-            elif (clause_store_lit of [store, ci, wb]) == false_lit:
+            elif wb_lit == false_lit:
                 false_pos is wb
                 other_pos is wa
             else:
                 append of [kept, ci]
                 continue
 
-            other_lit is clause_store_lit of [store, ci, other_pos]
+            other_lit is store.lits[clause_start + other_pos]
             other_val is lit_value of [other_lit, asg]
             if other_val == 1:
                 append of [kept, ci]
                 continue
 
             found is 0
-            for k in range of (clause_store_size of [store, ci]):
+            for k in range of clause_size:
                 if k != false_pos and k != other_pos:
-                    candidate is clause_store_lit of [store, ci, k]
+                    candidate is store.lits[clause_start + k]
                     if (lit_value of [candidate, asg]) != -1:
                         if state.watch_a[ci] == false_pos:
                             state.watch_a[ci] is k
@@ -1290,12 +1297,13 @@ define cdcl_push_level(state) as:
 
 define analyze_mark_store_clause(store, ci, pivot_var, state, level, seen, learnt_tail, stats) as:
     current_count is 0
-    size is clause_store_size of [store, ci]
+    start is store.offsets[ci]
+    size is store.sizes[ci]
     if stats != null:
         stats.analysis_store_scans += 1
         stats.analysis_store_lits += size
     for pos in range of size:
-        lit is clause_store_lit of [store, ci, pos]
+        lit is store.lits[start + pos]
         v is lit_abs of lit
         if v != pivot_var:
             if state.level[v] > 0:
