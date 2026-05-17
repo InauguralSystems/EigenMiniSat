@@ -93,6 +93,46 @@ define _process_dimacs_parts(state, parts, line_no) as:
                 state.max_var is v
     return state
 
+define _process_dimacs_int_rows(state, rows, line_no) as:
+    if (len of rows) == 0:
+        return state
+
+    if rows[0][0] == "p":
+        if state.header_seen != 0:
+            _add_parse_error of [state.errors, f"line {line_no}: duplicate problem header"]
+        state.header_seen is 1
+        if (len of rows) < 4:
+            _add_parse_error of [state.errors, f"line {line_no}: malformed problem header"]
+        elif rows[1][0] != "cnf":
+            _add_parse_error of [state.errors, f"line {line_no}: unsupported problem type {rows[1][0]}"]
+        elif rows[2][5] == 0 or rows[3][5] == 0:
+            _add_parse_error of [state.errors, f"line {line_no}: non-integer problem counts"]
+        else:
+            state.declared_vars is floor of rows[2][6]
+            state.declared_clauses is floor of rows[3][6]
+            if state.declared_vars < 0:
+                _add_parse_error of [state.errors, f"line {line_no}: negative variable count"]
+            if state.declared_clauses < 0:
+                _add_parse_error of [state.errors, f"line {line_no}: negative clause count"]
+        return state
+
+    for row in rows:
+        if row[5] == 0:
+            _add_parse_error of [state.errors, f"line {line_no}: non-integer token {row[0]}"]
+            continue
+        lit is floor of row[6]
+        if lit == 0:
+            append of [state.clauses, state.current]
+            state.current is []
+        else:
+            append of [state.current, lit]
+            v is lit
+            if v < 0:
+                v is 0 - v
+            if v > state.max_var:
+                state.max_var is v
+    return state
+
 define _finish_parse_state(state) as:
     if (len of state.current) > 0:
         append of [state.clauses, state.current]
@@ -204,9 +244,9 @@ define parse_dimacs_text_scan(text) as:
     return _finish_parse_state of state
 
 define parse_dimacs_text_tokens(text) as:
-    rows is scan_tokens of [text, "c"]
+    rows is scan_int_tokens of [text, "c"]
     state is _empty_parse_state of null
-    parts is []
+    line_rows is []
     line_no is 0
 
     for row in rows:
@@ -214,13 +254,13 @@ define parse_dimacs_text_tokens(text) as:
         if line_no == 0:
             line_no is row_line
         if row_line != line_no:
-            state is _process_dimacs_parts of [state, parts, line_no]
-            parts is []
+            state is _process_dimacs_int_rows of [state, line_rows, line_no]
+            line_rows is []
             line_no is row_line
-        append of [parts, row[0]]
+        append of [line_rows, row]
 
-    if (len of parts) > 0:
-        state is _process_dimacs_parts of [state, parts, line_no]
+    if (len of line_rows) > 0:
+        state is _process_dimacs_int_rows of [state, line_rows, line_no]
 
     return _finish_parse_state of state
 

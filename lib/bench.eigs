@@ -1323,7 +1323,7 @@ define run_scan_parse_benchmarks(size) as:
 
         print of f"parse split {c.name}: text_len={len of text} vars={split_parsed.nvars} clauses={len of split_parsed.clauses} ok={split_parsed.ok} errors={split_parsed.error_count} ms={split_ms}"
         print of f"parse scan {c.name}: text_len={len of text} vars={scan_parsed.nvars} clauses={len of scan_parsed.clauses} ok={scan_parsed.ok} errors={scan_parsed.error_count} ms={scan_ms}"
-        print of f"parse tokens {c.name}: text_len={len of text} vars={token_parsed.nvars} clauses={len of token_parsed.clauses} ok={token_parsed.ok} errors={token_parsed.error_count} ms={token_ms}"
+        print of f"parse tokens {c.name}: text_len={len of text} vars={token_parsed.nvars} clauses={len of token_parsed.clauses} ok={token_parsed.ok} errors={token_parsed.error_count} int_tokens=1 ms={token_ms}"
         print of f"parse ints {c.name}: text_len={len of text} vars={ints_parsed.nvars} clauses={len of ints_parsed.clauses} ok={ints_parsed.ok} errors={ints_parsed.error_count} ms={ints_ms}"
 
         ct0 is monotonic_ns of null
@@ -1361,7 +1361,7 @@ define run_diagnostic_benchmarks(size) as:
 
         print of f"diagnostic split {c.name}: text_len={len of c.text} clauses={len of split_parsed.clauses} declared_vars={split_parsed.declared_vars} declared_clauses={split_parsed.declared_clauses} max_var={split_parsed.max_var} ok={split_parsed.ok} errors={split_summary.errors} error_chars={split_summary.error_chars} error_checksum={split_summary.checksum} ms={split_ms}"
         print of f"diagnostic scan {c.name}: text_len={len of c.text} clauses={len of scan_parsed.clauses} declared_vars={scan_parsed.declared_vars} declared_clauses={scan_parsed.declared_clauses} max_var={scan_parsed.max_var} ok={scan_parsed.ok} errors={scan_summary.errors} error_chars={scan_summary.error_chars} error_checksum={scan_summary.checksum} ms={scan_ms}"
-        print of f"diagnostic tokens {c.name}: text_len={len of c.text} clauses={len of token_parsed.clauses} declared_vars={token_parsed.declared_vars} declared_clauses={token_parsed.declared_clauses} max_var={token_parsed.max_var} ok={token_parsed.ok} errors={token_summary.errors} error_chars={token_summary.error_chars} error_checksum={token_summary.checksum} ms={token_ms}"
+        print of f"diagnostic tokens {c.name}: text_len={len of c.text} clauses={len of token_parsed.clauses} declared_vars={token_parsed.declared_vars} declared_clauses={token_parsed.declared_clauses} max_var={token_parsed.max_var} ok={token_parsed.ok} errors={token_summary.errors} error_chars={token_summary.error_chars} error_checksum={token_summary.checksum} int_tokens=1 ms={token_ms}"
     return len of cases
 
 define run_file_benchmarks(size) as:
@@ -1430,7 +1430,7 @@ define run_corpus_benchmarks(manifest_path) as:
         tt1 is monotonic_ns of null
         tms is (tt1 - tt0) / 1000000
         assert_dimacs_same of [f"corpus token parser {c.name}", parsed, token_parsed]
-        print of f"corpus parse tokens {c.name}: family={c.family} text_len={len of text} vars={token_parsed.nvars} clauses={len of token_parsed.clauses} ok={token_parsed.ok} errors={token_parsed.error_count} ms={tms}"
+        print of f"corpus parse tokens {c.name}: family={c.family} text_len={len of text} vars={token_parsed.nvars} clauses={len of token_parsed.clauses} ok={token_parsed.ok} errors={token_parsed.error_count} int_tokens=1 ms={tms}"
 
         it0 is monotonic_ns of null
         ints_parsed is parse_dimacs_text_ints of text
