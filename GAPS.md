@@ -14,10 +14,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   EigenScript root/runtime candidates, standard-library candidates, and
   EigenMiniSat-local work. Local-only binding is now a merged root-language fix
   from EigenScript PR #117 and is exercised by EigenMiniSat CDCL sentinel
-  tests. Diagnostic token spans are now a merged root-runtime fix from
-  EigenScript PR #118 and are exercised by a DIMACS token-span parser. String
-  builders are now a standard-library fix in progress in
-  EigenScript PR #119 and are exercised by generated DIMACS text construction.
+  tests. Diagnostic token spans are now a merged root-runtime path from
+  EigenScript PR #118, with integer-aware token spans from PR #122, and are
+  exercised by a DIMACS token-span parser. String builders are now a merged
+  standard-library path from EigenScript PR #119 and are exercised by generated
+  DIMACS text construction.
   Priority queues are a standard-library candidate, compact integer vectors are
   root-vs-stdlib pressure, and clause arenas remain an EigenMiniSat-local
   prototype first.
@@ -48,23 +49,25 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   committing machine-local logs. This should make regressions easier to compare
   while keeping the constrained dev machine's output explicit and local. The
   `evidence` profile now defaults to bounded larger-case pressure and includes
-  malformed diagnostics without running every benchmark mode. Its summary
-  collapses copy, metadata, storage, parser, diagnostic, and corpus output into
-  decision flags and active `decision_candidate` rows for the
+  generated fixture parse/text-build rows plus malformed diagnostics without
+  running every benchmark mode. Its summary collapses copy, metadata, storage,
+  parser, diagnostic, corpus, and text-build output into decision flags and
+  active `decision_candidate` rows for the
   root-vs-library-vs-local ledger.
 - A character-scanning DIMACS parser now matches the split/trim parser's
   diagnostics and clauses, but repeated `substr` and token string concatenation
   are often slower than split/trim on these fixtures. EigenScript now exposes
-  the root `scan_ints` primitive, and EigenMiniSat benchmarks all three parser
+  the root `scan_ints` and `scan_int_tokens` primitives, and EigenMiniSat
+  benchmarks split/trim, character-scan, integer-token-span, and integer-scan
   paths on both generated fixtures and the manifest corpus. The remaining
   pressure is clause assembly from scanned integers and whether a future
-  tokenizer should expose token spans/error reporting for full diagnostics
-  instead of only numeric extraction.
+  tokenizer should expose richer recoverable errors beyond token spans and
+  integer metadata.
 - The diagnostic benchmark now feeds malformed DIMACS cases through the
-  split/trim, character-scanning, and `scan_tokens` parsers, checking error
+  split/trim, character-scanning, and `scan_int_tokens` parsers, checking error
   counts and diagnostic text sizes. This isolates malformed-token/header/count
-  overhead and keeps pressure on whether EigenScript token spans are enough for
-  diagnostics instead of forcing parser-local string assembly.
+  overhead and keeps pressure on whether EigenScript integer-aware token spans
+  are enough for diagnostics instead of forcing parser-local string assembly.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - The storage benchmark now builds a flat clause arena from list-of-lists input

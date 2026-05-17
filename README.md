@@ -103,16 +103,18 @@ The default corpus covers comments, multiline clauses, multi-clause lines,
 graph coloring, pigeonhole, wide clauses, and parity/XOR SAT/UNSAT instances.
 It also includes a small vendored structural corpus under
 `tests/corpus/vendor/` with provenance notes for larger self-contained pressure.
-For each case it compares split/trim parsing, character scanning, and the
-C-backed `scan_ints` path before solving with CDCL.
+For each case it compares split/trim parsing, character scanning,
+integer-aware token spans, and the C-backed `scan_ints` path before solving
+with CDCL.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and
 the manifest corpus plus clause storage pressure. The `evidence` profile adds
-malformed-DIMACS diagnostics and defaults to size `2` for bounded larger-case
-pressure, then appends a compact summary of copy, metadata, storage, parser,
-diagnostic, and corpus totals plus decision flags and active candidate-decision
-rows; the `full` profile runs every benchmark mode.
+generated fixture parse/text-build pressure and malformed-DIMACS diagnostics,
+defaults to size `2` for bounded larger-case pressure, then appends a compact
+summary of copy, metadata, storage, parser, diagnostic, corpus, and text-build
+totals plus decision flags and active candidate-decision rows; the `full`
+profile runs every benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.
