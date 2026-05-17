@@ -7,3 +7,6 @@ pigeonhole-4-3-unsat|tests/corpus/pigeonhole_4_3.cnf|UNSAT|12|34|pigeonhole
 long-clause-sat|tests/corpus/long_clause_sat.cnf|SAT|20|6|wide
 xor-contradiction-unsat|tests/corpus/xor_contradiction_unsat.cnf|UNSAT|2|4|parity
 xor-ladder-sat|tests/corpus/xor_ladder_sat.cnf|SAT|6|10|parity
+satlib-style-pigeonhole-5-4|tests/corpus/vendor/satlib_style_pigeonhole_5_4.cnf|UNSAT|20|75|vendored-pigeonhole
+satlib-style-k5-4color|tests/corpus/vendor/satlib_style_k5_4color.cnf|UNSAT|20|75|vendored-graph-coloring
+satlib-style-xor-triangle-8|tests/corpus/vendor/satlib_style_xor_triangle_8.cnf|SAT|24|32|vendored-parity

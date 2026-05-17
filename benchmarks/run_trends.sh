@@ -4,11 +4,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EIGS="${EIGENSCRIPT_BIN:-/home/jon/EigenScript/src/eigenscript}"
 PROFILE="${1:-quick}"
-SIZE="${2:-1}"
+SIZE="${2:-}"
 
-if [[ "$PROFILE" != "quick" && "$PROFILE" != "full" ]]; then
-    printf 'usage: %s [quick|full] [size] [output-log]\n' "$0" >&2
+if [[ "$PROFILE" != "quick" && "$PROFILE" != "evidence" && "$PROFILE" != "full" ]]; then
+    printf 'usage: %s [quick|evidence|full] [size] [output-log]\n' "$0" >&2
     exit 2
+fi
+
+if [[ "$SIZE" == "" ]]; then
+    SIZE=1
+    if [[ "$PROFILE" == "evidence" ]]; then
+        SIZE=2
+    fi
 fi
 
 case "$SIZE" in
@@ -63,6 +70,9 @@ run_cmd "$EIGS" minisat.eigs --storage-bench --size "$SIZE"
 
 if [[ "$PROFILE" == "full" ]]; then
     run_cmd "$EIGS" minisat.eigs --parse-bench --size "$SIZE"
+fi
+
+if [[ "$PROFILE" == "evidence" || "$PROFILE" == "full" ]]; then
     run_cmd "$EIGS" minisat.eigs --diagnostic-bench --size "$SIZE"
 fi
 
@@ -73,5 +83,10 @@ if [[ "$PROFILE" == "full" ]]; then
 fi
 
 run_cmd "$EIGS" minisat.eigs --corpus-bench
+
+if [[ "$PROFILE" == "evidence" ]]; then
+    SUMMARY="$(benchmarks/summarize_trend.sh "$OUT")"
+    printf '\n## evidence summary\n%s\n' "$SUMMARY" | tee -a "$OUT"
+fi
 
 printf '\ntrend_log=%s\n' "$OUT" | tee -a "$OUT"

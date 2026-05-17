@@ -231,6 +231,27 @@ define copy_pressure_cases(size) as:
         "clauses": copy_xor.clauses,
         "expected": "SAT"
     }]
+    copy_large_pigeon is pigeonhole_case of [size + 4, size + 3]
+    append of [copy_cases, {
+        "name": f"{copy_large_pigeon.name}-larger",
+        "nvars": copy_large_pigeon.nvars,
+        "clauses": copy_large_pigeon.clauses,
+        "expected": "UNSAT"
+    }]
+    copy_large_graph is complete_graph_color_case of [size + 4, size + 3]
+    append of [copy_cases, {
+        "name": f"{copy_large_graph.name}-larger",
+        "nvars": copy_large_graph.nvars,
+        "clauses": copy_large_graph.clauses,
+        "expected": copy_large_graph.expected
+    }]
+    copy_large_xor is xor_triangle_case of (size + 5)
+    append of [copy_cases, {
+        "name": f"{copy_large_xor.name}-larger",
+        "nvars": copy_large_xor.nvars,
+        "clauses": copy_large_xor.clauses,
+        "expected": "SAT"
+    }]
     return copy_cases
 
 define copy_pressure_policies() as:
@@ -572,6 +593,16 @@ define run_copy_benchmarks(size) as:
         copy_max_watch_detach_removed is 0
         copy_max_watch_prunes is 0
         copy_max_watch_prune_removed is 0
+        copy_deferred_compact_lits is 0
+        copy_deferred_watch_rebuilds is 0
+        copy_deferred_pending_deleted is 0
+        copy_deferred_watch_detach_scans is 0
+        copy_deferred_compact_replays is 0
+        copy_lazy_compact_lits is 0
+        copy_lazy_watch_rebuilds is 0
+        copy_lazy_pending_deleted is 0
+        copy_lazy_watch_detach_scans is 0
+        copy_lazy_compact_replays is 0
         copy_policy_runs is 0
 
         for copy_policy in copy_policies_to_run:
@@ -622,11 +653,34 @@ define run_copy_benchmarks(size) as:
                 copy_max_watch_prunes is copy_result.watch_prunes
             if copy_result.watch_prune_removed > copy_max_watch_prune_removed:
                 copy_max_watch_prune_removed is copy_result.watch_prune_removed
+            if copy_result.compact_policy == "lazy":
+                if copy_result.compact_clause_lits > copy_lazy_compact_lits:
+                    copy_lazy_compact_lits is copy_result.compact_clause_lits
+                if copy_result.watch_rebuilds > copy_lazy_watch_rebuilds:
+                    copy_lazy_watch_rebuilds is copy_result.watch_rebuilds
+                if copy_result.compact_pending_deleted > copy_lazy_pending_deleted:
+                    copy_lazy_pending_deleted is copy_result.compact_pending_deleted
+                if copy_result.watch_detach_scans > copy_lazy_watch_detach_scans:
+                    copy_lazy_watch_detach_scans is copy_result.watch_detach_scans
+                if copy_result.compact_replays > copy_lazy_compact_replays:
+                    copy_lazy_compact_replays is copy_result.compact_replays
+            else:
+                if copy_result.compact_clause_lits > copy_deferred_compact_lits:
+                    copy_deferred_compact_lits is copy_result.compact_clause_lits
+                if copy_result.watch_rebuilds > copy_deferred_watch_rebuilds:
+                    copy_deferred_watch_rebuilds is copy_result.watch_rebuilds
+                if copy_result.compact_pending_deleted > copy_deferred_pending_deleted:
+                    copy_deferred_pending_deleted is copy_result.compact_pending_deleted
+                if copy_result.watch_detach_scans > copy_deferred_watch_detach_scans:
+                    copy_deferred_watch_detach_scans is copy_result.watch_detach_scans
+                if copy_result.compact_replays > copy_deferred_compact_replays:
+                    copy_deferred_compact_replays is copy_result.compact_replays
             copy_policy_runs += 1
 
             print of f"copy pressure {copy_policy.name} {copy_case.name}: status={copy_result.status} vars={copy_case.nvars} clauses={len of copy_case.clauses} decisions={copy_result.decisions} propagations={copy_result.propagations} conflicts={copy_result.conflicts} learnts={copy_result.learnts} resolutions={copy_result.resolutions} restarts={copy_result.restarts} restart_budget={copy_result.restart_budget} phase_saves={copy_result.phase_saves} phase_flips={copy_result.phase_flips} store_copies={copy_result.store_clause_copies} store_copy_lits={copy_result.store_clause_copy_lits} analysis_rebuilds={copy_result.analysis_rebuilds} analysis_rebuild_lits={copy_result.analysis_rebuild_lits} analysis_store_scans={copy_result.analysis_store_scans} analysis_store_lits={copy_result.analysis_store_lits} analysis_native_learnts={copy_result.analysis_native_learnts} compact_policy={copy_result.compact_policy} compact_checks={copy_result.compact_checks} compact_deferred={copy_result.compact_deferred} pending_deleted={copy_result.compact_pending_deleted} compact_runs={copy_result.compact_runs} compact_removed={copy_result.compact_removed} compact_clause_copies={copy_result.compact_clause_copies} compact_clause_lits={copy_result.compact_clause_lits} watch_rebuilds={copy_result.watch_rebuilds} watch_detaches={copy_result.watch_detaches} watch_detach_scans={copy_result.watch_detach_scans} watch_detach_removed={copy_result.watch_detach_removed} watch_prunes={copy_result.watch_prunes} watch_prune_scans={copy_result.watch_prune_scans} watch_prune_removed={copy_result.watch_prune_removed} compact_replays={copy_result.compact_replays} active_learnts={copy_result.active_learnts} ms={copy_ms}"
 
         print of f"copy summary {copy_case.name}: policies={copy_policy_runs} expected={copy_case.expected} max_conflicts={copy_max_conflicts} max_store_copy_lits={copy_max_store_lits} max_analysis_store_lits={copy_max_analysis_store_lits} max_compact_clause_lits={copy_max_compact_lits} max_compact_runs={copy_max_compacts} max_compact_deferred={copy_max_deferred} max_pending_deleted={copy_max_pending_deleted} max_watch_detaches={copy_max_watch_detaches} max_watch_detach_scans={copy_max_watch_detach_scans} max_watch_detach_removed={copy_max_watch_detach_removed} max_watch_prunes={copy_max_watch_prunes} max_watch_prune_removed={copy_max_watch_prune_removed}"
+        print of f"copy delta {copy_case.name}: deferred_compact_lits={copy_deferred_compact_lits} lazy_compact_lits={copy_lazy_compact_lits} delta_compact_lits={copy_lazy_compact_lits - copy_deferred_compact_lits} deferred_watch_rebuilds={copy_deferred_watch_rebuilds} lazy_watch_rebuilds={copy_lazy_watch_rebuilds} delta_watch_rebuilds={copy_lazy_watch_rebuilds - copy_deferred_watch_rebuilds} deferred_pending_deleted={copy_deferred_pending_deleted} lazy_pending_deleted={copy_lazy_pending_deleted} delta_pending_deleted={copy_lazy_pending_deleted - copy_deferred_pending_deleted} deferred_watch_detach_scans={copy_deferred_watch_detach_scans} lazy_watch_detach_scans={copy_lazy_watch_detach_scans} delta_watch_detach_scans={copy_lazy_watch_detach_scans - copy_deferred_watch_detach_scans} deferred_compact_replays={copy_deferred_compact_replays} lazy_compact_replays={copy_lazy_compact_replays} delta_compact_replays={copy_lazy_compact_replays - copy_deferred_compact_replays}"
     return len of copy_cases_to_run
 
 define storage_pressure_cases(size) as:
@@ -685,6 +739,23 @@ define clause_store_adapter_summary(store) as:
         "checksum": checksum
     }
 
+define clause_store_inline_summary(store) as:
+    lit_count is 0
+    checksum is 0
+    pos is 1
+    for ci in range of (len of store.offsets):
+        start is store.offsets[ci]
+        size is store.sizes[ci]
+        for li in range of size:
+            lit is store.lits[start + li]
+            lit_count += 1
+            checksum += clause_checksum_value of [lit, pos]
+            pos += 1
+    return {
+        "lits": lit_count,
+        "checksum": checksum
+    }
+
 define flat_clause_at(arena, ci) as:
     out is []
     start is arena.offsets[ci]
@@ -732,6 +803,37 @@ define flat_watch_seed_summary(nvars, arena) as:
         "links": links,
         "occupied": occupied,
         "max_bucket": max_bucket
+    }
+
+define clause_store_inline_seed_watches(nvars, store) as:
+    watches is make_watch_table of nvars
+    watch_a is []
+    watch_b is []
+    links is 0
+    for ci in range of (len of store.offsets):
+        start is store.offsets[ci]
+        size is store.sizes[ci]
+        if size == 0:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        elif size == 1:
+            append of [watch_a, 0]
+            append of [watch_b, 0]
+        else:
+            append of [watch_a, 0]
+            append of [watch_b, 1]
+            watch_add of [watches, store.lits[start], ci]
+            watch_add of [watches, store.lits[start + 1], ci]
+            links += 2
+
+    summary is watch_table_summary of watches
+    return {
+        "watches": watches,
+        "watch_a": watch_a,
+        "watch_b": watch_b,
+        "links": links,
+        "occupied": summary.occupied,
+        "max_bucket": summary.max_bucket
     }
 
 define storage_delete_mask(count) as:
@@ -846,6 +948,11 @@ define run_storage_benchmarks(size) as:
         adapter_t1 is monotonic_ns of null
         adapter_ms is (adapter_t1 - adapter_t0) / 1000000
 
+        inline_t0 is monotonic_ns of null
+        inline_summary is clause_store_inline_summary of arena
+        inline_t1 is monotonic_ns of null
+        inline_ms is (inline_t1 - inline_t0) / 1000000
+
         watch_t0 is monotonic_ns of null
         watch_summary is flat_watch_seed_summary of [c.nvars, arena]
         watch_t1 is monotonic_ns of null
@@ -856,6 +963,11 @@ define run_storage_benchmarks(size) as:
         adapter_watch_t1 is monotonic_ns of null
         adapter_watch_ms is (adapter_watch_t1 - adapter_watch_t0) / 1000000
 
+        inline_watch_t0 is monotonic_ns of null
+        inline_watch is clause_store_inline_seed_watches of [c.nvars, arena]
+        inline_watch_t1 is monotonic_ns of null
+        inline_watch_ms is (inline_watch_t1 - inline_watch_t0) / 1000000
+
         rebuild_t0 is monotonic_ns of null
         rebuilt is reconstruct_flat_clauses of arena
         rebuild_t1 is monotonic_ns of null
@@ -865,9 +977,15 @@ define run_storage_benchmarks(size) as:
         assert of [list_summary.checksum == flat_summary.checksum, f"storage checksum mismatch {c.name}"]
         assert of [list_summary.lits == adapter_summary.lits, f"storage adapter lit count mismatch {c.name}"]
         assert of [list_summary.checksum == adapter_summary.checksum, f"storage adapter checksum mismatch {c.name}"]
+        assert of [list_summary.lits == inline_summary.lits, f"storage inline adapter lit count mismatch {c.name}"]
+        assert of [list_summary.checksum == inline_summary.checksum, f"storage inline adapter checksum mismatch {c.name}"]
+        assert of [adapter_watch.links == inline_watch.links, f"storage inline adapter watch links mismatch {c.name}"]
+        assert of [adapter_watch.occupied == inline_watch.occupied, f"storage inline adapter watch buckets mismatch {c.name}"]
+        assert of [adapter_watch.max_bucket == inline_watch.max_bucket, f"storage inline adapter watch max mismatch {c.name}"]
         assert_clauses_match of [f"storage rebuild {c.name}", c.clauses, rebuilt]
         print of f"storage arena {c.name}: vars={c.nvars} clauses={len of c.clauses} lits={list_summary.lits} flat_lits={len of arena.lits} offsets={len of arena.offsets} list_scan_ms={list_ms} build_ms={build_ms} flat_scan_ms={flat_ms} watch_seed_ms={watch_ms} reconstruct_ms={rebuild_ms} watch_links={watch_summary.links} watch_buckets={watch_summary.occupied} max_watch_bucket={watch_summary.max_bucket} checksum={flat_summary.checksum}"
         print of f"storage adapter {c.name}: clauses={clause_store_len of arena} lits={adapter_summary.lits} adapter_scan_ms={adapter_ms} adapter_watch_seed_ms={adapter_watch_ms} watch_links={adapter_watch.links} watch_a={len of adapter_watch.watch_a} watch_b={len of adapter_watch.watch_b} watch_buckets={adapter_watch.occupied} max_watch_bucket={adapter_watch.max_bucket} checksum={adapter_summary.checksum}"
+        print of f"storage adapter inline {c.name}: clauses={len of arena.offsets} lits={inline_summary.lits} inline_scan_ms={inline_ms} inline_watch_seed_ms={inline_watch_ms} watch_links={inline_watch.links} watch_a={len of inline_watch.watch_a} watch_b={len of inline_watch.watch_b} watch_buckets={inline_watch.occupied} max_watch_bucket={inline_watch.max_bucket} checksum={inline_summary.checksum}"
 
         delete_plan is storage_delete_mask of (len of c.clauses)
 
@@ -911,6 +1029,7 @@ define run_storage_benchmarks(size) as:
         assert_clauses_match of [f"storage adapter compact rebuild {c.name}", compact_list.clauses, adapter_compact_rebuilt]
         print of f"storage compact {c.name}: clauses={len of c.clauses} removed={compact_arena.removed} kept={compact_arena.kept} kept_lits={compact_flat_summary.lits} list_compact_ms={list_compact_ms} flat_compact_ms={flat_compact_ms} remap_ms={remap_ms} remap_active={remap_summary.active} remap_checksum={remap_summary.checksum} compact_checksum={compact_flat_summary.checksum}"
         print of f"storage adapter compact {c.name}: removed={adapter_compact.removed} kept={adapter_compact.kept} kept_lits={compact_adapter_summary.lits} adapter_compact_ms={adapter_compact_ms} compact_checksum={compact_adapter_summary.checksum}"
+        print of f"storage overhead {c.name}: clauses={len of c.clauses} lits={list_summary.lits} kept_lits={compact_flat_summary.lits} adapter_scan_overhead_ms={adapter_ms - flat_ms} inline_scan_overhead_ms={inline_ms - flat_ms} helper_scan_overhead_ms={adapter_ms - inline_ms} adapter_watch_overhead_ms={adapter_watch_ms - watch_ms} inline_watch_overhead_ms={inline_watch_ms - watch_ms} helper_watch_overhead_ms={adapter_watch_ms - inline_watch_ms} adapter_compact_overhead_ms={adapter_compact_ms - flat_compact_ms} flat_compact_overhead_ms={flat_compact_ms - list_compact_ms}"
     return len of cases
 
 define metadata_pressure_config(size) as:

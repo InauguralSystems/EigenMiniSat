@@ -107,10 +107,19 @@ print of "  heuristic stress helpers: ok"
 
 copy_cases is copy_pressure_cases of 1
 copy_policies is copy_pressure_policies of null
-assert_eq of ["copy pressure case count", len of copy_cases, 3]
+assert_eq of ["copy pressure case count", len of copy_cases, 6]
 assert_eq of ["copy pressure policy count", len of copy_policies, 4]
 copy_case is copy_cases[0]
 copy_policy is copy_policies[0]
+copy_larger_pigeon is copy_cases[3]
+copy_larger_graph is copy_cases[4]
+copy_larger_xor is copy_cases[5]
+assert_eq of ["copy pressure larger pigeon", copy_larger_pigeon.name, "pigeonhole-5-4-larger"]
+assert_eq of ["copy pressure larger pigeon expected", copy_larger_pigeon.expected, "UNSAT"]
+assert_eq of ["copy pressure larger graph", copy_larger_graph.name, "k5-4color-larger"]
+assert_eq of ["copy pressure larger graph expected", copy_larger_graph.expected, "UNSAT"]
+assert_eq of ["copy pressure larger xor", copy_larger_xor.name, "xor-triangle-6-larger"]
+assert_eq of ["copy pressure larger xor expected", copy_larger_xor.expected, "SAT"]
 copy_result is solve_cnf_cdcl_with_options of [copy_case.nvars, copy_case.clauses, {
     "restart_policy": copy_policy.restart_policy,
     "restart_first": copy_policy.restart_first,
@@ -256,6 +265,7 @@ storage_arena is flat_clause_arena of storage_case.clauses
 storage_list_summary is clause_list_summary of storage_case.clauses
 storage_flat_summary is flat_clause_summary of storage_arena
 storage_adapter_summary is clause_store_adapter_summary of storage_arena
+storage_inline_summary is clause_store_inline_summary of storage_arena
 assert_eq of ["storage arena offsets", len of storage_arena.offsets, len of storage_case.clauses]
 assert_eq of ["storage arena lits", storage_flat_summary.lits, storage_list_summary.lits]
 assert_eq of ["storage arena checksum", storage_flat_summary.checksum, storage_list_summary.checksum]
@@ -264,6 +274,8 @@ assert_eq of ["storage adapter size", clause_store_size of [storage_arena, 0], l
 assert_eq of ["storage adapter first lit", clause_store_lit of [storage_arena, 0, 0], storage_case.clauses[0][0]]
 assert_eq of ["storage adapter lits", storage_adapter_summary.lits, storage_list_summary.lits]
 assert_eq of ["storage adapter checksum", storage_adapter_summary.checksum, storage_list_summary.checksum]
+assert_eq of ["storage inline adapter lits", storage_inline_summary.lits, storage_list_summary.lits]
+assert_eq of ["storage inline adapter checksum", storage_inline_summary.checksum, storage_list_summary.checksum]
 storage_rebuilt is reconstruct_flat_clauses of storage_arena
 assert_clauses_match of ["storage arena rebuild", storage_case.clauses, storage_rebuilt]
 storage_adapter_rebuilt is clause_store_reconstruct of storage_arena
@@ -275,6 +287,11 @@ storage_adapter_watch is clause_store_seed_watches of [storage_case.nvars, stora
 assert_eq of ["storage adapter watch links", storage_adapter_watch.links, storage_watch_summary.links]
 assert_eq of ["storage adapter watch a", len of storage_adapter_watch.watch_a, len of storage_case.clauses]
 assert_eq of ["storage adapter watch b", len of storage_adapter_watch.watch_b, len of storage_case.clauses]
+storage_inline_watch is clause_store_inline_seed_watches of [storage_case.nvars, storage_arena]
+assert_eq of ["storage inline adapter watch links", storage_inline_watch.links, storage_watch_summary.links]
+assert_eq of ["storage inline adapter watch a", len of storage_inline_watch.watch_a, len of storage_case.clauses]
+assert_eq of ["storage inline adapter watch b", len of storage_inline_watch.watch_b, len of storage_case.clauses]
+assert_eq of ["storage inline adapter watch buckets", storage_inline_watch.occupied, storage_adapter_watch.occupied]
 storage_delete is storage_delete_mask of (len of storage_case.clauses)
 storage_list_compact is compact_list_clauses_by_mask of [storage_case.clauses, storage_delete.mask]
 storage_flat_compact is compact_flat_clause_arena of [storage_arena, storage_delete.mask]
@@ -309,6 +326,35 @@ simple_cdcl is solve_cnf_cdcl of [simple.nvars, simple.clauses]
 assert_eq of ["simple cdcl SAT", simple_cdcl.status, "SAT"]
 assert_true of ["simple cdcl model satisfies", model_satisfies of [simple.nvars, simple.clauses, simple_cdcl.model]]
 print of "  simple SAT: ok"
+
+store is "outer-store"
+stats is "outer-stats"
+asg is "outer-asg"
+state is "outer-state"
+level is "outer-level"
+analysis is "outer-analysis"
+learned_ci is "outer-learned-ci"
+removed_learnts is "outer-removed-learnts"
+decision_lit is "outer-decision-lit"
+v is "outer-v"
+ci is "outer-ci"
+mark is "outer-mark"
+local_pressure_case is pigeonhole_case of [4, 3]
+local_pressure_result is solve_cnf_cdcl of [local_pressure_case.nvars, local_pressure_case.clauses]
+assert_eq of ["local pressure cdcl UNSAT", local_pressure_result.status, "UNSAT"]
+assert_eq of ["local pressure store sentinel", store, "outer-store"]
+assert_eq of ["local pressure stats sentinel", stats, "outer-stats"]
+assert_eq of ["local pressure asg sentinel", asg, "outer-asg"]
+assert_eq of ["local pressure state sentinel", state, "outer-state"]
+assert_eq of ["local pressure level sentinel", level, "outer-level"]
+assert_eq of ["local pressure analysis sentinel", analysis, "outer-analysis"]
+assert_eq of ["local pressure learned sentinel", learned_ci, "outer-learned-ci"]
+assert_eq of ["local pressure reduce sentinel", removed_learnts, "outer-removed-learnts"]
+assert_eq of ["local pressure decision sentinel", decision_lit, "outer-decision-lit"]
+assert_eq of ["local pressure v sentinel", v, "outer-v"]
+assert_eq of ["local pressure ci sentinel", ci, "outer-ci"]
+assert_eq of ["local pressure mark sentinel", mark, "outer-mark"]
+print of "  CDCL local binding pressure: ok"
 
 unit_unsat is parse_dimacs_file of "tests/fixtures/unit_unsat.cnf"
 unit_result is solve_cnf of [unit_unsat.nvars, unit_unsat.clauses]
@@ -467,7 +513,7 @@ print of "  corpus manifest parser: ok"
 
 corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
-assert_true of ["external corpus expanded", (len of corpus_cases) >= 8]
+assert_true of ["external corpus expanded", (len of corpus_cases) >= 11]
 for corpus in corpus_cases:
     assert_true of [f"corpus file exists {corpus.name}", (file_exists of corpus.path) == 1]
     assert_true of [f"corpus family {corpus.name}", (len of corpus.family) > 0]

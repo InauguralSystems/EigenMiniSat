@@ -52,10 +52,15 @@ learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
 reports store-to-list copies, store-native conflict-analysis scans, remaining
 analysis rebuild literals, deferred compaction checks, pending deleted clauses,
-targeted watch-detach scans/removals, and compaction-copy literals. A focused copy-pressure
-benchmark now runs conflict-heavy generated cases under tight restart and
-polarity policies, including lazy no-physical-compaction variants, before
-asking EigenScript for root arena support.
+targeted watch-detach scans/removals, and compaction-copy literals. A focused
+copy-pressure benchmark now runs conflict-heavy generated cases under tight
+restart and polarity policies, including larger evidence cases and lazy
+no-physical-compaction variants. It also emits deferred-vs-lazy delta summaries
+before asking EigenScript for root arena support. Storage pressure now also
+prints adapter scan, watch-seeding, and compaction overhead deltas to separate
+solver-local adapter costs from root/runtime storage needs. Inline adapter
+scan/watch rows further split helper-call overhead from the clause-store data
+shape.
 
 ## Milestone 3: CDCL
 
@@ -89,8 +94,10 @@ learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. The next target is measuring remaining
 targeted watch-detach and physical compaction pressure across larger conflict
 cases, then deciding whether that pressure belongs in EigenMiniSat, a reusable
-library, or EigenScript root, plus scanner token-span pressure and a
-larger third-party CNF corpus beyond the checked-in manifest fixtures.
+library, or EigenScript root. The corpus now includes small vendored structural
+fixtures with provenance notes; true third-party CNF imports should wait until
+the provenance and size constraints are clear. Scanner token-span pressure
+remains a parallel root/stdlib decision path.
 
 ## Milestone 4: EigenScript Feedback
 
@@ -100,9 +107,16 @@ Each benchmark regression should become one of:
 - EigenScript standard library candidate
 - EigenMiniSat-local algorithmic correction
 
+Stress-test code should not bypass a repeated root/runtime pressure point just
+to make EigenMiniSat faster. Alternate implementations belong in comparison
+benchmarks until the right root or library abstraction is clear.
+
 Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
 ledger. Local-only binding and diagnostic token spans are root/runtime
 candidates, string builders and priority queues are standard-library
 candidates, compact integer vectors are still root-vs-stdlib pressure, and
 clause arenas are being prototyped and measured locally in EigenMiniSat before
-asking for a root primitive.
+asking for a root primitive. The trend runner now has an evidence profile for
+bounded larger-case decision runs, and its summary emits active
+candidate-decision rows so the next experiment is scoped before any root or
+stdlib request is made.
