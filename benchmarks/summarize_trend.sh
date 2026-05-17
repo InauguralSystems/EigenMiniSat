@@ -185,6 +185,12 @@ stop != 0 {
     }
 }
 
+/int_tokens=/ {
+    if (field_value("int_tokens") > 0) {
+        int_token_path_active = 1
+    }
+}
+
 END {
     if (storage_inline_rows == 0) {
         storage_inline_scan_ms = storage_adapter_scan_ms
@@ -246,7 +252,7 @@ END {
     } else {
         compact_vector_pressure = 0
     }
-    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d text_builder_path_active=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d int_vector_state_active=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, text_builder_path_active, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure, int_vector_state_active
+    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d int_token_path_active=%d text_builder_path_active=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d int_vector_state_active=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, int_token_path_active, text_builder_path_active, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure, int_vector_state_active
 
     if (physical_compaction_pressure != 0) {
         emit_candidate("clause_physical_compaction", "eigenminisat_local", "active", "compare_deferred_lazy_before_root_request")
@@ -255,7 +261,11 @@ END {
         emit_candidate("clause_lazy_deletion_debt", "eigenminisat_local", "active", "measure_targeted_detach_vs_physical_compaction")
     }
     if (diagnostic_tokenizer_pressure != 0) {
-        emit_candidate("diagnostic_token_spans", "root_or_stdlib", "active", "prototype_span_tokenizer_if_larger_corpus_repeats")
+        if (int_token_path_active != 0) {
+            emit_candidate("diagnostic_token_spans", "root_runtime_consumed", "active", "compare_scan_int_tokens_against_split_scan_and_scan_ints")
+        } else {
+            emit_candidate("diagnostic_token_spans", "root_or_stdlib", "active", "prototype_span_tokenizer_if_larger_corpus_repeats")
+        }
     }
     if (token_span_path_active != 0) {
         emit_candidate("scan_token_spans", "root_runtime", "active", "compare_token_path_against_split_scan_and_ints")

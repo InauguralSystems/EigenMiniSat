@@ -88,14 +88,13 @@ without needing a larger external CNF.
 text back through the DIMACS parser, then solves the parsed clauses with CDCL.
 `--scan-parse-bench` compares the current split/trim parser, a
 character-scanning parser that shares the same diagnostics and output shape,
-and a C-backed integer-token fast path built on EigenScript `scan_ints`. The
-`scan_ints` path is intentionally for validated DIMACS-style input and
-benchmark pressure; the split/trim and character scanners remain the diagnostic
-parsers for malformed token/header reporting.
-`--diagnostic-bench` feeds malformed DIMACS text into the split/trim and
-character-scanning diagnostic parsers and reports error counts, diagnostic text
-lengths, and checksums. The C-backed `scan_ints` path is deliberately omitted
-because it is a fast validated-input path, not a full diagnostic parser.
+and C-backed token paths built on EigenScript `scan_int_tokens` and
+`scan_ints`. The `scan_int_tokens` path keeps token text/spans while adding
+integer validity and value metadata for diagnostics. The `scan_ints` path is
+intentionally for validated DIMACS-style input and benchmark pressure.
+`--diagnostic-bench` feeds malformed DIMACS text into the split/trim,
+character-scanning, and token-span diagnostic parsers and reports error counts,
+diagnostic text lengths, and checksums.
 `--file-bench` writes the same generated fixtures through EigenScript temp-file
 I/O, reparses them with `parse_dimacs_file`, removes the temp file, then solves
 the parsed clauses with CDCL.
