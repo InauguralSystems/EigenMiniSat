@@ -6,6 +6,10 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 ## Open Watchlist
 
 - Hot function-call overhead in propagation loops.
+- Stress benchmarks should not hide root/runtime pressure with local bypasses.
+  Inline or alternate forms can exist as comparison surfaces, but the main
+  stress path should continue exposing the language gap until EigenScript root
+  or a deliberate library abstraction addresses it.
 - `docs/EIGENSCRIPT_FEEDBACK.md` now classifies current pressure into
   EigenScript root/runtime candidates, standard-library candidates, and
   EigenMiniSat-local work. The current direction is local-only binding and
@@ -69,7 +73,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   overhead deltas so adapter pressure can be reduced locally before becoming a
   root arena/reference request. Inline adapter scan/watch rows keep the same
   clause-store shape while avoiding helper calls inside the hot literal loop,
-  separating data-shape pressure from helper-call overhead.
+  separating data-shape pressure from helper-call overhead. Those inline rows
+  are measurement evidence, not a replacement for the helper-mediated stress
+  path.
 - CDCL propagation, conflict analysis, learnt insertion, reduction scans, and
   deleted-clause compaction now operate over the solver-local clause store.
   The solver now reports store-to-list copies, conflict-analysis rebuild

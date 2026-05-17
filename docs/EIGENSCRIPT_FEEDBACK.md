@@ -12,6 +12,9 @@ the right place to fix a repeated cost.
   written in EigenScript but should not be hand-rolled in every project.
 - EigenMiniSat-local: solver representation choices that still need a local
   prototype before they justify root support.
+- Stress-test discipline: do not hide repeated language pressure with local
+  bypasses in the main stress path. Use comparison benchmarks to isolate a
+  possible fix, then address the gap as a library or at EigenScript root.
 
 ## Current Decisions
 
@@ -67,6 +70,24 @@ mutate list slots.
 Next action: continue collecting evidence through solver counters. A compact
 mutable vector API is broader than SAT solving and should be considered before
 EigenMiniSat grows many local list wrappers.
+
+### Hot Helper Calls In Tight Loops
+
+Classification: root/compiler candidate.
+
+Evidence: `--storage-bench` now reports inline-vs-helper clause-store overhead
+for the same flat clause-store shape. A size-1 evidence run with
+`inline_rows=4` split adapter scan overhead into `1.240ms` data-shape overhead
+and `0.860ms` helper-call overhead. Watch seeding split into `0.136ms` inline
+overhead and `0.239ms` helper-call overhead. This is not SAT-specific: small
+helper functions wrapping list/dict field access are a common abstraction shape
+in EigenScript programs.
+
+Next action: keep helper-mediated solver paths as the stress surface. Use the
+inline comparison rows as evidence for EigenScript compiler/root work such as
+function inlining, call specialization, or field-access lowering. Do not
+replace the main solver path with direct field access just to bypass the
+pressure.
 
 ### Priority Queue
 
@@ -145,8 +166,9 @@ A fresh size-1 inline-overhead check reports `inline_rows=4`, with storage
 adapter scan overhead split into `1.240ms` inline data-shape overhead and
 `0.860ms` helper-call overhead. Watch seeding similarly splits into `0.136ms`
 inline overhead and `0.239ms` helper-call overhead. This keeps the
-clause-store adapter decision local for now: reduce or inline hot helper paths
-before asking EigenScript for root arena/reference support.
+clause-store adapter decision from collapsing into a vague arena request: part
+of the pressure is now a root/compiler candidate around hot helper calls, and
+part remains data-shape pressure for compact vectors or arena references.
 
 ### Bitwise Integer Operations
 
@@ -168,6 +190,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
   compaction costs before asking EigenScript for root arena/reference support.
   Prefer new logs with `inline_rows > 0` when deciding whether the pressure is
   data shape, helper-call overhead, or both.
+- Preserve helper-mediated hot paths when they are the language stress surface;
+  use inline variants for measurement, not as a workaround.
 - Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
   snapshots before opening root or stdlib issues. Use
   `benchmarks/summarize_trend.sh` when comparing saved logs. Its

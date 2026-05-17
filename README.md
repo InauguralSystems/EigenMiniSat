@@ -6,6 +6,10 @@ EigenScript. The point is twofold:
 - port a well-known working solver toward MiniSat-style CDCL
 - create repeatable benchmarks that expose EigenScript language/runtime gaps
 
+Stress paths should not hide EigenScript gaps with local bypasses. When a
+possible workaround is useful, EigenMiniSat should keep it as a comparison
+benchmark and turn the pressure into a root or library decision.
+
 The first milestone is a correct DPLL baseline with DIMACS parsing, fixtures,
 and generated benchmark families. Later milestones should add watched literals,
 clause activity, VSIDS-style variable ordering, learnt clauses, and database
@@ -190,6 +194,7 @@ This repo is expected to stress:
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
 - per-case clause-store adapter overhead deltas
 - inline-vs-helper clause-store overhead deltas
+- helper-mediated hot paths preserved as stress surfaces
 - CDCL clause-store propagation and conflict-analysis access patterns
 - store-to-list copy counts, store-native analysis scans, remaining
   conflict-analysis rebuild literals, and direct compaction-copy literals

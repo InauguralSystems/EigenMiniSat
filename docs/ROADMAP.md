@@ -107,6 +107,10 @@ Each benchmark regression should become one of:
 - EigenScript standard library candidate
 - EigenMiniSat-local algorithmic correction
 
+Stress-test code should not bypass a repeated root/runtime pressure point just
+to make EigenMiniSat faster. Alternate implementations belong in comparison
+benchmarks until the right root or library abstraction is clear.
+
 Status: `docs/EIGENSCRIPT_FEEDBACK.md` now records the current classification
 ledger. Local-only binding and diagnostic token spans are root/runtime
 candidates, string builders and priority queues are standard-library
