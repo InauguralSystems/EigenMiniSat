@@ -2,6 +2,8 @@
 # DPLL baseline solver
 # ============================================================
 
+load_file of "lib/int_vector.eigs"
+
 define lit_abs(lit) as:
     if lit < 0:
         return 0 - lit
@@ -1137,13 +1139,14 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "trail": [],
         "qhead": 0,
         "trail_lim": [],
-        "reason": filled_list of [nvars + 1, -1],
-        "level": filled_list of [nvars + 1, 0],
+        "reason": int_vector_filled of [nvars + 1, -1],
+        "level": int_vector_filled of [nvars + 1, 0],
         "activity": filled_list of [nvars + 1, 0],
-        "phase": filled_list of [nvars + 1, cdcl_opts.phase_initial],
+        "phase": int_vector_filled of [nvars + 1, cdcl_opts.phase_initial],
         "phase_policy": cdcl_opts.phase_policy,
         "phase_saving": cdcl_opts.phase_saving,
         "phase_initial": cdcl_opts.phase_initial,
+        "int_vector_state": 1,
         "var_inc": 1,
         "var_decay": 0.95,
         "clause_learnt": [],
@@ -1163,7 +1166,7 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "compact_waste_percent": cdcl_opts.compact_waste_percent,
         "conflicts_since_restart": 0,
         "order_heap": [],
-        "order_pos": filled_list of [nvars + 1, -1],
+        "order_pos": int_vector_filled of [nvars + 1, -1],
         "conflict": -1
     }
 
@@ -1319,7 +1322,7 @@ define max_clause_level_except(clause, state, except_lit) as:
 
 define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     local level is len of state.trail_lim
-    local seen is filled_list of [len of state.level, 0]
+    local seen is int_vector_filled of [len of state.level, 0]
     local learnt_tail is []
     local path_count is analyze_mark_store_clause of [store, conflict_ci, 0, state, level, seen, learnt_tail, stats]
     local trail_idx is (len of state.trail) - 1
@@ -1396,6 +1399,7 @@ define cdcl_result(status, model, stats, state) as:
     local compact_min_deleted is 0
     local compact_waste_percent is 0
     local pending_deleted is 0
+    local int_vector_state is 0
     if state != null:
         active is count_active_learnts of state
         restart_policy is state.restart_policy
@@ -1406,6 +1410,7 @@ define cdcl_result(status, model, stats, state) as:
         compact_min_deleted is state.compact_min_deleted
         compact_waste_percent is state.compact_waste_percent
         pending_deleted is count_deleted_clauses of state
+        int_vector_state is state.int_vector_state
     return {
         "status": status,
         "model": model,
@@ -1462,6 +1467,7 @@ define cdcl_result(status, model, stats, state) as:
         "compact_policy": compact_policy,
         "compact_min_deleted": compact_min_deleted,
         "compact_waste_percent": compact_waste_percent,
+        "int_vector_state": int_vector_state,
         "phase_policy": phase_policy,
         "phase_saves": stats.phase_saves,
         "phase_flips": stats.phase_flips,

@@ -69,16 +69,21 @@ or whether EigenScript root needs a lower-level text buffer.
 
 ### Compact Mutable Integer Vectors
 
-Classification: root runtime or standard-library candidate.
+Classification: standard-library path active; root runtime still under
+measurement.
 
 Evidence: assignments, encoded literals, watch lists, heap positions, clause
 metadata, reason references, and trail levels are all integer-heavy arrays.
 Persistent rollback and CDCL heap churn repeatedly rebuild list prefixes or
 mutate list slots.
 
-Next action: continue collecting evidence through solver counters. A compact
-mutable vector API is broader than SAT solving and should be considered before
-EigenMiniSat grows many local list wrappers.
+Current path: EigenScript now exposes `lib/int_vector.eigs` over root buffers,
+and EigenMiniSat uses it for CDCL reason references, decision levels, saved
+phase values, heap positions, and conflict-analysis seen marks.
+
+Next action: measure the int-vector-backed CDCL path before asking for deeper
+root storage. Remaining pressure should distinguish fixed integer state from
+growable clause metadata and clause-arena storage.
 
 ### Hot Helper Calls In Tight Loops
 
@@ -201,6 +206,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
   data shape, helper-call overhead, or both.
 - Preserve helper-mediated hot paths when they are the language stress surface;
   use inline variants for measurement, not as a workaround.
+- Track `int_vector_state_active` in evidence summaries before expanding
+  compact vectors into more solver state.
 - Use `benchmarks/run_trends.sh evidence` for bounded larger-case decision
   snapshots before opening root or stdlib issues. Use
   `benchmarks/summarize_trend.sh` when comparing saved logs. Its

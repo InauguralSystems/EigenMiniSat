@@ -82,6 +82,18 @@ assert_true of ["fixed negative decisions", phase_negative.phase_neg_decisions >
 assert_true of ["fixed negative model", model_satisfies of [phase_case.nvars, phase_case.clauses, phase_negative.model]]
 print of "  phase policies: ok"
 
+iv_store is clause_store_from_clauses of phase_case.clauses
+iv_state is build_cdcl_state of [phase_case.nvars, iv_store, make_assignment of phase_case.nvars, cdcl_empty_stats of null, null]
+assert_eq of ["int vector reason type", type of iv_state.reason, "buffer"]
+assert_eq of ["int vector level type", type of iv_state.level, "buffer"]
+assert_eq of ["int vector phase type", type of iv_state.phase, "buffer"]
+assert_eq of ["int vector order type", type of iv_state.order_pos, "buffer"]
+assert_eq of ["int vector state flag", iv_state.int_vector_state, 1]
+assert_eq of ["int vector reason default", iv_state.reason[0], -1]
+assert_eq of ["int vector level default", iv_state.level[0], 0]
+assert_eq of ["int vector phase default", iv_state.phase[0], 1]
+print of "  int vector CDCL state: ok"
+
 graph_color_case is complete_graph_color_case of [4, 3]
 assert_eq of ["graph color expected", graph_color_case.expected, "UNSAT"]
 assert_eq of ["graph color vars", graph_color_case.nvars, 12]

@@ -70,8 +70,9 @@ shape.
 - restarts
 - learnt-clause database reduction
 
-Status: a first CDCL path exists with reason arrays, assignment levels,
-conflict-clause resolution, learnt clauses, and non-chronological backjumping.
+Status: a first CDCL path exists with int-vector-backed reason arrays,
+assignment levels, saved phase values, heap positions, conflict-clause
+resolution, learnt clauses, and non-chronological backjumping.
 Variable activity bump/decay, a heap-backed decision order, learnt metadata,
 locked-clause protection, lazy learnt-clause reduction, saved phase decisions,
 fixed-polarity comparison, geometric restarts, and a Luby restart comparison

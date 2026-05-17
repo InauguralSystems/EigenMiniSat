@@ -128,6 +128,8 @@ Current:
 - watched-literal propagation path for correctness and benchmark comparison
 - persistent watched trail/backtracking path
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
+- EigenScript stdlib integer vectors for fixed CDCL reason, level, phase, and
+  heap-position state
 - MiniSat-style variable activity and a binary heap order structure for CDCL
 - learnt-clause metadata, activity, locked-clause protection, and lazy reduction
 - saved/fixed phase polarity benchmarks, geometric restarts, and Luby restart benchmarks
