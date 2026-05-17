@@ -2,6 +2,8 @@
 # Generated benchmark families
 # ============================================================
 
+load_file of "lib/text_builder.eigs"
+
 define chain_case(n, contradictory) as:
     clauses is []
     append of [clauses, [1]]
@@ -373,7 +375,7 @@ define load_corpus_manifest(manifest_path) as:
 define external_corpus_cases(manifest_path) as:
     return load_corpus_manifest of manifest_path
 
-define case_to_dimacs_text(c) as:
+define case_to_dimacs_text_concat(c) as:
     text is f"c generated {c.name}\n"
     text is text + f"p cnf {c.nvars} {len of c.clauses}\n"
     for clause in c.clauses:
@@ -383,7 +385,18 @@ define case_to_dimacs_text(c) as:
         text is text + line + "0\n"
     return text
 
-define diagnostic_bad_token_text(size) as:
+define case_to_dimacs_text(c) as:
+    builder is text_builder_new of null
+    text_builder_append_line of [builder, f"c generated {c.name}"]
+    text_builder_append_line of [builder, f"p cnf {c.nvars} {len of c.clauses}"]
+    for clause in c.clauses:
+        for lit in clause:
+            text_builder_append of [builder, lit]
+            text_builder_append of [builder, " "]
+        text_builder_append_line of [builder, "0"]
+    return text_builder_to_string of builder
+
+define diagnostic_bad_token_text_concat(size) as:
     nvars is 8 * size
     rows is 8 * size
     text is f"c diagnostic bad-token burst\np cnf {nvars} {rows}\n"
@@ -392,7 +405,18 @@ define diagnostic_bad_token_text(size) as:
         text is text + f"{v} bad_token_{i} 0\n"
     return text
 
-define diagnostic_count_bound_text(size) as:
+define diagnostic_bad_token_text(size) as:
+    nvars is 8 * size
+    rows is 8 * size
+    builder is text_builder_new of null
+    text_builder_append_line of [builder, "c diagnostic bad-token burst"]
+    text_builder_append_line of [builder, f"p cnf {nvars} {rows}"]
+    for i in range of rows:
+        v is (i % nvars) + 1
+        text_builder_append_line of [builder, f"{v} bad_token_{i} 0"]
+    return text_builder_to_string of builder
+
+define diagnostic_count_bound_text_concat(size) as:
     nvars is 6 * size
     rows is 5 * size
     text is f"c diagnostic count and var bounds\np cnf {nvars} {rows + 2}\n"
@@ -401,7 +425,18 @@ define diagnostic_count_bound_text(size) as:
         text is text + f"{v} 0\n"
     return text
 
-define diagnostic_header_unterminated_text(size) as:
+define diagnostic_count_bound_text(size) as:
+    nvars is 6 * size
+    rows is 5 * size
+    builder is text_builder_new of null
+    text_builder_append_line of [builder, "c diagnostic count and var bounds"]
+    text_builder_append_line of [builder, f"p cnf {nvars} {rows + 2}"]
+    for i in range of rows:
+        v is nvars + i + 1
+        text_builder_append_line of [builder, f"{v} 0"]
+    return text_builder_to_string of builder
+
+define diagnostic_header_unterminated_text_concat(size) as:
     nvars is 4 * size
     declared is 2 * size
     text is f"c diagnostic duplicate header and unterminated final clause\np cnf {nvars} {declared}\n"
@@ -413,6 +448,21 @@ define diagnostic_header_unterminated_text(size) as:
         else:
             text is text + f"{v} "
     return text
+
+define diagnostic_header_unterminated_text(size) as:
+    nvars is 4 * size
+    declared is 2 * size
+    builder is text_builder_new of null
+    text_builder_append_line of [builder, "c diagnostic duplicate header and unterminated final clause"]
+    text_builder_append_line of [builder, f"p cnf {nvars} {declared}"]
+    text_builder_append_line of [builder, f"p cnf {nvars} {declared}"]
+    for i in range of declared:
+        v is (i % nvars) + 1
+        if i + 1 < declared:
+            text_builder_append_line of [builder, f"{v} 0"]
+        else:
+            text_builder_append of [builder, f"{v} "]
+    return text_builder_to_string of builder
 
 define diagnostic_pressure_cases(size) as:
     if size < 1:
@@ -1211,7 +1261,20 @@ define run_metadata_benchmarks(size) as:
 define run_parse_benchmarks(size) as:
     cases is large_fixture_cases of size
     for c in cases:
+        bt0 is monotonic_ns of null
         text is case_to_dimacs_text of c
+        bt1 is monotonic_ns of null
+        builder_build_ms is (bt1 - bt0) / 1000000
+
+        ct0 is monotonic_ns of null
+        concat_text is case_to_dimacs_text_concat of c
+        ct1 is monotonic_ns of null
+        concat_build_ms is (ct1 - ct0) / 1000000
+        assert of [text == concat_text, f"text_builder DIMACS mismatch {c.name}"]
+
+        print of f"build concat {c.name}: text_len={len of concat_text} clauses={len of c.clauses} ms={concat_build_ms}"
+        print of f"build text_builder {c.name}: text_len={len of text} clauses={len of c.clauses} ms={builder_build_ms}"
+
         pt0 is monotonic_ns of null
         parsed is parse_dimacs_text of text
         pt1 is monotonic_ns of null

@@ -20,7 +20,7 @@ the right place to fix a repeated cost.
 
 ### Local Binding Form
 
-Classification: root language fix in progress.
+Classification: merged root language fix.
 
 Evidence: CDCL option handling exposed outward assignment hazards when generic
 helper-local names collided with outer bindings. EigenScript PR #117 adds
@@ -35,7 +35,7 @@ language feature.
 
 ### Token Spans And Diagnostic Tokenizer
 
-Classification: root runtime fix in progress.
+Classification: merged root runtime fix.
 
 Evidence: `--scan-parse-bench`, `--corpus-bench`, and `--diagnostic-bench`
 show that the fast `scan_ints` path is useful for validated input, while full
@@ -54,15 +54,18 @@ line, and recoverable error reporting.
 
 ### String Builder Or Buffered Text Output
 
-Classification: standard-library candidate.
+Classification: standard-library fix in progress.
 
 Evidence: generated DIMACS fixtures and malformed diagnostic cases build text
-with repeated string concatenation. This is not solver-specific; it affects any
-EigenScript program producing structured text.
+with repeated string concatenation. EigenScript PR #119 adds a shared
+`lib/text_builder.eigs` module. EigenMiniSat now uses that builder for the main
+generated-DIMACS and diagnostic text paths while `--parse-bench` keeps concat
+generation rows as comparison evidence. This is not solver-specific; it affects
+any EigenScript program producing structured text.
 
-Next action: keep measuring generated fixture and diagnostic text construction
-before adding a project-local builder. If the pressure grows, prefer a stdlib
-builder/buffer API over a MiniSat-only helper.
+Next action: merge the stdlib builder, keep measuring builder-vs-concat rows,
+and decide from larger evidence whether the pure EigenScript builder is enough
+or whether EigenScript root needs a lower-level text buffer.
 
 ### Compact Mutable Integer Vectors
 
