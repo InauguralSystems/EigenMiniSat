@@ -113,8 +113,9 @@ the manifest corpus plus clause storage pressure. The `evidence` profile adds
 generated fixture parse/text-build pressure and malformed-DIMACS diagnostics,
 defaults to size `2` for bounded larger-case pressure, then appends a compact
 summary of copy, metadata, storage, parser, diagnostic, corpus, and text-build
-totals plus decision flags and active candidate-decision rows; the `full`
-profile runs every benchmark mode.
+totals plus decision flags and active candidate-decision rows, including
+whether the root-backed text builder beat repeated concat on that run; the
+`full` profile runs every benchmark mode.
 `docs/EIGENSCRIPT_FEEDBACK.md` tracks which benchmark pressure points currently
 look like EigenScript root/runtime candidates, standard-library candidates, or
 EigenMiniSat-local work.

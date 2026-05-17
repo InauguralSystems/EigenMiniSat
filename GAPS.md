@@ -17,17 +17,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   tests. Diagnostic token spans are now a merged root-runtime path from
   EigenScript PR #118, with integer-aware token spans from PR #122, and are
   exercised by a DIMACS token-span parser. String builders are now a merged
-  standard-library path from EigenScript PR #119 and are exercised by generated
-  DIMACS text construction.
+  root-backed path from EigenScript PR #119 and PR #123 and are exercised by
+  generated DIMACS text construction.
   Priority queues are a standard-library candidate, compact integer vectors are
   root-vs-stdlib pressure, and clause arenas remain an EigenMiniSat-local
   prototype first.
 - DIMACS parser throughput is now measured with generated text fixtures. The
-  current path builds generated fixtures through EigenScript's stdlib
-  text-builder candidate, keeps repeated concatenation as benchmark comparison,
-  and tokenizes each line through split/trim/num conversion, so larger fixtures
-  should tell us whether the library builder is enough or EigenScript needs
-  lower-level buffered text or streaming-tokenizer support.
+  current path builds generated fixtures through EigenScript's root-backed
+  text-builder API, keeps repeated concatenation as benchmark comparison, and
+  tokenizes each line through split/trim/num conversion, so larger fixtures
+  should tell us whether the native builder is enough before asking for deeper
+  buffered text or streaming-tokenizer support.
 - File-backed DIMACS fixtures now add `mktemp`, `write_text`, `read_text`
   through `parse_dimacs_file`, and `rm` pressure. This separates parser cost
   from file I/O cost and may expose whether EigenScript needs streaming file

@@ -53,22 +53,26 @@ domain-specific parser or richer recoverable-error API.
 
 ### String Builder Or Buffered Text Output
 
-Classification: standard-library path active; root runtime still under
-measurement.
+Classification: root runtime consumed; standard-library API retained.
 
 Evidence: generated DIMACS fixtures and malformed diagnostic cases build text
-with repeated string concatenation. EigenScript PR #119 added a shared
-`lib/text_builder.eigs` module. EigenMiniSat now uses that builder for the main
-generated-DIMACS and diagnostic text paths while `--parse-bench` keeps concat
-generation rows as comparison evidence. The `evidence` profile runs that
-bounded parse benchmark so `text_build_totals` and `text_builder_overhead_ms`
-stay visible in the same decision summary as parser, storage, and copy
-pressure. This is not solver-specific; it affects any EigenScript program
-producing structured text.
+with repeated string concatenation. EigenScript PR #119 added the shared
+`lib/text_builder.eigs` API, and EigenScript PR #123 moved the implementation
+onto the native `VAL_TEXT_BUILDER` root runtime value while keeping that module
+load-compatible. EigenMiniSat uses that builder for the main generated-DIMACS
+and diagnostic text paths while `--parse-bench` keeps concat generation rows as
+comparison evidence. The `evidence` profile runs that bounded parse benchmark
+so `text_build_totals`, `text_builder_overhead_ms`, and
+`text_builder_native_win` stay visible in the same decision summary as parser,
+storage, and copy pressure. A size-1 evidence run with the merged native
+builder reported `generated_cases=5`, `concat_ms=2.198`,
+`text_builder_ms=1.231`, `text_builder_overhead_ms=-0.967`, and emitted
+`decision_candidate area=text_builder scope=root_runtime_consumed`. This is not
+solver-specific; it affects any EigenScript program producing structured text.
 
-Next action: keep measuring builder-vs-concat rows in evidence runs, and decide
-from larger logs whether the pure EigenScript builder is enough or whether
-EigenScript root needs a lower-level text buffer.
+Next action: keep the native builder in the stress path, measure larger
+generated fixtures, and only ask for deeper text streaming or buffer primitives
+if the root-backed builder still shows pressure.
 
 ### Compact Mutable Integer Vectors
 

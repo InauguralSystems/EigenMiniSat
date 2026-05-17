@@ -238,6 +238,11 @@ END {
     } else {
         text_builder_path_active = 0
     }
+    if (text_builder_path_active != 0 && text_builder_overhead_ms <= 0) {
+        text_builder_native_win = 1
+    } else {
+        text_builder_native_win = 0
+    }
     if ((parse_ints_ms > 0 && parse_ints_ms < parse_split_ms) || (corpus_ints_ms > 0 && corpus_ints_ms < corpus_split_ms)) {
         validated_scan_ints_win = 1
     } else {
@@ -253,7 +258,7 @@ END {
     } else {
         compact_vector_pressure = 0
     }
-    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d int_token_path_active=%d text_builder_path_active=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d int_vector_state_active=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, int_token_path_active, text_builder_path_active, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure, int_vector_state_active
+    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d int_token_path_active=%d text_builder_path_active=%d text_builder_native_win=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d int_vector_state_active=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, int_token_path_active, text_builder_path_active, text_builder_native_win, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure, int_vector_state_active
 
     if (physical_compaction_pressure != 0) {
         emit_candidate("clause_physical_compaction", "eigenminisat_local", "active", "compare_deferred_lazy_before_root_request")
@@ -272,7 +277,11 @@ END {
         emit_candidate("scan_token_spans", "root_runtime", "active", "compare_token_path_against_split_scan_and_ints")
     }
     if (text_builder_path_active != 0) {
-        emit_candidate("text_builder", "stdlib", "active", "compare_stdlib_builder_against_concat_generation")
+        if (text_builder_native_win != 0) {
+            emit_candidate("text_builder", "root_runtime_consumed", "active", "keep_native_builder_and_measure_larger_generation")
+        } else {
+            emit_candidate("text_builder", "root_runtime_consumed", "active", "measure_native_builder_against_concat_before_more_root_text_requests")
+        }
     }
     if (validated_scan_ints_win != 0) {
         emit_candidate("validated_integer_scan", "root_runtime", "active", "keep_fast_path_and_measure_clause_assembly")
