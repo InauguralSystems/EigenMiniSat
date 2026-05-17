@@ -137,8 +137,6 @@ Current:
 - CDCL propagation, conflict analysis, learnt insertion, reduction, and
   compaction over the solver-local clause-store adapter
 - store-native CDCL conflict analysis over clause references
-- direct clause-store field access in CDCL hot loops after inline/helper
-  overhead evidence
 - deferred CDCL clause-store compaction with targeted watch detaching
 - lazy CDCL compaction policy for no-physical-compaction benchmark comparisons
 - clause-store copy/native-scan/rebuild counters for conflict analysis and
@@ -195,7 +193,6 @@ This repo is expected to stress:
 - CDCL clause-store propagation and conflict-analysis access patterns
 - store-to-list copy counts, store-native analysis scans, remaining
   conflict-analysis rebuild literals, and direct compaction-copy literals
-- solver-local reduction of helper calls in CDCL clause-store hot loops
 - deferred deleted-clause pressure, pending deleted clauses, and watch-detach
   churn
 - synthetic learnt-clause allocation, deletion, compaction, and churn pressure
