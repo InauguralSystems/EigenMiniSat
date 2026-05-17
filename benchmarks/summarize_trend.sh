@@ -178,6 +178,13 @@ stop != 0 {
     corpus_ints_ms += field_value("ms")
 }
 
+/int_vector_state=/ {
+    int_vector_rows += 1
+    if (field_value("int_vector_state") > 0) {
+        int_vector_state_active = 1
+    }
+}
+
 END {
     if (storage_inline_rows == 0) {
         storage_inline_scan_ms = storage_adapter_scan_ms
@@ -239,7 +246,7 @@ END {
     } else {
         compact_vector_pressure = 0
     }
-    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d text_builder_path_active=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, text_builder_path_active, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure
+    printf "decision_flags physical_compaction_pressure=%d lazy_debt_pressure=%d diagnostic_tokenizer_pressure=%d token_span_path_active=%d text_builder_path_active=%d validated_scan_ints_win=%d storage_adapter_pressure=%d compact_vector_pressure=%d int_vector_state_active=%d\n", physical_compaction_pressure, lazy_debt_pressure, diagnostic_tokenizer_pressure, token_span_path_active, text_builder_path_active, validated_scan_ints_win, storage_adapter_pressure, compact_vector_pressure, int_vector_state_active
 
     if (physical_compaction_pressure != 0) {
         emit_candidate("clause_physical_compaction", "eigenminisat_local", "active", "compare_deferred_lazy_before_root_request")
@@ -263,7 +270,11 @@ END {
         emit_candidate("clause_store_adapter", "eigenminisat_local", "active", "compare_inline_helper_overhead_before_root_arena_request")
     }
     if (compact_vector_pressure != 0) {
-        emit_candidate("compact_integer_vectors", "root_or_stdlib", "active", "prototype_reusable_int_vector_before_solver_wrappers")
+        if (int_vector_state_active != 0) {
+            emit_candidate("compact_integer_vectors", "stdlib_consumed", "active", "measure_cdcl_int_vector_state_before_more_root_storage")
+        } else {
+            emit_candidate("compact_integer_vectors", "root_or_stdlib", "active", "prototype_reusable_int_vector_before_solver_wrappers")
+        }
     }
 }
 ' "$LOG"
