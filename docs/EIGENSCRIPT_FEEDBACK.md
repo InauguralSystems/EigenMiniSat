@@ -35,16 +35,20 @@ language feature.
 
 ### Token Spans And Diagnostic Tokenizer
 
-Classification: root or standard-library candidate.
+Classification: root runtime fix in progress.
 
 Evidence: `--scan-parse-bench`, `--corpus-bench`, and `--diagnostic-bench`
 show that the fast `scan_ints` path is useful for validated input, while full
 DIMACS diagnostics still need parser-local token strings, line tracking, and
-error text assembly. The character scanner shares diagnostics with split/trim
-but pays repeated substring and token concatenation costs.
+error text assembly. EigenScript PR #118 adds `scan_tokens`, a C-backed
+whitespace token scanner returning `[text, line, col, start, end]` rows.
+EigenMiniSat now has a token-span DIMACS parser and emits `parse tokens`,
+`diagnostic tokens`, and `corpus parse tokens` rows beside split, hand-scan,
+and integer-scan paths.
 
-Next action: keep `scan_ints` as the numeric fast path. Add root or stdlib
-token-span support only if larger corpora keep diagnostic overhead visible.
+Next action: keep `scan_ints` as the validated numeric fast path, and use the
+token-span rows to decide whether `scan_tokens` is enough for full diagnostics
+or whether a richer tokenizer/error API belongs in EigenScript root or stdlib.
 The useful abstraction is not just integer scanning; it is token text, span,
 line, and recoverable error reporting.
 

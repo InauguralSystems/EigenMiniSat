@@ -14,10 +14,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   EigenScript root/runtime candidates, standard-library candidates, and
   EigenMiniSat-local work. Local-only binding is now a root-language fix in
   progress in EigenScript PR #117 and is exercised by EigenMiniSat CDCL
-  sentinel tests. Diagnostic token spans remain a root candidate, string
-  builders and priority queues are standard-library candidates, compact integer
-  vectors are root-vs-stdlib pressure, and clause arenas remain an
-  EigenMiniSat-local prototype first.
+  sentinel tests. Diagnostic token spans are now a root-runtime fix in
+  progress in EigenScript PR #118 and are exercised by a DIMACS token-span
+  parser. String builders and priority queues are standard-library candidates,
+  compact integer vectors are root-vs-stdlib pressure, and clause arenas remain
+  an EigenMiniSat-local prototype first.
 - DIMACS parser throughput is now measured with generated text fixtures. The
   current path builds strings by repeated concatenation and tokenizes each line
   through split/trim/num conversion, so larger fixtures should tell us whether
@@ -56,9 +57,9 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   tokenizer should expose token spans/error reporting for full diagnostics
   instead of only numeric extraction.
 - The diagnostic benchmark now feeds malformed DIMACS cases through the
-  split/trim and character-scanning parsers, checking error counts and
-  diagnostic text sizes. This isolates malformed-token/header/count overhead and
-  keeps pressure on whether EigenScript should expose tokenizer spans for
+  split/trim, character-scanning, and `scan_tokens` parsers, checking error
+  counts and diagnostic text sizes. This isolates malformed-token/header/count
+  overhead and keeps pressure on whether EigenScript token spans are enough for
   diagnostics instead of forcing parser-local string assembly.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
