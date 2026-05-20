@@ -5,6 +5,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- Learnt-clause reduction now uses lazy watch cleanup instead of eager
+  per-clause detach. Deleted clauses are skipped during propagation
+  (`deleted_watch_skips`) and cleaned up during compaction watch rebuilds.
+  At pigeonhole-8-7 (56 vars, 372 clauses) this eliminated 33K detach
+  scans. The remaining propagation-time skip cost is O(1) per encounter.
+- Compaction thresholds raised from 25% waste / 32 min to 50% waste / 64
+  min, matching MiniSat's less-frequent-but-larger compaction pattern.
+  At pigeonhole-8-7 this reduced compaction runs from 46 to 16 and
+  compaction literal copies from 93K to 33K. The remaining pressure is
+  the full clause-store copy during each compaction — an EigenScript
+  root arena/reference primitive would eliminate this.
 - `list_truncate` is now a merged root builtin from EigenScript PR #124.
   Trail backjump, trail_lim truncation, and heap pop now use in-place
   truncation instead of `copy_prefix` list rebuilds. The `copy_prefix`

@@ -867,7 +867,6 @@ define reduce_learnt_db(store, state, stats) as:
         if deleted >= target_delete:
             break
         state.clause_deleted[ci] is 1
-        detach_clause_watches of [store, state, ci, stats]
         stats.learnt_deleted += 1
         deleted += 1
 
@@ -1039,8 +1038,8 @@ define cdcl_default_options() as:
         "phase_initial": 1,
         "phase_saving": 1,
         "compact_policy": "deferred",
-        "compact_min_deleted": 32,
-        "compact_waste_percent": 25
+        "compact_min_deleted": 64,
+        "compact_waste_percent": 50
     }
 
 define cdcl_merge_options(opts) as:
