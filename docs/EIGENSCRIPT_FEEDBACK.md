@@ -191,6 +191,37 @@ clause-store adapter decision from collapsing into a vague arena request: part
 of the pressure is now a root/compiler candidate around hot helper calls, and
 part remains data-shape pressure for compact vectors or arena references.
 
+### In-Place List Truncation
+
+Classification: merged root builtin.
+
+Evidence: CDCL trail backjumps, trail_lim truncation, and heap pop all
+rebuilt lists via `copy_prefix`, allocating a fresh list each call. The C
+list struct already has `count` and `capacity`, so truncation is just
+`count = new_len` plus decrefing removed items. EigenScript PR #124 adds
+`list_truncate of [list, new_len]` as a root builtin. EigenMiniSat now
+uses it at 5 call sites. This is not solver-specific; any list-heavy
+program benefits from in-place truncation instead of copy-and-replace.
+
+Next action: consumed. Monitor whether `list_resize` (grow + fill) or
+`list_splice` become future pressure points.
+
+### Sort By Key Function
+
+Classification: merged root builtin.
+
+Evidence: learnt-clause reduction called `find_low_activity_learnt` in a
+loop — O(active x store_len). Needed O(n log n) sort by a key function.
+The pure-EigenScript `sort_by` in `lib/sort.eigs` used insertion sort
+(O(n^2)). EigenScript PR #124 adds a C-backed `sort_by of [list, key_fn]`
+that evaluates the key function once per element and uses `qsort` with
+stable tiebreak by original index. EigenMiniSat now uses it for
+single-pass learnt-clause reduction. This is not solver-specific; any
+program needing sort-by-computed-key benefits.
+
+Next action: consumed. The pure-EigenScript `sort_by` has been removed
+from `lib/sort.eigs` to avoid shadowing.
+
 ### Bitwise Integer Operations
 
 Classification: root runtime candidate, lower priority.

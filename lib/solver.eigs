@@ -510,10 +510,7 @@ define watched_cancel_to(state, asg, mark) as:
         asg[lit_abs of lit] is 0
         i -= 1
 
-    trimmed is []
-    for j in range of mark:
-        append of [trimmed, state.trail[j]]
-    state.trail is trimmed
+    list_truncate of [state.trail, mark]
     if state.qhead > mark:
         state.qhead is mark
     return null
@@ -528,10 +525,7 @@ define watched_cancel_until(state, asg, level) as:
     local mark is state.trail_lim[level]
     watched_cancel_to of [state, asg, mark]
 
-    kept is []
-    for i in range of level:
-        append of [kept, state.trail_lim[i]]
-    state.trail_lim is kept
+    list_truncate of [state.trail_lim, level]
     return null
 
 define build_persistent_watched_state(nvars, clauses, asg, stats) as:
@@ -673,7 +667,7 @@ define order_pop_best(state, stats) as:
     best is state.order_heap[0]
     last is state.order_heap[size - 1]
     state.order_pos[best] is -1
-    state.order_heap is copy_prefix of [state.order_heap, size - 1]
+    list_truncate of [state.order_heap, size - 1]
     if (len of state.order_heap) > 0:
         state.order_heap[0] is last
         state.order_pos[last] is 0
@@ -705,11 +699,12 @@ define bump_var_activity(state, v, stats) as:
     return null
 
 define bump_clause_activity(state, clause, stats) as:
-    seen is []
+    state.bump_generation += 1
+    local gen is state.bump_generation
     for lit in clause:
         local v is lit_abs of lit
-        if (clause_has_lit of [seen, v]) == 0:
-            append of [seen, v]
+        if state.bump_seen[v] != gen:
+            state.bump_seen[v] is gen
             bump_var_activity of [state, v, stats]
     return null
 
@@ -753,10 +748,14 @@ define decay_clause_activity(state, stats) as:
     stats.clause_activity_decays += 1
     return null
 
-define clause_locked(state, ci) as:
-    for r in state.reason:
-        if r == ci:
-            return 1
+define clause_locked(store, state, ci) as:
+    if (clause_store_size of [store, ci]) < 1:
+        return 0
+    local v is lit_abs of (clause_store_lit of [store, ci, 0])
+    if v >= (len of state.reason):
+        return 0
+    if state.reason[v] == ci:
+        return 1
     return 0
 
 define count_active_learnts(state) as:
@@ -831,7 +830,7 @@ define find_low_activity_learnt(store, state, stats) as:
         if state.clause_learnt[ci] != 0:
             if state.clause_deleted[ci] == 0:
                 if (clause_store_size of [store, ci]) > 2:
-                    if (clause_locked of [state, ci]) != 0:
+                    if (clause_locked of [store, state, ci]) != 0:
                         stats.learnt_kept_locked += 1
                     elif state.clause_activity[ci] < best_activity:
                         best_activity is state.clause_activity[ci]
@@ -846,14 +845,29 @@ define reduce_learnt_db(store, state, stats) as:
         return 0
 
     stats.reduce_runs += 1
+
+    candidates is []
+    for ci in range of (len of state.clause_learnt):
+        if state.clause_learnt[ci] != 0:
+            if state.clause_deleted[ci] == 0:
+                if (clause_store_size of [store, ci]) > 2:
+                    if (clause_locked of [store, state, ci]) != 0:
+                        stats.learnt_kept_locked += 1
+                    else:
+                        append of [candidates, ci]
+    stats.reduce_scans += 1
+
+    define activity_key(ci) as:
+        return state.clause_activity[ci]
+    sorted_candidates is sort_by of [candidates, activity_key]
+
     target_delete is floor of (active / 2)
     deleted is 0
-    loop while deleted < target_delete:
-        victim is find_low_activity_learnt of [store, state, stats]
-        if victim < 0:
+    for ci in sorted_candidates:
+        if deleted >= target_delete:
             break
-        state.clause_deleted[victim] is 1
-        detach_clause_watches of [store, state, victim, stats]
+        state.clause_deleted[ci] is 1
+        detach_clause_watches of [store, state, ci, stats]
         stats.learnt_deleted += 1
         deleted += 1
 
@@ -1147,6 +1161,8 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "phase_saving": cdcl_opts.phase_saving,
         "phase_initial": cdcl_opts.phase_initial,
         "int_vector_state": 1,
+        "bump_seen": int_vector_filled of [nvars + 1, 0],
+        "bump_generation": 0,
         "var_inc": 1,
         "var_decay": 0.95,
         "clause_learnt": [],
@@ -1274,7 +1290,7 @@ define cdcl_cancel_to(state, asg, mark, stats) as:
         order_insert of [state, v, stats]
         i -= 1
 
-    state.trail is copy_prefix of [state.trail, mark]
+    list_truncate of [state.trail, mark]
     if state.qhead > mark:
         state.qhead is mark
     return null
@@ -1284,7 +1300,7 @@ define cdcl_cancel_until(state, asg, level, stats) as:
         return null
     local mark is state.trail_lim[level]
     cdcl_cancel_to of [state, asg, mark, stats]
-    state.trail_lim is copy_prefix of [state.trail_lim, level]
+    list_truncate of [state.trail_lim, level]
     return null
 
 define cdcl_push_level(state) as:
@@ -1570,9 +1586,6 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
                     store is compact_deleted_clauses of [nvars, store, state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
-
-        if (all_clauses_satisfied of [input_clauses, asg]) != 0:
-            return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
 
         local v is choose_var_cdcl of [asg, state, stats]
         if v == 0:
