@@ -1383,8 +1383,55 @@ define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
     return {
         "clause": learnt,
         "assert_lit": assert_lit,
-        "backtrack": backtrack
+        "backtrack": backtrack,
+        "seen": seen
     }
+
+define lit_redundant(lit, seen, state, store, stats) as:
+    local stack is [lit]
+    local checked is []
+    loop while (len of stack) > 0:
+        local check_lit is stack[(len of stack) - 1]
+        list_truncate of [stack, (len of stack) - 1]
+        local v is lit_abs of check_lit
+        local reason_ci is state.reason[v]
+        if reason_ci < 0:
+            for j in range of (len of checked):
+                seen[checked[j]] is 0
+            return 0
+        stats.minimize_steps += 1
+        local rsize is clause_store_size of [store, reason_ci]
+        for k in range of rsize:
+            local rlit is clause_store_lit of [store, reason_ci, k]
+            local rv is lit_abs of rlit
+            if rv == v:
+                continue
+            if state.level[rv] == 0:
+                continue
+            if seen[rv] == 1:
+                continue
+            if state.reason[rv] < 0:
+                for j in range of (len of checked):
+                    seen[checked[j]] is 0
+                return 0
+            seen[rv] is 1
+            append of [checked, rv]
+            append of [stack, rlit]
+    return 1
+
+define minimize_clause(clause, seen, state, store, stats) as:
+    local minimized is [clause[0]]
+    for i in range of (len of clause):
+        if i == 0:
+            continue
+        local lit is clause[i]
+        stats.minimize_checks += 1
+        if (lit_redundant of [lit, seen, state, store, stats]) != 0:
+            stats.minimize_removed += 1
+            seen[lit_abs of lit] is 0
+        else:
+            append of [minimized, lit]
+    return minimized
 
 define add_cdcl_clause(store, state, clause, learnt, stats) as:
     local ci is clause_store_add_clause of [store, clause]
@@ -1487,7 +1534,10 @@ define cdcl_result(status, model, stats, state) as:
         "phase_saves": stats.phase_saves,
         "phase_flips": stats.phase_flips,
         "phase_pos_decisions": stats.phase_pos_decisions,
-        "phase_neg_decisions": stats.phase_neg_decisions
+        "phase_neg_decisions": stats.phase_neg_decisions,
+        "minimize_checks": stats.minimize_checks,
+        "minimize_removed": stats.minimize_removed,
+        "minimize_steps": stats.minimize_steps
     }
 
 define cdcl_empty_stats() as:
@@ -1542,7 +1592,10 @@ define cdcl_empty_stats() as:
         "phase_saves": 0,
         "phase_flips": 0,
         "phase_pos_decisions": 0,
-        "phase_neg_decisions": 0
+        "phase_neg_decisions": 0,
+        "minimize_checks": 0,
+        "minimize_removed": 0,
+        "minimize_steps": 0
     }
 
 define solve_cnf_cdcl(nvars, input_clauses) as:
@@ -1568,6 +1621,14 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
             local analysis is analyze_conflict_cdcl of [store, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
                 return cdcl_result of ["UNSAT", null, stats, state]
+
+            if (len of analysis.clause) > 1:
+                local min_seen is analysis.seen
+                int_vector_fill of [min_seen, 0]
+                for min_lit in analysis.clause:
+                    min_seen[lit_abs of min_lit] is 1
+                analysis.clause is minimize_clause of [analysis.clause, min_seen, state, store, stats]
+                analysis.backtrack is max_clause_level_except of [analysis.clause, state, analysis.assert_lit]
 
             bump_clause_activity of [state, analysis.clause, stats]
             decay_var_activity of [state, stats]
