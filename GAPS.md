@@ -5,6 +5,31 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- Learnt-clause reduction now uses lazy watch cleanup instead of eager
+  per-clause detach. Deleted clauses are skipped during propagation
+  (`deleted_watch_skips`) and cleaned up during compaction watch rebuilds.
+  At pigeonhole-8-7 (56 vars, 372 clauses) this eliminated 33K detach
+  scans. The remaining propagation-time skip cost is O(1) per encounter.
+- Compaction thresholds raised from 25% waste / 32 min to 50% waste / 64
+  min, matching MiniSat's less-frequent-but-larger compaction pattern.
+  At pigeonhole-8-7 this reduced compaction runs from 46 to 16 and
+  compaction literal copies from 93K to 33K. The remaining pressure is
+  the full clause-store copy during each compaction — an EigenScript
+  root arena/reference primitive would eliminate this.
+- `list_truncate` is now a merged root builtin from EigenScript PR #124.
+  Trail backjump, trail_lim truncation, and heap pop now use in-place
+  truncation instead of `copy_prefix` list rebuilds. The `copy_prefix`
+  helper remains for non-destructive copies.
+- `sort_by` is now a merged root builtin from EigenScript PR #124.
+  Learnt-clause reduction now collects candidates in one pass and sorts
+  by activity via `sort_by`, replacing the O(n^2) loop-of-scans.
+- `clause_locked` now uses O(1) first-watched-literal reason check
+  instead of linear reason vector scan. This is a solver-local fix.
+- The redundant `all_clauses_satisfied` check on the original clause list
+  in the CDCL main loop has been removed. The `choose_var_cdcl` return
+  of 0 already implies SAT when no conflict was found.
+- `bump_clause_activity` now uses a generation-counted `bump_seen`
+  int_vector for O(n) dedup instead of O(n^2) `clause_has_lit` scans.
 - Hot function-call overhead in propagation loops.
 - Stress benchmarks should not hide root/runtime pressure with local bypasses.
   Inline or alternate forms can exist as comparison surfaces, but the main
