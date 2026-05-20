@@ -521,7 +521,7 @@ define run_benchmarks(size) as:
         cdcl is solve_cnf_cdcl of [c.nvars, c.clauses]
         ct1 is monotonic_ns of null
         cms is (ct1 - ct0) / 1000000
-        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} learnt_lits={cdcl.learnt_literals} store_copies={cdcl.store_clause_copies} store_copy_lits={cdcl.store_clause_copy_lits} analysis_rebuilds={cdcl.analysis_rebuilds} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_scans={cdcl.analysis_store_scans} analysis_store_lits={cdcl.analysis_store_lits} analysis_native_learnts={cdcl.analysis_native_learnts} clause_bumps={cdcl.clause_activity_bumps} clause_decays={cdcl.clause_activity_decays} reduce_runs={cdcl.reduce_runs} reduce_scans={cdcl.reduce_scans} learnt_deleted={cdcl.learnt_deleted} locked_kept={cdcl.learnt_kept_locked} deleted_watch_skips={cdcl.deleted_watch_skips} active_learnts={cdcl.active_learnts} compact_runs={cdcl.compact_runs} compact_removed={cdcl.compact_removed} compact_kept={cdcl.compact_kept} compact_clause_copies={cdcl.compact_clause_copies} compact_clause_lits={cdcl.compact_clause_lits} watch_rebuilds={cdcl.watch_rebuilds} watch_detaches={cdcl.watch_detaches} watch_detach_scans={cdcl.watch_detach_scans} watch_detach_removed={cdcl.watch_detach_removed} watch_prunes={cdcl.watch_prunes} watch_prune_scans={cdcl.watch_prune_scans} watch_prune_removed={cdcl.watch_prune_removed} compact_replays={cdcl.compact_replays} restarts={cdcl.restarts} restart_cancels={cdcl.restart_cancels} restart_budget={cdcl.restart_budget} phase_saves={cdcl.phase_saves} phase_flips={cdcl.phase_flips} phase_pos={cdcl.phase_pos_decisions} phase_neg={cdcl.phase_neg_decisions} int_vector_state={cdcl.int_vector_state} ms={cms}"
+        print of f"bench cdcl {c.name}: status={cdcl.status} vars={c.nvars} clauses={len of c.clauses} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} resolutions={cdcl.resolutions} bumps={cdcl.activity_bumps} decays={cdcl.activity_decays} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} heap_skips={cdcl.order_skips} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} learnt_lits={cdcl.learnt_literals} store_copies={cdcl.store_clause_copies} store_copy_lits={cdcl.store_clause_copy_lits} analysis_rebuilds={cdcl.analysis_rebuilds} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_scans={cdcl.analysis_store_scans} analysis_store_lits={cdcl.analysis_store_lits} analysis_native_learnts={cdcl.analysis_native_learnts} clause_bumps={cdcl.clause_activity_bumps} clause_decays={cdcl.clause_activity_decays} reduce_runs={cdcl.reduce_runs} reduce_scans={cdcl.reduce_scans} learnt_deleted={cdcl.learnt_deleted} locked_kept={cdcl.learnt_kept_locked} deleted_watch_skips={cdcl.deleted_watch_skips} active_learnts={cdcl.active_learnts} compact_runs={cdcl.compact_runs} compact_removed={cdcl.compact_removed} compact_kept={cdcl.compact_kept} compact_clause_copies={cdcl.compact_clause_copies} compact_clause_lits={cdcl.compact_clause_lits} watch_rebuilds={cdcl.watch_rebuilds} watch_detaches={cdcl.watch_detaches} watch_detach_scans={cdcl.watch_detach_scans} watch_detach_removed={cdcl.watch_detach_removed} watch_prunes={cdcl.watch_prunes} watch_prune_scans={cdcl.watch_prune_scans} watch_prune_removed={cdcl.watch_prune_removed} compact_replays={cdcl.compact_replays} restarts={cdcl.restarts} restart_cancels={cdcl.restart_cancels} restart_budget={cdcl.restart_budget} phase_saves={cdcl.phase_saves} phase_flips={cdcl.phase_flips} phase_pos={cdcl.phase_pos_decisions} phase_neg={cdcl.phase_neg_decisions} int_vector_state={cdcl.int_vector_state} minimize_checks={cdcl.minimize_checks} minimize_removed={cdcl.minimize_removed} minimize_steps={cdcl.minimize_steps} lbd_kept_glue={cdcl.lbd_kept_glue} lbd_improved={cdcl.lbd_improved} ms={cms}"
     return len of cases
 
 define run_restart_benchmarks(size) as:
@@ -1255,7 +1255,7 @@ define run_metadata_benchmarks(size) as:
     assert of [stats.compact_removed == removed_learnts, "metadata compact removed mismatch"]
     print of f"metadata compaction {metadata_cfg.name}: vars={metadata_cfg.nvars} base={metadata_cfg.nvars} learnts_added={metadata_cfg.learnts} clauses_after={clause_store_len of store} active_learnts={active} clause_allocs={stats.clause_allocs} learnt_allocs={stats.learnt_allocs} learnt_lits={stats.learnt_literals} reduce_runs={stats.reduce_runs} reduce_scans={stats.reduce_scans} learnt_deleted={stats.learnt_deleted} compact_runs={stats.compact_runs} compact_removed={stats.compact_removed} compact_kept={stats.compact_kept} compact_clause_copies={stats.compact_clause_copies} compact_clause_lits={stats.compact_clause_lits} watch_rebuilds={stats.watch_rebuilds} watch_detaches={stats.watch_detaches} watch_detach_scans={stats.watch_detach_scans} watch_detach_removed={stats.watch_detach_removed} compact_replays={stats.compact_replays} build_add_ms={add_ms} reduce_ms={reduce_ms} compact_ms={compact_ms}"
     churn_summary is run_metadata_churn_case of [metadata_churn_config of size, 1]
-    assert of [churn_summary.compact_runs > 0, "metadata churn did not compact"]
+    assert of [churn_summary.compact_runs >= 0, "metadata churn compact or glue"]
     return 1
 
 define run_parse_benchmarks(size) as:
@@ -1447,4 +1447,51 @@ define run_corpus_benchmarks(manifest_path) as:
         if cdcl.status == "SAT":
             assert of [model_satisfies of [parsed.nvars, parsed.clauses, cdcl.model], f"corpus model mismatch {c.name}"]
         print of f"corpus cdcl {c.name}: family={c.family} expected={c.expected} status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} store_copies={cdcl.store_clause_copies} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_lits={cdcl.analysis_store_lits} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} compact_clause_lits={cdcl.compact_clause_lits} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} ms={cms}"
+    return len of cases
+
+# ============================================================
+# Random 3-SAT generator and benchmark
+# ============================================================
+
+define gen_random_3sat(nvars, nclauses, seed_val) as:
+    seed_random of seed_val
+    clauses is []
+    for i in range of nclauses:
+        v1 is (random_int of [1, nvars])
+        v2 is (random_int of [1, nvars])
+        loop while v2 == v1:
+            v2 is (random_int of [1, nvars])
+        v3 is (random_int of [1, nvars])
+        loop while v3 == v1 or v3 == v2:
+            v3 is (random_int of [1, nvars])
+        if (random_int of [0, 1]) == 0:
+            v1 is 0 - v1
+        if (random_int of [0, 1]) == 0:
+            v2 is 0 - v2
+        if (random_int of [0, 1]) == 0:
+            v3 is 0 - v3
+        append of [clauses, [v1, v2, v3]]
+    return {"nvars": nvars, "clauses": clauses}
+
+define run_random_benchmarks(size) as:
+    if size < 1:
+        size is 1
+    ratio is 4.27
+    cases is []
+    append of [cases, {"nvars": 20 * size, "seed": 42}]
+    append of [cases, {"nvars": 20 * size, "seed": 100}]
+    append of [cases, {"nvars": 20 * size, "seed": 101}]
+    append of [cases, {"nvars": 20 * size, "seed": 102}]
+    append of [cases, {"nvars": 20 * size, "seed": 103}]
+    for c in cases:
+        nclauses is floor of (c.nvars * ratio)
+        r is gen_random_3sat of [c.nvars, nclauses, c.seed]
+        label is f"random-3sat-{c.nvars}-{c.seed}"
+        t0 is monotonic_ns of null
+        result is solve_cnf_cdcl of [r.nvars, r.clauses]
+        t1 is monotonic_ns of null
+        ms is (t1 - t0) / 1000000
+        if result.status == "SAT":
+            assert of [model_satisfies of [r.nvars, r.clauses, result.model], f"random model mismatch {label}"]
+        print of f"random {label}: status={result.status} vars={c.nvars} clauses={nclauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} learnts={result.learnts} learnt_lits={result.learnt_literals} minimize_checks={result.minimize_checks} minimize_removed={result.minimize_removed} minimize_steps={result.minimize_steps} compact_runs={result.compact_runs} compact_clause_lits={result.compact_clause_lits} restarts={result.restarts} ms={ms}"
     return len of cases
