@@ -1448,3 +1448,50 @@ define run_corpus_benchmarks(manifest_path) as:
             assert of [model_satisfies of [parsed.nvars, parsed.clauses, cdcl.model], f"corpus model mismatch {c.name}"]
         print of f"corpus cdcl {c.name}: family={c.family} expected={c.expected} status={cdcl.status} decisions={cdcl.decisions} propagations={cdcl.propagations} conflicts={cdcl.conflicts} learnts={cdcl.learnts} backjumps={cdcl.backjumps} heap_pops={cdcl.order_pops} heap_inserts={cdcl.order_inserts} store_copies={cdcl.store_clause_copies} analysis_rebuild_lits={cdcl.analysis_rebuild_lits} analysis_store_lits={cdcl.analysis_store_lits} restarts={cdcl.restarts} compact_runs={cdcl.compact_runs} compact_clause_lits={cdcl.compact_clause_lits} clause_allocs={cdcl.clause_allocs} learnt_allocs={cdcl.learnt_allocs} ms={cms}"
     return len of cases
+
+# ============================================================
+# Random 3-SAT generator and benchmark
+# ============================================================
+
+define gen_random_3sat(nvars, nclauses, seed_val) as:
+    seed_random of seed_val
+    clauses is []
+    for i in range of nclauses:
+        v1 is (random_int of [1, nvars])
+        v2 is (random_int of [1, nvars])
+        loop while v2 == v1:
+            v2 is (random_int of [1, nvars])
+        v3 is (random_int of [1, nvars])
+        loop while v3 == v1 or v3 == v2:
+            v3 is (random_int of [1, nvars])
+        if (random_int of [0, 1]) == 0:
+            v1 is 0 - v1
+        if (random_int of [0, 1]) == 0:
+            v2 is 0 - v2
+        if (random_int of [0, 1]) == 0:
+            v3 is 0 - v3
+        append of [clauses, [v1, v2, v3]]
+    return {"nvars": nvars, "clauses": clauses}
+
+define run_random_benchmarks(size) as:
+    if size < 1:
+        size is 1
+    ratio is 4.27
+    cases is []
+    append of [cases, {"nvars": 20 * size, "seed": 42}]
+    append of [cases, {"nvars": 20 * size, "seed": 100}]
+    append of [cases, {"nvars": 20 * size, "seed": 101}]
+    append of [cases, {"nvars": 20 * size, "seed": 102}]
+    append of [cases, {"nvars": 20 * size, "seed": 103}]
+    for c in cases:
+        nclauses is floor of (c.nvars * ratio)
+        r is gen_random_3sat of [c.nvars, nclauses, c.seed]
+        label is f"random-3sat-{c.nvars}-{c.seed}"
+        t0 is monotonic_ns of null
+        result is solve_cnf_cdcl of [r.nvars, r.clauses]
+        t1 is monotonic_ns of null
+        ms is (t1 - t0) / 1000000
+        if result.status == "SAT":
+            assert of [model_satisfies of [r.nvars, r.clauses, result.model], f"random model mismatch {label}"]
+        print of f"random {label}: status={result.status} vars={c.nvars} clauses={nclauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} learnts={result.learnts} learnt_lits={result.learnt_literals} minimize_checks={result.minimize_checks} minimize_removed={result.minimize_removed} minimize_steps={result.minimize_steps} compact_runs={result.compact_runs} compact_clause_lits={result.compact_clause_lits} restarts={result.restarts} ms={ms}"
+    return len of cases

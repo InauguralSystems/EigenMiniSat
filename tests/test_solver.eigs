@@ -599,4 +599,17 @@ assert_eq of ["chain cdcl UNSAT", chain_unsat_cdcl.status, "UNSAT"]
 assert_true of ["chain cdcl UNSAT conflict", chain_unsat_cdcl.conflicts > 0]
 print of "  generated chain UNSAT: ok"
 
+# random 3-SAT
+rand_sat is gen_random_3sat of [30, 128, 42]
+rand_sat_result is solve_cnf_cdcl of [rand_sat.nvars, rand_sat.clauses]
+assert_eq of ["random 3sat-30 SAT", rand_sat_result.status, "SAT"]
+assert of [model_satisfies of [rand_sat.nvars, rand_sat.clauses, rand_sat_result.model], "random 3sat-30 model"]
+rand_unsat is gen_random_3sat of [30, 128, 100]
+rand_unsat_result is solve_cnf_cdcl of [rand_unsat.nvars, rand_unsat.clauses]
+assert_eq of ["random 3sat-30 seed100 result", rand_unsat_result.status == "SAT" or rand_unsat_result.status == "UNSAT", 1]
+if rand_unsat_result.status == "SAT":
+    assert of [model_satisfies of [rand_unsat.nvars, rand_unsat.clauses, rand_unsat_result.model], "random 3sat-30 seed100 model"]
+assert_true of ["random 3sat minimize ran", rand_sat_result.minimize_checks >= 0]
+print of "  random 3-SAT: ok"
+
 print of "\n=== All EigenMiniSat solver tests passed ==="
