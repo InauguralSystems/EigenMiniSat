@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build EigenScript
+        run: |
+          git clone https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript
+          cd /tmp/eigenscript && make build
+          echo "/tmp/eigenscript/src" >> $GITHUB_PATH
+
+      - name: Run solver tests
+        run: tests/run_smoke.sh
