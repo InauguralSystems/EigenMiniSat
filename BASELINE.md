@@ -295,3 +295,43 @@ tests/run_smoke.sh
 ```
 
 Status: passed.
+
+---
+
+## v0.12.0 trend baseline — 2026-06-10
+
+EigenScript v0.12.0 (JIT Stage 5 inline matrix + temporal compile-gate;
+binary built via `make` at HEAD `03f6291`). Machine: T3200.
+
+Command:
+
+```bash
+benchmarks/run_trends.sh quick
+```
+
+Wall-clock for the full `quick` profile: **n=5, real ≈ 1.55–1.68s**
+(previous one-shot at session-start: 2.19s, taken as warm-up).
+
+CDCL solve-time (ms), median/mean/min/max over 5 runs:
+
+| case | family | n | median | mean | min | max |
+|---|---|---|---|---|---|---|
+| grid-sat-5x5 | grid | 5 | 3.12 | 3.28 | 3.08 | 3.81 |
+| grid-unsat-5x5 | grid | 5 | 2.92 | 2.79 | 2.40 | 3.03 |
+| chain-sat-60 | chain | 5 | 5.66 | 5.73 | 5.40 | 6.06 |
+| chain-unsat-60 | chain | 5 | 3.49 | 3.57 | 3.43 | 3.93 |
+| wide-24-8-10 | wide | 5 | 2.19 | 2.24 | 2.07 | 2.45 |
+| multiline-sat | layout | 5 | 0.72 | 0.72 | 0.58 | 0.98 |
+| multi-clause-line-unsat | layout | 5 | 0.41 | 0.43 | 0.38 | 0.52 |
+| triangle-3color-sat | graph-coloring | 5 | 1.98 | 1.85 | 1.50 | 2.08 |
+| k4-3color-unsat | graph-coloring | 5 | 7.33 | 7.09 | 6.14 | 7.74 |
+| long-clause-sat | wide | 5 | 1.65 | 1.82 | 1.60 | 2.21 |
+| xor-contradiction-unsat | parity | 5 | 0.67 | 0.74 | 0.64 | 0.85 |
+| xor-ladder-sat | parity | 5 | 0.86 | 0.90 | 0.80 | 1.02 |
+| pigeonhole-4-3-unsat | pigeonhole | 5 | 6.29 | 7.04 | 6.23 | 8.49 |
+| **satlib-style-pigeonhole-5-4** | vendored-pigeonhole | 5 | **35.63** | 35.79 | 34.14 | 37.54 |
+| **satlib-style-k5-4color** | vendored-graph-coloring | 5 | **36.23** | 37.69 | 33.63 | 43.18 |
+| satlib-style-xor-triangle-8 | vendored-parity | 5 | 2.86 | 2.87 | 2.53 | 3.22 |
+
+Raw logs in `benchmarks/runs/20260610T2100*.log` (five files, one per run).
+
