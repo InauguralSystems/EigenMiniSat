@@ -1214,51 +1214,61 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
 
 define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
     local level is len of state.trail_lim
-    loop while state.qhead < (len of state.trail):
-        local p is state.trail[state.qhead]
+    local store_lits is store.lits
+    local store_offsets is store.offsets
+    local store_sizes is store.sizes
+    local clause_deleted is state.clause_deleted
+    local watch_a is state.watch_a
+    local watch_b is state.watch_b
+    local watches is state.watches
+    local trail is state.trail
+    loop while state.qhead < (len of trail):
+        local p is trail[state.qhead]
         state.qhead += 1
         local false_lit is 0 - p
         local wi is lit_index of false_lit
-        local old is state.watches[wi]
+        local old is watches[wi]
         local kept is []
 
         for old_pos in range of (len of old):
             local ci is old[old_pos]
-            if state.clause_deleted[ci] != 0:
+            if clause_deleted[ci] != 0:
                 stats.deleted_watch_skips += 1
                 continue
 
-            local wa is state.watch_a[ci]
-            local wb is state.watch_b[ci]
+            local off is store_offsets[ci]
+            local wa is watch_a[ci]
+            local wb is watch_b[ci]
 
             local false_pos is -1
             local other_pos is -1
-            if (clause_store_lit of [store, ci, wa]) == false_lit:
+            if store_lits[off + wa] == false_lit:
                 false_pos is wa
                 other_pos is wb
-            elif (clause_store_lit of [store, ci, wb]) == false_lit:
+            elif store_lits[off + wb] == false_lit:
                 false_pos is wb
                 other_pos is wa
             else:
                 append of [kept, ci]
                 continue
 
-            local other_lit is clause_store_lit of [store, ci, other_pos]
+            local other_lit is store_lits[off + other_pos]
             local other_val is lit_value of [other_lit, asg]
             if other_val == 1:
                 append of [kept, ci]
                 continue
 
             local found is 0
-            for k in range of (clause_store_size of [store, ci]):
+            local sz is store_sizes[ci]
+            for k in range of sz:
                 if k != false_pos and k != other_pos:
-                    local candidate is clause_store_lit of [store, ci, k]
+                    local candidate is store_lits[off + k]
                     if (lit_value of [candidate, asg]) != -1:
-                        if state.watch_a[ci] == false_pos:
-                            state.watch_a[ci] is k
+                        if watch_a[ci] == false_pos:
+                            watch_a[ci] is k
                         else:
-                            state.watch_b[ci] is k
-                        watch_add of [state.watches, candidate, ci]
+                            watch_b[ci] is k
+                        watch_add of [watches, candidate, ci]
                         found is 1
                         break
 
@@ -1268,15 +1278,15 @@ define run_watched_queue_cdcl(nvars, store, asg, state, stats) as:
                     stats.conflicts += 1
                     state.conflict is ci
                     append_active_watch_tail of [kept, old, old_pos + 1, state, stats]
-                    state.watches[wi] is kept
+                    watches[wi] is kept
                     return 0
                 if (enqueue_cdcl of [asg, state, other_lit, ci, level, stats, 1]) == 0:
                     state.conflict is ci
                     append_active_watch_tail of [kept, old, old_pos + 1, state, stats]
-                    state.watches[wi] is kept
+                    watches[wi] is kept
                     return 0
 
-        state.watches[wi] is kept
+        watches[wi] is kept
 
     return 1
 
@@ -1310,18 +1320,24 @@ define cdcl_push_level(state) as:
 
 define analyze_mark_store_clause(store, ci, pivot_var, state, level, seen, learnt_tail, stats) as:
     local current_count is 0
-    local size is clause_store_size of [store, ci]
+    local size is store.sizes[ci]
+    local off is store.offsets[ci]
+    local lits is store.lits
+    local state_level is state.level
     if stats != null:
         stats.analysis_store_scans += 1
         stats.analysis_store_lits += size
     for pos in range of size:
-        local lit is clause_store_lit of [store, ci, pos]
-        local v is lit_abs of lit
+        local lit is lits[off + pos]
+        local v is lit
+        if v < 0:
+            v is 0 - v
         if v != pivot_var:
-            if state.level[v] > 0:
+            local lv is state_level[v]
+            if lv > 0:
                 if seen[v] == 0:
                     seen[v] is 1
-                    if state.level[v] == level:
+                    if lv == level:
                         current_count += 1
                     else:
                         append of [learnt_tail, lit]
@@ -1399,27 +1415,37 @@ define analyze_conflict_cdcl(store, state, conflict_ci, stats) as:
 define lit_redundant(lit, seen, state, store, stats) as:
     local stack is [lit]
     local checked is []
+    local store_lits is store.lits
+    local store_offsets is store.offsets
+    local store_sizes is store.sizes
+    local state_reason is state.reason
+    local state_level is state.level
     loop while (len of stack) > 0:
         local check_lit is stack[(len of stack) - 1]
         list_truncate of [stack, (len of stack) - 1]
-        local v is lit_abs of check_lit
-        local reason_ci is state.reason[v]
+        local v is check_lit
+        if v < 0:
+            v is 0 - v
+        local reason_ci is state_reason[v]
         if reason_ci < 0:
             for j in range of (len of checked):
                 seen[checked[j]] is 0
             return 0
         stats.minimize_steps += 1
-        local rsize is clause_store_size of [store, reason_ci]
+        local rsize is store_sizes[reason_ci]
+        local roff is store_offsets[reason_ci]
         for k in range of rsize:
-            local rlit is clause_store_lit of [store, reason_ci, k]
-            local rv is lit_abs of rlit
+            local rlit is store_lits[roff + k]
+            local rv is rlit
+            if rv < 0:
+                rv is 0 - rv
             if rv == v:
                 continue
-            if state.level[rv] == 0:
+            if state_level[rv] == 0:
                 continue
             if seen[rv] == 1:
                 continue
-            if state.reason[rv] < 0:
+            if state_reason[rv] < 0:
                 for j in range of (len of checked):
                     seen[checked[j]] is 0
                 return 0

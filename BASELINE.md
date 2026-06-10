@@ -335,3 +335,42 @@ CDCL solve-time (ms), median/mean/min/max over 5 runs:
 
 Raw logs in `benchmarks/runs/20260610T2100*.log` (five files, one per run).
 
+### v0.12.0 hot-path inlining — 2026-06-10
+
+Applied the iLambdaAi/Tidepool hoist-globals + inline-tiny-accessors
+pattern to the three CDCL hot-path functions in `lib/solver.eigs`:
+
+- `run_watched_queue_cdcl`: hoist `store.lits`/`store.offsets`/
+  `store.sizes` + `state.clause_deleted`/`state.watch_a`/
+  `state.watch_b`/`state.watches`/`state.trail` at entry. Inline
+  `clause_store_lit of [store, ci, X]` → `store_lits[off + X]`
+  and `clause_store_size of [store, ci]` → `store_sizes[ci]`
+  in the inner watch-replacement search loop (removes 3-4
+  function calls per clause inspection).
+- `analyze_mark_store_clause`: same lit/offset/size hoist; inline
+  `lit_abs` to `if v < 0: v is 0 - v` since lit_abs was per-iter.
+- `lit_redundant`: same. Also hoist `state.reason`/`state.level`
+  since the worklist walk reads both per stack item.
+
+Bench (corpus-bench, 3 reps × n=5, median across reps):
+
+| case | family | pre-mean | post-mean | Δ-mean | pre-best | post-best | Δ-best |
+|---|---|---|---|---|---|---|---|
+| satlib-style-k5-4color | graph-coloring | 37.43 | 36.07 | -3.6% | 34.37 | 32.16 | **-6.4%** |
+| satlib-style-pigeonhole-5-4 | pigeonhole | 35.86 | 35.16 | -2.0% | 32.73 | 31.46 | **-3.9%** |
+| k4-3color-unsat | graph-coloring | 7.47 | 7.32 | -2.0% | 6.23 | 5.90 | **-5.3%** |
+| pigeonhole-4-3-unsat | pigeonhole | 7.26 | 7.08 | -2.5% | 6.57 | 5.98 | **-9.0%** |
+| xor-ladder-sat | parity | 0.89 | 0.82 | -7.9% | 0.83 | 0.75 | -9.6% |
+| satlib-style-xor-triangle-8 | parity | 2.87 | 3.28 | +14% | 2.57 | 2.61 | ~ |
+
+The xor-triangle-8 mean regression (+14% / 0.4 ms absolute) is in
+the run-to-run noise band for that case size on T3200 — bests
+unchanged. Heavy CDCL cases show clean 3-9% on bests, 2-4% on means
+(T3200 noise band swallows about half the mean signal).
+
+Same pattern as Tidepool / iLambdaAi: v0.12.0's Stage 5 inline ICs
+fire on locals; tiny one-line accessors (`clause_store_lit`,
+`clause_store_size`, `lit_abs`) imposed function-call overhead per
+inner-loop iter that the JIT couldn't elide. Manual inlining +
+hoisting is what bytecode JIT specialization would do automatically.
+
