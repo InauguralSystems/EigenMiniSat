@@ -93,6 +93,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   counts and diagnostic text sizes. This isolates malformed-token/header/count
   overhead and keeps pressure on whether EigenScript integer-aware token spans
   are enough for diagnostics instead of forcing parser-local string assembly.
+- CRLF (`\r\n`) line endings exposed a parser-path divergence. The split/trim
+  `_tokens` helper only normalized `\t`, so a trailing `\r` stuck to the last
+  token of every line and a valid Windows-saved DIMACS file was rejected with
+  spurious "non-integer" diagnostics — and since the CLI parses through
+  `parse_dimacs_file` -> `parse_dimacs_text`, that broke real solves. Fixed
+  locally by also normalizing `\r` in `_tokens`; the character-scan path already
+  handled `\r` inline. The C-backed `scan_int_tokens` path still mishandles
+  CRLF (it marks `<int>\r` as a non-integer token) while `scan_ints` tolerates
+  it — an EigenScript-root inconsistency between the two scanner primitives.
+  Left visible rather than normalized around, per the no-silent-bypass rule;
+  the canonical (CLI) path is the one that had to be correct.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - The storage benchmark now builds a flat clause arena from list-of-lists input

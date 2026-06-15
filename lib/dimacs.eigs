@@ -13,6 +13,7 @@ define _is_comment_or_empty(line) as:
 
 define _tokens(line) as:
     cleaned is str_replace of [line, "\t", " "]
+    cleaned is str_replace of [cleaned, "\r", " "]
     raw is split of [cleaned, " "]
     out is []
     for part in raw:

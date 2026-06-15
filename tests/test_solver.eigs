@@ -528,6 +528,17 @@ diagnostic_summary is diagnostic_error_summary of diagnostic_bad
 assert_eq of ["diagnostic summary errors", diagnostic_summary.errors, diagnostic_bad.error_count]
 assert_true of ["diagnostic summary chars", diagnostic_summary.error_chars > 0]
 assert_true of ["diagnostic summary checksum", diagnostic_summary.checksum > 0]
+
+# CRLF (Windows) line endings must parse identically to LF. The split/trim
+# path is what the CLI uses via parse_dimacs_file, so a valid CRLF file must
+# not be rejected with spurious non-integer diagnostics.
+crlf_lf is parse_dimacs_text of "p cnf 2 2\n1 -2 0\n2 0\n"
+crlf_crlf is parse_dimacs_text of "p cnf 2 2\r\n1 -2 0\r\n2 0\r\n"
+assert_eq of ["crlf split parses clean", crlf_crlf.ok, 1]
+assert_eq of ["crlf split error count", crlf_crlf.error_count, 0]
+assert_dimacs_same of ["crlf matches lf (split)", crlf_lf, crlf_crlf]
+crlf_scan is parse_dimacs_text_scan of "p cnf 2 2\r\n1 -2 0\r\n2 0\r\n"
+assert_dimacs_same of ["crlf split matches scan", crlf_crlf, crlf_scan]
 print of "  DIMACS parser diagnostics: ok"
 
 manifest_entry is parse_corpus_manifest_line of ["toy|tests/fixtures/simple_sat.cnf|SAT|3|3|fixture", 1]
