@@ -402,6 +402,26 @@ assert_true of ["pigeonhole cdcl native learnts", php_cdcl.analysis_native_learn
 assert_true of ["pigeonhole cdcl clause bumps", php_cdcl.clause_activity_bumps > 0]
 print of "  pigeonhole UNSAT: ok"
 
+# CDCL clause-store compaction coverage. The default deferred policy keeps
+# compact_runs at 0 on fixtures this small, so the physical-compaction path
+# (clause-store copy + watch rebuild + trail replay) went unexercised by the
+# correctness suite. Force it with the eager policy on small, fast instances
+# and assert the verdict and a valid model still hold after compaction runs.
+compact_php is pigeonhole_case of [5, 4]
+compact_unsat is solve_cnf_cdcl_with_options of [compact_php.nvars, compact_php.clauses, {"compact_policy": "eager"}]
+assert_eq of ["compaction unsat verdict", compact_unsat.status, "UNSAT"]
+assert_true of ["compaction runs fire", compact_unsat.compact_runs > 0]
+assert_true of ["compaction removes clauses", compact_unsat.compact_removed > 0]
+assert_true of ["compaction rebuilds watches", compact_unsat.watch_rebuilds > 0]
+assert_true of ["compaction replays trail", compact_unsat.compact_replays > 0]
+
+compact_sat_case is gen_random_3sat of [45, 189, 7]
+compact_sat is solve_cnf_cdcl_with_options of [compact_sat_case.nvars, compact_sat_case.clauses, {"compact_policy": "eager"}]
+assert_eq of ["compaction sat verdict", compact_sat.status, "SAT"]
+assert_true of ["compaction sat runs fire", compact_sat.compact_runs > 0]
+assert_true of ["compaction sat model valid", model_satisfies of [compact_sat_case.nvars, compact_sat_case.clauses, compact_sat.model]]
+print of "  CDCL clause-store compaction: ok"
+
 php4 is pigeonhole_case of [4, 3]
 php4_cdcl is solve_cnf_cdcl of [php4.nvars, php4.clauses]
 assert_eq of ["pigeonhole 4-3 cdcl UNSAT", php4_cdcl.status, "UNSAT"]
