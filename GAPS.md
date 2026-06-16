@@ -99,11 +99,15 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   spurious "non-integer" diagnostics — and since the CLI parses through
   `parse_dimacs_file` -> `parse_dimacs_text`, that broke real solves. Fixed
   locally by also normalizing `\r` in `_tokens`; the character-scan path already
-  handled `\r` inline. The C-backed `scan_int_tokens` path still mishandles
-  CRLF (it marks `<int>\r` as a non-integer token) while `scan_ints` tolerates
-  it — an EigenScript-root inconsistency between the two scanner primitives.
-  Left visible rather than normalized around, per the no-silent-bypass rule;
-  the canonical (CLI) path is the one that had to be correct.
+  handled `\r` inline. **Retraction (2026-06-16):** an earlier note here
+  claimed `scan_int_tokens` mishandled real CRLF while `scan_ints` tolerated
+  it. That diagnosis was wrong — both C scanners correctly treat ASCII CR
+  (0x0D) as whitespace via `isspace`, and a file written with `printf '1
+  2\r\n3 4\r\n'` round-trips through both. The bug had been reproduced inline
+  with `"1 2\r\n3 4\r\n"`, which silently produced `"1 2r\n3 4r\n"` because
+  the EigenScript lexer didn't escape `\r` (fixed upstream in commit
+  `3a48820`, `\r` now escapes to CR). The split/trim `_tokens` `\r` strip
+  remains correct and load-bearing for real Windows-saved CNFs.
 - Compact integer-vector ergonomics for literals, assignments, watches, and
   clause references.
 - The storage benchmark now builds a flat clause arena from list-of-lists input
