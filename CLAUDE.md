@@ -28,15 +28,13 @@ EIGS=${EIGENSCRIPT_BIN:-../EigenScript/src/eigenscript}
 $EIGS minisat.eigs tests/fixtures/simple_sat.cnf
 ```
 
-Minimum is **v0.13.0** (uses stdlib integer vectors for CDCL state);
-**v0.15.2** is the current tested release (correctness suite green:
-all `test_solver.eigs` assertions and the full `run_smoke.sh` pass on a
-minimal v0.15.2 build). The v0.15.x line — HTTP per-worker isolation,
-the C embedding API, `shared_*` builtins, the macOS-Intel JIT fix —
-does not touch the solver's code paths. The
-`Inline tiny accessors in CDCL hot path for v0.12.0 JIT` commit
-captures the hoist pattern needed for the inline-cache JIT — that
-pattern is now load-bearing for the CDCL hot path.
+Minimum is **v0.13.0** (uses stdlib integer vectors for CDCL state).
+CI builds and tests against EigenScript **v0.22.0** (pinned in
+`.github/workflows/ci.yml`): the correctness suite is green — all
+`test_solver.eigs` assertions and the full `run_smoke.sh` pass. The
+`Inline tiny accessors in CDCL hot path` commit captures the hoist
+pattern needed for the inline-cache JIT — now load-bearing for the CDCL
+hot path.
 
 ## Run / test / benchmark
 
@@ -125,7 +123,7 @@ LBD-based clause management (Glucose-style) landed via PR #43.
 Latest commits are JIT-targeted hot-path inlining for v0.12.0+. The
 benchmark surface is mature — most current work is data-driven
 decisions out of `docs/EIGENSCRIPT_FEEDBACK.md`. Verified green on
-EigenScript v0.15.2 (correctness suite only; not an `n=5` perf claim).
+EigenScript v0.22.0 (correctness suite only; not an `n=5` perf claim).
 
 ## Gotchas
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.0] — 2026-07-01
 
 ### CDCL Solver
 - MiniSat-style clause minimization (litRedundant / first-UIP redundant literal removal)
