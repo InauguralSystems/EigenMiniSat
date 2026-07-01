@@ -24,7 +24,7 @@ solver's progress is real; the benchmarks are the forcing function.
 EigenScript is **not** vendored. Point at a built binary:
 
 ```bash
-EIGS=${EIGENSCRIPT_BIN:-/home/jon/EigenScript/src/eigenscript}
+EIGS=${EIGENSCRIPT_BIN:-../EigenScript/src/eigenscript}
 $EIGS minisat.eigs tests/fixtures/simple_sat.cnf
 ```
 
@@ -41,7 +41,7 @@ pattern is now load-bearing for the CDCL hot path.
 ## Run / test / benchmark
 
 ```bash
-EIGS=/home/jon/EigenScript/src/eigenscript
+EIGS=../EigenScript/src/eigenscript
 
 # Solve a CNF file with each propagation path
 $EIGS minisat.eigs                       tests/fixtures/simple_sat.cnf  # DPLL

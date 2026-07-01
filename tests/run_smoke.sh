@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Prefer an explicit EIGENSCRIPT_BIN, then an `eigenscript` on PATH (how CI
 # exposes its freshly built binary), then the maintainer's local dev path.
-EIGS="${EIGENSCRIPT_BIN:-$(command -v eigenscript || echo /home/jon/EigenScript/src/eigenscript)}"
+EIGS="${EIGENSCRIPT_BIN:-$(command -v eigenscript || echo ../EigenScript/src/eigenscript)}"
 
 cd "$ROOT"
 "$EIGS" tests/test_solver.eigs

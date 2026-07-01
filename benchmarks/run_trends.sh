@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EIGS="${EIGENSCRIPT_BIN:-/home/jon/EigenScript/src/eigenscript}"
+EIGS="${EIGENSCRIPT_BIN:-../EigenScript/src/eigenscript}"
 PROFILE="${1:-quick}"
 SIZE="${2:-}"
 

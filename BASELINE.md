@@ -8,7 +8,7 @@ numbers, not universal performance claims.
 Command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --bench --size 2
 ```
 
 Result:
@@ -50,7 +50,7 @@ DIMACS literals at the solver boundary.
 Restart benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --restart-bench --size 2
 ```
 
 Result:
@@ -69,7 +69,7 @@ restart luby xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propagat
 Phase benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --phase-bench --size 2
 ```
 
 Result:
@@ -92,7 +92,7 @@ phase negative xor-triangle-4: status=SAT vars=12 clauses=16 decisions=11 propag
 Heuristic benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
 ```
 
 Result:
@@ -121,7 +121,7 @@ heuristic summary xor-triangle-4: policies=5 status=SAT min_decisions=11 max_dec
 Metadata compaction benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 2
 ```
 
 Result:
@@ -138,7 +138,7 @@ metadata churn summary metadata-churn-2: waves=4 vars=32 learnts_added=192 activ
 Storage benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
 ```
 
 Result:
@@ -157,7 +157,7 @@ storage compact chain-unsat-80: clauses=81 removed=27 kept=54 kept_lits=106 list
 Parse benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --parse-bench --size 2
 ```
 
 Result:
@@ -178,7 +178,7 @@ fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 le
 Scan parser benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 2
 ```
 
 Result:
@@ -209,7 +209,7 @@ ints fixture cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts
 Diagnostic benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 2
 ```
 
 Result:
@@ -226,7 +226,7 @@ diagnostic scan header-unterminated-2: text_len=94 clauses=4 declared_vars=8 dec
 File-backed benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 2
+../EigenScript/src/eigenscript minisat.eigs --file-bench --size 2
 ```
 
 Result:
@@ -247,7 +247,7 @@ file cdcl wide-48-8-20: status=SAT decisions=41 propagations=0 conflicts=0 learn
 Corpus benchmark command:
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench
+../EigenScript/src/eigenscript minisat.eigs --corpus-bench
 ```
 
 Result:

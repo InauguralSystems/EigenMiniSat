@@ -1,5 +1,10 @@
 # EigenMiniSat
 
+[![CI](https://github.com/InauguralSystems/EigenMiniSat/actions/workflows/ci.yml/badge.svg)](https://github.com/InauguralSystems/EigenMiniSat/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/InauguralSystems/EigenMiniSat/badge)](https://securityscorecards.dev/viewer/?uri=github.com/InauguralSystems/EigenMiniSat)
+[![tag](https://img.shields.io/github/v/tag/InauguralSystems/EigenMiniSat?label=version)](https://github.com/InauguralSystems/EigenMiniSat/tags)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 EigenMiniSat is a MiniSat-targeted SAT solver and benchmark suite written in
 EigenScript. The point is twofold:
 
@@ -18,22 +23,22 @@ reduction.
 ## Usage
 
 ```bash
-/home/jon/EigenScript/src/eigenscript minisat.eigs tests/fixtures/simple_sat.cnf
-/home/jon/EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
-/home/jon/EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
-/home/jon/EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
-/home/jon/EigenScript/src/eigenscript minisat.eigs --bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --copy-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
-/home/jon/EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
+../EigenScript/src/eigenscript minisat.eigs tests/fixtures/simple_sat.cnf
+../EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
+../EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
+../EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
+../EigenScript/src/eigenscript minisat.eigs --bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --heuristic-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --copy-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --storage-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --metadata-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --parse-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --scan-parse-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 tests/run_smoke.sh
 benchmarks/run_trends.sh quick 1
 benchmarks/run_trends.sh evidence
