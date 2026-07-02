@@ -29,7 +29,7 @@ $EIGS minisat.eigs tests/fixtures/simple_sat.cnf
 ```
 
 Minimum is **v0.13.0** (uses stdlib integer vectors for CDCL state).
-CI builds and tests against EigenScript **v0.22.0** (pinned in
+CI builds and tests against EigenScript **v0.23.0** (pinned in
 `.github/workflows/ci.yml`): the correctness suite is green — all
 `test_solver.eigs` assertions and the full `run_smoke.sh` pass. The
 `Inline tiny accessors in CDCL hot path` commit captures the hoist
