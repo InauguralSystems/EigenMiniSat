@@ -94,7 +94,20 @@ growable clause metadata and clause-arena storage.
 
 ### Hot Helper Calls In Tight Loops
 
-Classification: root/compiler issue filed — EigenScript #366.
+Classification: root fix merged — EigenScript #366, fixed by PR #367
+(2026-07-03, on EigenScript main; unreleased, so the v0.23.0 CI pin does
+not see it until the next release).
+
+Resolution: EigenScript now flags "leaf accessor" chunks at compile time
+(single pure expression over params — field gets, list/buffer index gets,
+numeric arithmetic) and runs exactly-fed calls framelessly against the
+caller's stack, bailing to the generic call path on any surprise so errors
+and tracebacks stay identical. Re-measured against the merged fix (n=5,
+size 3): helper-call scan overhead median `1.417ms -> 0.536ms` (-62%), and
+helper-mediated watch seeding now beats its inline comparison row. On the
+upstream micro-repro the per-call overhead fell ~198ns -> ~40ns. Residual
+helper cost here is mostly `clause_store_len`, whose `len of` body contains
+a call and stays deliberately on the generic path.
 
 Evidence: `--storage-bench` reports inline-vs-helper clause-store overhead
 for the same flat clause-store shape. Confirmed with n=5 on v0.23.0
@@ -110,12 +123,11 @@ the operands are already function locals. Not SAT-specific: small helper
 functions wrapping list/dict field access are a common abstraction shape in
 EigenScript programs.
 
-Next action: upstream. EigenScript #366 tracks user-function inlining /
-call specialization / cheaper accessor-call dispatch, with the micro-repro
-and these numbers. Keep helper-mediated solver paths as the stress surface
-and re-run the n=5 size-3 comparison when the upstream work lands. Do not
-replace the main solver path with direct field access just to bypass the
-pressure.
+Next action: re-run the n=5 size-3 comparison once EigenMiniSat's CI pin
+advances past v0.23.0, and record the pinned-runtime numbers here. Keep
+helper-mediated solver paths as the stress surface — they are now also the
+regression canary for the upstream fast path. Do not replace the main
+solver path with direct field access.
 
 ### Priority Queue
 
@@ -256,10 +268,10 @@ Compact integer vectors and token spans are higher-value root candidates today.
 - The `--copy-bench` deferred-vs-lazy decision is closed (2026-07-03):
   deferred compaction stays the solver default on wall-clock evidence at
   sizes 2–3. Re-open only if a new case family reverses the direction.
-- Storage overhead is now split by owner: helper-call dispatch is upstream
-  (EigenScript #366); data-shape pressure stays local. Measure inline-vs-helper
-  only at `--size 3` or larger with n=5 — size-2 deltas sit inside the noise
-  floor.
+- Storage overhead is now split by owner: helper-call dispatch was fixed
+  upstream (EigenScript #366 / PR #367, −62% measured here); data-shape
+  pressure stays local. Measure inline-vs-helper only at `--size 3` or larger
+  with n=5 — size-2 deltas sit inside the noise floor.
 - Preserve helper-mediated hot paths when they are the language stress surface;
   use inline variants for measurement, not as a workaround.
 - Track `int_vector_state_active` in evidence summaries before expanding
