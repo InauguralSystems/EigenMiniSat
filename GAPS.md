@@ -15,14 +15,16 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   small next to conflict-analysis traffic (~97K literals), so no EigenScript
   root arena/reference request comes from this pressure. The lazy policy stays
   as a comparison knob.
-- **Hot helper-call overhead: confirmed n=5, filed upstream as EigenScript
-  #366.** At `--storage-bench --size 3`, per-literal accessor helpers add a
-  median 1.417ms beside 1.981ms data-shape overhead (~70% over identical
-  inline access); a standalone 200K-iteration micro-repro isolates ~185ns per
-  call (+44% wall-clock). Size-2 deltas sit inside the ~±1ms noise floor —
-  an earlier single size-2 run misleadingly showed the gap as closed.
-  Helper-mediated solver paths stay as the stress surface; re-measure when
-  upstream inlining/call-specialization work lands.
+- **Hot helper-call overhead: FIXED upstream (EigenScript #366 → PR #367,
+  2026-07-03).** The confirmed cost (n=5 size 3: median 1.417ms helper-call
+  scan overhead beside 1.981ms data-shape; micro-repro ~185ns/call, +44%)
+  drove an upstream frameless leaf-accessor call fast path. Re-measured
+  against the merged fix: helper-call scan overhead `1.417ms -> 0.536ms`
+  (-62%); per-call ~198ns -> ~40ns on the micro-repro; helper-mediated watch
+  seeding now beats its inline row. The fix is on EigenScript main
+  (unreleased) — the v0.23.0 CI pin sees it at the next release; re-record
+  pinned numbers then. Measurement caveat stands: size-2 deltas sit inside
+  the ~±1ms noise floor, so compare only at size 3+ with n=5.
 - Learnt-clause reduction now uses lazy watch cleanup instead of eager
   per-clause detach. Deleted clauses are skipped during propagation
   (`deleted_watch_skips`) and cleaned up during compaction watch rebuilds.

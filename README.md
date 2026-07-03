@@ -172,9 +172,9 @@ Current:
 
 Next:
 
-- track EigenScript #366 (hot accessor-call overhead, confirmed n=5 at
-  evidence size 3) and re-measure inline-vs-helper deltas when upstream
-  inlining/call-specialization work lands
+- EigenScript #366 (hot accessor-call overhead) is fixed upstream by the
+  frameless leaf-accessor call path (PR #367, −62% helper-call overhead
+  here); re-record pinned-runtime numbers when CI moves past v0.23.0
 - keep deferred compaction as the solver default — the deferred-vs-lazy
   decision closed for deferred on size-2/3 wall-clock evidence
   (`docs/EIGENSCRIPT_FEEDBACK.md`)
