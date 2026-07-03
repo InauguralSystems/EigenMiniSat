@@ -94,10 +94,11 @@ benchmark now isolates learnt allocation, database reduction, compaction, watch
 rebuild, and trail replay pressure without requiring a larger CNF corpus. It
 also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
-and repeated reason remapping. The next target is measuring remaining
-targeted watch-detach and physical compaction pressure across larger conflict
-cases, then deciding whether that pressure belongs in EigenMiniSat, a reusable
-library, or EigenScript root. The corpus now includes small vendored structural
+and repeated reason remapping. That decision closed on 2026-07-03: size-2/3
+evidence runs show deferred compaction beating lazy on wall clock in every
+policy/case pair, with zero watch-detach scan debt, so compaction stays an
+EigenMiniSat-local algorithm choice and the helper-call component moved
+upstream as EigenScript #366. The corpus now includes small vendored structural
 fixtures with provenance notes; true third-party CNF imports should wait until
 the provenance and size constraints are clear. Scanner token-span pressure
 remains a parallel root/stdlib decision path.

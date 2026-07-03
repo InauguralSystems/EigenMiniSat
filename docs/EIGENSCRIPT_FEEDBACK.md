@@ -94,19 +94,26 @@ growable clause metadata and clause-arena storage.
 
 ### Hot Helper Calls In Tight Loops
 
-Classification: root/compiler candidate.
+Classification: root/compiler issue filed — EigenScript #366.
 
-Evidence: `--storage-bench` now reports inline-vs-helper clause-store overhead
-for the same flat clause-store shape. A size-1 evidence run with
-`inline_rows=4` split adapter scan overhead into `1.240ms` data-shape overhead
-and `0.860ms` helper-call overhead. Watch seeding split into `0.136ms` inline
-overhead and `0.239ms` helper-call overhead. This is not SAT-specific: small
-helper functions wrapping list/dict field access are a common abstraction shape
-in EigenScript programs.
+Evidence: `--storage-bench` reports inline-vs-helper clause-store overhead
+for the same flat clause-store shape. Confirmed with n=5 on v0.23.0
+(2026-07-03, cc9f790): at `--size 3`, helper-call scan overhead has median
+`1.417ms` (range 1.15–1.54) beside `1.981ms` data-shape overhead — roughly
+70% added on top of identical inline access. At `--size 2` the effect is
+below the dev box's ~±1ms noise floor (median `-0.090ms`), so only larger
+cases show it; single runs at small sizes are misleading in both directions.
+A standalone 30-line micro-repro (200K-iteration accessor loop) isolates the
+cost at ~185ns per helper call, +44% wall-clock versus the inline loop, with
+tight n=5 variance. This is a call-dispatch cost, not a global-hoist issue —
+the operands are already function locals. Not SAT-specific: small helper
+functions wrapping list/dict field access are a common abstraction shape in
+EigenScript programs.
 
-Next action: keep helper-mediated solver paths as the stress surface. Use the
-inline comparison rows as evidence for EigenScript compiler/root work such as
-function inlining, call specialization, or field-access lowering. Do not
+Next action: upstream. EigenScript #366 tracks user-function inlining /
+call specialization / cheaper accessor-call dispatch, with the micro-repro
+and these numbers. Keep helper-mediated solver paths as the stress surface
+and re-run the n=5 size-3 comparison when the upstream work lands. Do not
 replace the main solver path with direct field access just to bypass the
 pressure.
 
@@ -153,22 +160,32 @@ The evidence is strong that the solver wants
 clause-reference discipline, but not yet strong enough to demand a root arena
 primitive.
 
-Next action: grow copy-pressure cases and use the deferred/lazy compaction
-counters to decide whether remaining targeted watch-detach and physical
-compaction pressure belongs in EigenMiniSat, a reusable library, or EigenScript
-root. Use the `evidence` trend profile and the small vendored structural corpus
-to keep runs self-contained while collecting that evidence. The adapter
-preserves signed DIMACS literals at the boundary and should prove whether arena
-references simplify conflict analysis and database reduction.
+Next action: the deferred-vs-lazy decision is closed (see below). Remaining
+open pressure in this area is split: the helper-call half is now upstream
+(EigenScript #366, see "Hot Helper Calls In Tight Loops"), and the data-shape
+half (compact vectors / arena references, ~2.0ms of the size-3 adapter scan
+overhead) stays an EigenMiniSat-local prototype. Revisit a root arena ask only
+if a case family shows compaction or store traffic dominating conflict
+analysis, which no current case does.
 
-Current evidence checkpoint: `benchmarks/run_trends.sh evidence 2` shows the
-larger pigeonhole and graph-coloring cases crossing the physical-compaction
-threshold. The summarized copy deltas report 3820 avoided compaction-copy
-literals, 8 avoided watch rebuilds, and 146 avoided trail replays under lazy
-compaction, while also adding 498 pending deleted clauses and 780 watch-detach
-scans. That keeps both `physical_compaction_pressure` and `lazy_debt_pressure`
-active; this is still evidence for a solver/storage decision, not yet a root
-EigenScript arena request.
+Decision (2026-07-03, v0.23.0, cc9f790): **deferred compaction stays the
+default; no root arena/reference request from compaction pressure.** Evidence
+runs at sizes 2 and 3 settled the deferred-vs-lazy question on wall clock,
+against the direction the counter "savings" suggested. Lazy avoids all
+compaction copies (14,092 literals, 16 watch rebuilds, 380 replays saved at
+size 3) but is slower in all six measured policy/case pairs: +1.3–3.2% at
+size 2, compounding to 2.4×–5.3× at size 3 (pigeonhole-7-6-larger: deferred
+18.6s/30.9s vs lazy 45.0s/163.9s), because 1,990 pending deleted clauses
+bloat the store and propagation pays the skip on every encounter. Two
+supporting facts: watch-detach scan debt was zero under both policies at both
+sizes, so targeted detaching is not a cost center; and compaction-copy
+literals on the largest case (~6.6K) are dwarfed by conflict-analysis literal
+traffic (~97K), so compaction is not the dominant copy pressure anyway. The
+old size-2 checkpoint (3,820 avoided literals / 780 detach scans, recorded on
+an earlier runtime and host) is superseded. The lazy policy remains a
+comparison knob, and `physical_compaction_pressure` / `lazy_debt_pressure`
+flags will stay active in summaries by construction (they are zero-threshold)
+— they no longer indicate an open decision.
 
 The same checkpoint also keeps the other pressure surfaces visible: generated
 parse totals are `split=36.006ms`, `scan=45.676ms`, `scan_ints=5.328ms`;
@@ -236,12 +253,13 @@ Compact integer vectors and token spans are higher-value root candidates today.
 ## Near-Term EigenMiniSat Work
 
 - Keep benchmarks as the evidence surface, not just performance demos.
-- Use `--copy-bench` counters to decide whether remaining clause-reference
-  pressure should stay local, become a library, or move to root.
-- Use storage overhead rows to separate adapter lookup, watch seeding, and
-  compaction costs before asking EigenScript for root arena/reference support.
-  Prefer new logs with `inline_rows > 0` when deciding whether the pressure is
-  data shape, helper-call overhead, or both.
+- The `--copy-bench` deferred-vs-lazy decision is closed (2026-07-03):
+  deferred compaction stays the solver default on wall-clock evidence at
+  sizes 2–3. Re-open only if a new case family reverses the direction.
+- Storage overhead is now split by owner: helper-call dispatch is upstream
+  (EigenScript #366); data-shape pressure stays local. Measure inline-vs-helper
+  only at `--size 3` or larger with n=5 — size-2 deltas sit inside the noise
+  floor.
 - Preserve helper-mediated hot paths when they are the language stress surface;
   use inline variants for measurement, not as a workaround.
 - Track `int_vector_state_active` in evidence summaries before expanding
@@ -251,8 +269,9 @@ Compact integer vectors and token spans are higher-value root candidates today.
   `benchmarks/summarize_trend.sh` when comparing saved logs. Its
   `decision_candidate` rows are the current scoped next actions, not final
   EigenScript requests.
-- Treat deferred/lazy compaction as algorithm-local unless larger cases show
-  targeted watch-detach or compaction-copy churn needs a reusable primitive.
+- Deferred/lazy compaction is settled as algorithm-local: lazy loses on wall
+  clock in every measured pair and targeted watch-detach churn never
+  materialized (zero detach-scan debt at both sizes).
 - Expand the checked-in corpus only with small, provenance-clear cases before
   relying on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local
