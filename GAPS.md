@@ -5,6 +5,24 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- **Deferred-vs-lazy compaction: decided for deferred (2026-07-03).** Evidence
+  runs at sizes 2 and 3 on v0.23.0 show lazy no-physical-compaction slower in
+  all six policy/case pairs despite avoiding every compaction copy: +1.3–3.2%
+  at size 2, 2.4×–5.3× at size 3 (pigeonhole-7-6-larger deferred 18.6s/30.9s
+  vs lazy 45.0s/163.9s). Pending-deleted debt (1,990 clauses at size 3) makes
+  propagation pay skip costs on every encounter, and watch-detach scan debt
+  was zero under both policies. Compaction copies (~6.6K literals) are also
+  small next to conflict-analysis traffic (~97K literals), so no EigenScript
+  root arena/reference request comes from this pressure. The lazy policy stays
+  as a comparison knob.
+- **Hot helper-call overhead: confirmed n=5, filed upstream as EigenScript
+  #366.** At `--storage-bench --size 3`, per-literal accessor helpers add a
+  median 1.417ms beside 1.981ms data-shape overhead (~70% over identical
+  inline access); a standalone 200K-iteration micro-repro isolates ~185ns per
+  call (+44% wall-clock). Size-2 deltas sit inside the ~±1ms noise floor —
+  an earlier single size-2 run misleadingly showed the gap as closed.
+  Helper-mediated solver paths stay as the stress surface; re-measure when
+  upstream inlining/call-specialization work lands.
 - Learnt-clause reduction now uses lazy watch cleanup instead of eager
   per-clause detach. Deleted clauses are skipped during propagation
   (`deleted_watch_skips`) and cleaned up during compaction watch rebuilds.
@@ -30,7 +48,8 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   of 0 already implies SAT when no conflict was found.
 - `bump_clause_activity` now uses a generation-counted `bump_seen`
   int_vector for O(n) dedup instead of O(n^2) `clause_has_lit` scans.
-- Hot function-call overhead in propagation loops.
+- Hot function-call overhead in propagation loops — now quantified and
+  tracked upstream as EigenScript #366 (see the confirmed entry above).
 - Stress benchmarks should not hide root/runtime pressure with local bypasses.
   Inline or alternate forms can exist as comparison surfaces, but the main
   stress path should continue exposing the language gap until EigenScript root

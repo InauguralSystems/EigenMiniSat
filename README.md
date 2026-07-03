@@ -172,10 +172,12 @@ Current:
 
 Next:
 
-- run evidence trend logs across larger copy-pressure sizes
-- use deferred/lazy compaction deltas to decide whether targeted watch-detach
-  pressure and physical compaction pressure belong in EigenMiniSat, a library,
-  or EigenScript root
+- track EigenScript #366 (hot accessor-call overhead, confirmed n=5 at
+  evidence size 3) and re-measure inline-vs-helper deltas when upstream
+  inlining/call-specialization work lands
+- keep deferred compaction as the solver default — the deferred-vs-lazy
+  decision closed for deferred on size-2/3 wall-clock evidence
+  (`docs/EIGENSCRIPT_FEEDBACK.md`)
 - follow `decision_candidate` rows from evidence summaries when choosing the
   next solver-local, standard-library, or root/runtime experiment
 - add true third-party CNF files only when provenance and size are suitable for

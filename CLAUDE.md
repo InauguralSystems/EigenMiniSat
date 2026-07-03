@@ -123,7 +123,7 @@ LBD-based clause management (Glucose-style) landed via PR #43.
 Latest commits are JIT-targeted hot-path inlining for v0.12.0+. The
 benchmark surface is mature — most current work is data-driven
 decisions out of `docs/EIGENSCRIPT_FEEDBACK.md`. Verified green on
-EigenScript v0.22.0 (correctness suite only; not an `n=5` perf claim).
+EigenScript v0.23.0 (correctness suite only; not an `n=5` perf claim).
 
 ## Gotchas
 
