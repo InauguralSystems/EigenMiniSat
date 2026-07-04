@@ -14,7 +14,7 @@ jobs:
 
       - name: Build EigenScript
         run: |
-          git clone --branch v0.25.0 --depth 1 https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript
+          git clone --branch v0.26.0 --depth 1 https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript
           cd /tmp/eigenscript && make build
           echo "/tmp/eigenscript/src" >> $GITHUB_PATH
 
