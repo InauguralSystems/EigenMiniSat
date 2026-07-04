@@ -2,6 +2,7 @@
 # EigenMiniSat solver tests
 # ============================================================
 
+load_file of "lib/int_vector.eigs"
 load_file of "lib/dimacs.eigs"
 load_file of "lib/solver.eigs"
 load_file of "lib/bench.eigs"
@@ -637,5 +638,37 @@ if rand_unsat_result.status == "SAT":
     assert of [model_satisfies of [rand_unsat.nvars, rand_unsat.clauses, rand_unsat_result.model], "random 3sat-30 seed100 model"]
 assert_true of ["random 3sat minimize ran", rand_sat_result.minimize_checks >= 0]
 print of "  random 3-SAT: ok"
+
+# Budgeted CDCL sessions (cdcl_begin/cdcl_step): a bounded slice per call,
+# resumable, with the run-to-completion wrapper re-derived on top. The
+# session must reach the same status and the same deterministic counters
+# as the one-shot solve, and a finished session must be idempotent.
+budget_case is pigeonhole_case of [5, 4]
+budget_oneshot is solve_cnf_cdcl of [budget_case.nvars, budget_case.clauses]
+assert_eq of ["budgeted oneshot UNSAT", budget_oneshot.status, "UNSAT"]
+budget_session is cdcl_begin of [budget_case.nvars, budget_case.clauses, null]
+budget_steps is 0
+budget_running_seen is 0
+loop while budget_session.status == "RUNNING":
+    budget_status is cdcl_step of [budget_session, 1]
+    budget_steps += 1
+    if budget_status == "RUNNING":
+        budget_running_seen is 1
+assert_eq of ["budgeted session UNSAT", budget_session.status, "UNSAT"]
+assert_true of ["budgeted session multiple steps", budget_steps > 1]
+assert_true of ["budgeted session saw RUNNING", budget_running_seen == 1]
+assert_eq of ["budgeted conflicts match oneshot", budget_session.stats.conflicts, budget_oneshot.conflicts]
+assert_eq of ["budgeted decisions match oneshot", budget_session.stats.decisions, budget_oneshot.decisions]
+assert_eq of ["budgeted learnts match oneshot", budget_session.stats.learnts, budget_oneshot.learnts]
+budget_conflicts_final is budget_session.stats.conflicts
+assert_eq of ["finished session idempotent status", cdcl_step of [budget_session, 8], "UNSAT"]
+assert_eq of ["finished session idempotent stats", budget_session.stats.conflicts, budget_conflicts_final]
+budget_sat_case is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"
+budget_sat_session is cdcl_begin of [budget_sat_case.nvars, budget_sat_case.clauses, null]
+loop while budget_sat_session.status == "RUNNING":
+    cdcl_step of [budget_sat_session, 2]
+assert_eq of ["budgeted SAT session", budget_sat_session.status, "SAT"]
+assert_true of ["budgeted SAT model satisfies", model_satisfies of [budget_sat_case.nvars, budget_sat_case.clauses, budget_sat_session.model]]
+print of "  budgeted CDCL sessions: ok"
 
 print of "\n=== All EigenMiniSat solver tests passed ==="

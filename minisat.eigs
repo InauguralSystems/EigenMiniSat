@@ -2,6 +2,7 @@
 # EigenMiniSat CLI
 # ============================================================
 
+load_file of "lib/int_vector.eigs"
 load_file of "lib/dimacs.eigs"
 load_file of "lib/solver.eigs"
 load_file of "lib/bench.eigs"
