@@ -174,7 +174,8 @@ Next:
 
 - EigenScript #366 (hot accessor-call overhead) is fixed upstream by the
   frameless leaf-accessor call path (PR #367, −62% helper-call overhead
-  here); re-record pinned-runtime numbers when CI moves past v0.23.0
+  here); the CI pin moved to v0.24.0 (2026-07-03) which contains the fix —
+  re-recording the pinned-runtime numbers is now unblocked (n=5, size 3+)
 - keep deferred compaction as the solver default — the deferred-vs-lazy
   decision closed for deferred on size-2/3 wall-clock evidence
   (`docs/EIGENSCRIPT_FEEDBACK.md`)
