@@ -5,6 +5,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- **Library composition convention (2026-07-04):** `lib/solver.eigs` no
+  longer self-loads `int_vector.eigs` — entry points compose (same split as
+  tidelog's cbor/store). Driven by the EigenOS solver-window experiment:
+  the ROM bundle embeds libraries by concatenation and has no `load_file`,
+  so a self-loading library can't ship byte-unmodified. Ecosystem-wide
+  convention candidate: library `.eigs` files stay composition-free.
+- **Budgeted CDCL sessions** (`cdcl_begin`/`cdcl_step`) added for
+  cooperative hosts; counters proven byte-identical to the one-shot solve.
+  If the EigenOS window needs a time-based (not iteration-based) budget,
+  that becomes a new pressure point — don't add clocks to the solver;
+  the host owns time.
 - **Deferred-vs-lazy compaction: decided for deferred (2026-07-03).** Evidence
   runs at sizes 2 and 3 on v0.23.0 show lazy no-physical-compaction slower in
   all six policy/case pairs despite avoiding every compaction copy: +1.3–3.2%

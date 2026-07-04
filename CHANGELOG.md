@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### CDCL Solver
+- Budgeted CDCL sessions: `cdcl_begin of [nvars, clauses, opts]` returns a
+  resumable session; `cdcl_step of [session, budget]` runs a bounded slice
+  (one budget unit = a propagation round ending in a conflict resolution or
+  a decision) and returns `"RUNNING"` / `"SAT"` / `"UNSAT"`. MiniSat's
+  `solve_limited` shape — lets a cooperative host (the EigenOS desktop)
+  interleave solving with a UI loop. `solve_cnf_cdcl_with_options` is
+  re-derived from the session API; counters and CLI output are
+  byte-identical to the previous run-to-completion loop.
+- `lib/solver.eigs` is now composition-free: the `load_file` of
+  `int_vector.eigs` moved to the entry points (`minisat.eigs`, tests), the
+  tidelog cbor/store convention. A self-loading library can't be embedded
+  byte-unmodified where `load_file` doesn't exist (the EigenOS ROM bundle
+  concatenates library files instead).
+
 ## [0.1.0] — 2026-07-01
 
 ### CDCL Solver

@@ -1,8 +1,14 @@
 # ============================================================
 # DPLL baseline solver
 # ============================================================
-
-load_file of "lib/int_vector.eigs"
+#
+# Composition-free library: this file does NOT load its own
+# dependencies (it needs lib/int_vector.eigs loaded first). Entry
+# points compose — minisat.eigs and tests load int_vector before
+# this file. Same convention as tidelog's cbor/store split: a
+# self-loading library can't be embedded byte-unmodified where
+# load_file doesn't exist (the EigenOS ROM bundle concatenates
+# library files instead).
 
 define lit_abs(lit) as:
     if lit < 0:
@@ -1640,38 +1646,69 @@ define cdcl_empty_stats() as:
 define solve_cnf_cdcl(nvars, input_clauses) as:
     return solve_cnf_cdcl_with_options of [nvars, input_clauses, null]
 
-define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
+define cdcl_begin(nvars, input_clauses, opts) as:
+    # Budgeted-solve session (MiniSat's solve_limited shape). All solver
+    # state lives in the returned session so cdcl_step can resume across
+    # calls — a cooperative host (the EigenOS desktop) runs a bounded
+    # slice per scheduler turn instead of blocking on a full solve.
+    # status is "RUNNING" until the solve decides; model is set on SAT.
     local store is clause_store_from_clauses of input_clauses
     local stats is cdcl_empty_stats of null
     local asg is make_assignment of nvars
     local state is build_cdcl_state of [nvars, store, asg, stats, opts]
-
+    local status is "RUNNING"
     if state.ok == 0:
-        return cdcl_result of ["UNSAT", null, stats, state]
+        status is "UNSAT"
+    return {
+        "nvars": nvars,
+        "store": store,
+        "stats": stats,
+        "asg": asg,
+        "state": state,
+        "status": status,
+        "model": null
+    }
 
-    loop while 1:
-        if (run_watched_queue_cdcl of [nvars, store, asg, state, stats]) == 0:
+define cdcl_step(session, budget) as:
+    # Run up to `budget` solver iterations; one iteration = a propagation
+    # round ending in either a conflict resolution or a decision, so the
+    # budget bounds work in both conflict-heavy and propagation-heavy
+    # phases. Returns "RUNNING" on budget exhaustion (call again to
+    # resume), else the final "SAT"/"UNSAT". The store lives on the
+    # session because compaction rebinds it mid-solve.
+    if session.status != "RUNNING":
+        return session.status
+    local nvars is session.nvars
+    local asg is session.asg
+    local state is session.state
+    local stats is session.stats
+    local remaining is budget
+    loop while remaining > 0:
+        remaining -= 1
+        if (run_watched_queue_cdcl of [nvars, session.store, asg, state, stats]) == 0:
             if (len of state.trail_lim) == 0:
-                return cdcl_result of ["UNSAT", null, stats, state]
+                session.status is "UNSAT"
+                return session.status
 
             bump_clause_db_activity of [state, state.conflict, stats]
             decay_clause_activity of [state, stats]
             state.conflicts_since_restart += 1
-            local analysis is analyze_conflict_cdcl of [store, state, state.conflict, stats]
+            local analysis is analyze_conflict_cdcl of [session.store, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
-                return cdcl_result of ["UNSAT", null, stats, state]
+                session.status is "UNSAT"
+                return session.status
 
             if (len of analysis.clause) > 1:
                 local min_seen is analysis.seen
                 int_vector_fill of [min_seen, 0]
                 for min_lit in analysis.clause:
                     min_seen[lit_abs of min_lit] is 1
-                analysis.clause is minimize_clause of [analysis.clause, min_seen, state, store, stats]
+                analysis.clause is minimize_clause of [analysis.clause, min_seen, state, session.store, stats]
                 analysis.backtrack is max_clause_level_except of [analysis.clause, state, analysis.assert_lit]
 
             bump_clause_activity of [state, analysis.clause, stats]
             decay_var_activity of [state, stats]
-            local learned_ci is add_cdcl_clause of [store, state, analysis.clause, 1, stats]
+            local learned_ci is add_cdcl_clause of [session.store, state, analysis.clause, 1, stats]
             bump_clause_db_activity of [state, learned_ci, stats]
             stats.learnts += 1
             cdcl_cancel_until of [state, asg, analysis.backtrack, stats]
@@ -1679,21 +1716,32 @@ define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
-            local removed_learnts is reduce_learnt_db of [store, state, stats]
+            local removed_learnts is reduce_learnt_db of [session.store, state, stats]
             if removed_learnts > 0:
-                if (should_compact_deleted_clauses of [store, state, stats]) != 0:
-                    store is compact_deleted_clauses of [nvars, store, state, stats]
+                if (should_compact_deleted_clauses of [session.store, state, stats]) != 0:
+                    session.store is compact_deleted_clauses of [nvars, session.store, state, stats]
             cdcl_maybe_restart of [state, asg, stats]
             continue
 
         local v is choose_var_cdcl of [asg, state, stats]
         if v == 0:
-            return cdcl_result of ["SAT", copy_assignment of asg, stats, state]
+            session.model is copy_assignment of asg
+            session.status is "SAT"
+            return session.status
 
         cdcl_push_level of state
         stats.decisions += 1
         local decision_lit is decision_lit_cdcl of [state, v, stats]
         enqueue_cdcl of [asg, state, decision_lit, -1, len of state.trail_lim, stats, 0]
+    return "RUNNING"
+
+define solve_cnf_cdcl_with_options(nvars, input_clauses, opts) as:
+    local session is cdcl_begin of [nvars, input_clauses, opts]
+    loop while session.status == "RUNNING":
+        cdcl_step of [session, 4096]
+    if session.status == "SAT":
+        return cdcl_result of ["SAT", session.model, session.stats, session.state]
+    return cdcl_result of ["UNSAT", null, session.stats, session.state]
 
 define model_satisfies(nvars, clauses, model) as:
     if model == null:

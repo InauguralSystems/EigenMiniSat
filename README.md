@@ -135,6 +135,8 @@ Current:
 - watched-literal propagation path for correctness and benchmark comparison
 - persistent watched trail/backtracking path
 - first CDCL path with reason/level arrays, learnt clauses, and backjumping
+- budgeted, resumable CDCL sessions (`cdcl_begin`/`cdcl_step`) for
+  cooperative hosts; the one-shot solve is re-derived from them
 - EigenScript stdlib integer vectors for fixed CDCL reason, level, phase, and
   heap-position state
 - MiniSat-style variable activity and a binary heap order structure for CDCL
