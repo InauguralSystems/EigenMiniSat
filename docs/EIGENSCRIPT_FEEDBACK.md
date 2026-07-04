@@ -123,11 +123,19 @@ the operands are already function locals. Not SAT-specific: small helper
 functions wrapping list/dict field access are a common abstraction shape in
 EigenScript programs.
 
-Next action: re-run the n=5 size-3 comparison once EigenMiniSat's CI pin
-advances past v0.23.0, and record the pinned-runtime numbers here. Keep
-helper-mediated solver paths as the stress surface — they are now also the
-regression canary for the upstream fast path. Do not replace the main
-solver path with direct field access.
+Pinned-runtime numbers (v0.24.0, 2026-07-03, n=5 `--storage-bench --size 3`
+against the tagged release build): helper_scan_overhead per case —
+chain-unsat-240 median **0.616ms** (range 0.539–0.691; this case carries the
+signal), grid-unsat-8x8 −0.056, pigeonhole-6-5 −0.088, wide-120-12-60
++0.001 (all three inside the dev box's noise floor); sum-across-cases
+median 0.456ms (range 0.317–0.527). Helper-mediated watch seeding still
+beats its inline row (summed watch overhead median −0.94ms). Consistent
+with the pre-release measurement of the merged fix (0.536ms) — the
+leaf-accessor fast path holds at the pin.
+
+Next action: none — resolved and pinned. Keep helper-mediated solver paths
+as the stress surface; they are the regression canary for the upstream
+fast path. Do not replace the main solver path with direct field access.
 
 ### Priority Queue
 
