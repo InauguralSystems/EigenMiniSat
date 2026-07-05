@@ -15,10 +15,10 @@ Stress paths should not hide EigenScript gaps with local bypasses. When a
 possible workaround is useful, EigenMiniSat should keep it as a comparison
 benchmark and turn the pressure into a root or library decision.
 
-The first milestone is a correct DPLL baseline with DIMACS parsing, fixtures,
-and generated benchmark families. Later milestones should add watched literals,
-clause activity, VSIDS-style variable ordering, learnt clauses, and database
-reduction.
+It started from a correct DPLL baseline with DIMACS parsing, fixtures, and
+generated benchmark families. Watched literals, clause activity, VSIDS-style
+variable ordering, learnt clauses, and database reduction have since landed
+(see Scope below).
 
 ## Usage
 
@@ -39,9 +39,10 @@ reduction.
 ../EigenScript/src/eigenscript minisat.eigs --diagnostic-bench --size 1
 ../EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 ../EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
+../EigenScript/src/eigenscript minisat.eigs --random-bench --size 1
 tests/run_smoke.sh
 benchmarks/run_trends.sh quick 1
-benchmarks/run_trends.sh evidence
+benchmarks/run_trends.sh evidence 2 /tmp/eigenminisat-evidence.log
 benchmarks/summarize_trend.sh /tmp/eigenminisat-evidence.log
 ```
 
@@ -111,6 +112,9 @@ It also includes a small vendored structural corpus under
 For each case it compares split/trim parsing, character scanning,
 integer-aware token spans, and the C-backed `scan_ints` path before solving
 with CDCL.
+`--random-bench` generates random 3-SAT instances at the hard phase-transition
+clause/variable ratio and solves them with CDCL, reporting per-case SAT/UNSAT
+status and solver counters for search pressure on unstructured input.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and
@@ -171,6 +175,7 @@ Current:
 - C-backed `scan_ints` DIMACS parser comparison path
 - fixture correctness tests
 - generated benchmark families
+- random 3-SAT generator at the phase-transition ratio for search pressure
 
 Next:
 

@@ -32,10 +32,11 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   drove an upstream frameless leaf-accessor call fast path. Re-measured
   against the merged fix: helper-call scan overhead `1.417ms -> 0.536ms`
   (-62%); per-call ~198ns -> ~40ns on the micro-repro; helper-mediated watch
-  seeding now beats its inline row. The fix is on EigenScript main
-  (unreleased) — the v0.23.0 CI pin sees it at the next release; re-record
-  pinned numbers then. Measurement caveat stands: size-2 deltas sit inside
-  the ~±1ms noise floor, so compare only at size 3+ with n=5.
+  seeding now beats its inline row. The fix shipped in v0.24.0 and pinned
+  numbers were re-recorded against the tagged release (chain-unsat-240
+  helper-scan overhead median 0.616ms, n=5 size 3); the CI pin is now
+  v0.26.0. Measurement caveat stands: size-2 deltas sit inside the ~±1ms
+  noise floor, so compare only at size 3+ with n=5.
 - Learnt-clause reduction now uses lazy watch cleanup instead of eager
   per-clause detach. Deleted clauses are skipped during propagation
   (`deleted_watch_skips`) and cleaned up during compaction watch rebuilds.

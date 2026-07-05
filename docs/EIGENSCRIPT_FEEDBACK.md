@@ -95,8 +95,8 @@ growable clause metadata and clause-arena storage.
 ### Hot Helper Calls In Tight Loops
 
 Classification: root fix merged — EigenScript #366, fixed by PR #367
-(2026-07-03, on EigenScript main; unreleased, so the v0.23.0 CI pin does
-not see it until the next release).
+(2026-07-03), released in v0.24.0; the CI pin (now v0.26.0) includes it —
+pinned numbers below.
 
 Resolution: EigenScript now flags "leaf accessor" chunks at compile time
 (single pure expression over params — field gets, list/buffer index gets,

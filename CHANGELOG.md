@@ -30,7 +30,7 @@
 - Validated on real random structure up to uf150 (150 vars, 645 clauses)
 
 ### EigenScript Integration
-- Consume `list_truncate`, `sort_by`, `list_remove_at` builtins
+- Consume `list_truncate` and `sort_by` builtins
 - Sort-based `reduce_learnt_db` (O(n log n) replaces O(n²) scan loop)
 - O(1) `clause_locked` via first-watched-literal reason check
 - Generation-counted `bump_clause_activity` (O(n) dedup)
@@ -46,4 +46,4 @@
 - Clause store with flat arena and compaction
 - Benchmark suite with generated families (chain, pigeonhole, graph-coloring, XOR/parity)
 - Manifest-driven DIMACS corpus
-- Comprehensive test suite (23 test suites)
+- Comprehensive `test_solver.eigs` correctness suite

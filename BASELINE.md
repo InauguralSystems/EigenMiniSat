@@ -333,7 +333,9 @@ CDCL solve-time (ms), median/mean/min/max over 5 runs:
 | **satlib-style-k5-4color** | vendored-graph-coloring | 5 | **36.23** | 37.69 | 33.63 | 43.18 |
 | satlib-style-xor-triangle-8 | vendored-parity | 5 | 2.86 | 2.87 | 2.53 | 3.22 |
 
-Raw logs in `benchmarks/runs/20260610T2100*.log` (five files, one per run).
+Raw logs were kept in `benchmarks/runs/` (five files, one per run) but have
+since been rotated out — that directory is gitignored and machine-local, so
+the table above is the surviving record of this baseline.
 
 ### v0.12.0 hot-path inlining — 2026-06-10
 

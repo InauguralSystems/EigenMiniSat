@@ -28,7 +28,10 @@ EIGS=${EIGENSCRIPT_BIN:-../EigenScript/src/eigenscript}
 $EIGS minisat.eigs tests/fixtures/simple_sat.cnf
 ```
 
-Minimum is **v0.13.0** (uses stdlib integer vectors for CDCL state).
+Minimum is **v0.11.8** — the earliest release that runs the CDCL suite
+green. The floor is set by a v0.11.x VM fix, not by stdlib integer
+vectors (those shipped in v0.11.2, but that release still crashes the
+CDCL path).
 CI builds and tests against EigenScript **v0.26.0** (pinned in
 `.github/workflows/ci.yml`): the correctness suite is green — all
 `test_solver.eigs` assertions and the full `run_smoke.sh` pass. The
@@ -52,7 +55,7 @@ $EIGS minisat.eigs --cdcl                tests/fixtures/simple_sat.cnf  # CDCL
 
 # Trend logs into benchmarks/runs/ (ignored)
 ./benchmarks/run_trends.sh quick    1   # quick profile, size 1
-./benchmarks/run_trends.sh evidence     # bounded larger-case decisions
+./benchmarks/run_trends.sh evidence 2 /tmp/eigenminisat-evidence.log  # bounded larger-case decisions
 ./benchmarks/run_trends.sh full         # every bench mode
 ./benchmarks/summarize_trend.sh /tmp/eigenminisat-evidence.log
 ```
@@ -60,7 +63,7 @@ $EIGS minisat.eigs --cdcl                tests/fixtures/simple_sat.cnf  # CDCL
 The bench modes (`--bench`, `--restart-bench`, `--phase-bench`,
 `--copy-bench`, `--storage-bench`, `--metadata-bench`, `--parse-bench`,
 `--scan-parse-bench`, `--diagnostic-bench`, `--file-bench`,
-`--corpus-bench`, `--heuristic-bench`) each isolate a specific
+`--corpus-bench`, `--heuristic-bench`, `--random-bench`) each isolate a specific
 pressure surface — see `README.md` for the per-mode counter list.
 
 ## Layout
@@ -120,7 +123,9 @@ CDCL working with watched literals, learnt-clause activity and
 locked-clause protection, lazy + eager reduction, geometric and Luby
 restarts, saved-phase polarity, MiniSat-style activity heap.
 LBD-based clause management (Glucose-style) landed via PR #43.
-Latest commits are JIT-targeted hot-path inlining for v0.12.0+. The
+Latest commits are the budgeted, resumable CDCL sessions
+(`cdcl_begin`/`cdcl_step`) with `lib/solver.eigs` made composition-free
+(the one-shot solve is re-derived from them), landed via PR #56. The
 benchmark surface is mature — most current work is data-driven
 decisions out of `docs/EIGENSCRIPT_FEEDBACK.md`. Verified green on
 EigenScript v0.26.0 (correctness suite only; not an `n=5` perf claim).
