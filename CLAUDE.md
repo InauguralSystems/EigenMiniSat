@@ -68,22 +68,14 @@ pressure surface — see `README.md` for the per-mode counter list.
 
 ## Layout
 
-| Path | Role |
-|---|---|
-| `minisat.eigs` | CLI entry — dispatches solver / bench modes |
-| `lib/solver.eigs` | DPLL / watched / persistent / CDCL solver paths |
-| `lib/dimacs.eigs` | DIMACS parsers (split/trim, char-scan, token-span, `scan_ints`) |
-| `lib/bench.eigs` | Generated case families + bench harnesses |
-| `tests/fixtures/*.cnf` | Hand-written small cases |
-| `tests/corpus/` | Manifest-driven CNF corpus (graph color, pigeonhole, parity, etc.) |
-| `tests/corpus/vendor/` | Small vendored structural corpus + provenance |
-| `tests/test_solver.eigs` | Correctness assertions (run by `run_smoke.sh`) |
-| `benchmarks/run_trends.sh` | Profile runner (`quick` / `evidence` / `full`) |
-| `benchmarks/runs/` | Trend logs (ignored — machine-local) |
-| `docs/ROADMAP.md` | What's next in the solver |
-| `docs/EIGENSCRIPT_FEEDBACK.md` | Root/stdlib/local decisions by pressure point |
-| `GAPS.md` | Per-friction ledger (same format as Tidepool / EigenRegex) |
-| `BASELINE.md` | Recorded timings |
+(`ls lib/ tests/` for the inventory. The parts that aren't obvious:)
+
+- `lib/solver.eigs` holds **all four solver paths** (DPLL / watched /
+  persistent / CDCL) — a change to one usually needs the others checked.
+- `benchmarks/runs/` is gitignored and machine-local; `benchmarks/run_trends.sh`
+  takes a profile (`quick` / `evidence` / `full`).
+- `docs/EIGENSCRIPT_FEEDBACK.md` — root/stdlib/local decisions by pressure
+  point; `GAPS.md` — per-friction ledger (same format as Tidepool / EigenRegex).
 
 ## Architecture notes
 
