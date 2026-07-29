@@ -87,3 +87,38 @@ on its daily ~05:57 reboot.
   mid-run still leaves a conflicts-vs-time trajectory instead of nothing.
 - Proof (DRAT) recording is deliberately **off** for this ladder: proofs buffer
   whole in memory and a multi-million-step refutation would exhaust RAM.
+
+## Amendment 1 — 2026-07-29 12:50 CDT (mid-run, operational only)
+
+Recorded while the run is in progress, before any conclusion is drawn.
+**No prediction above is edited.** Only a timeout cap changed; a cap is an
+operational parameter, not a hypothesis, and 4x5 produces the same number
+whenever it is produced.
+
+**What happened.** 4x4 closed in 429s (95,516 resolutions, matching the
+previously banked figure exactly through the budgeted-session path). 4x5 then
+**exhausted its 90-minute cap without closing**, having reached 452,569
+resolutions at 4,959s and still climbing.
+
+**Consequence for the schedule.** The 4xN axis is materially slower at
+`min = 4` than the rows=3 reference suggested, so the 3h caps on 4x6 and 4x7
+are near-certain to time out as well. That would spend ~6h producing lower
+bounds on the *cheap* axis while 4x5 — the case that actually tests
+prediction 2 — stays unmeasured.
+
+**Change.** `benchmarks/tseitin_second_pass.sh` waits for the first pass to
+release the ladder lock and re-runs **4x5 with a 4.5h cap** in the idle window
+before the ~05:57 reboot. Nothing else is altered.
+
+**Standing of prediction 2 as of this amendment.** Predicted band was
+1.3x-5x per 4xN step, with ~20x set as the falsification threshold. Observed
+so far: `>= 4.74x` and *unfinished*, so this is a lower bound, not a
+measurement. The narrow band will be exceeded; whether the two-axis story
+breaks depends on where 4x5 actually lands, and a lower bound cannot settle
+that. This is exactly why the cap was raised rather than the prediction
+reworded.
+
+**Standing of prediction 1.** Unaffected, and note that a *timeout* can still
+confirm it: prediction 1 is a `>=` claim (5x5 `>=` ~1.9M resolutions), so a
+5x5 that exceeds that figure without closing confirms it from below. Only a
+5x5 that closes *small* could falsify it.
