@@ -122,3 +122,51 @@ reworded.
 confirm it: prediction 1 is a `>=` claim (5x5 `>=` ~1.9M resolutions), so a
 5x5 that exceeds that figure without closing confirms it from below. Only a
 5x5 that closes *small* could falsify it.
+
+## Amendment 2 — 2026-07-29 18:50 CDT (mid-run, operational only)
+
+Again: **no prediction above is edited.** Only the remaining schedule changes.
+
+**State after the first pass.**
+
+| case | resolutions | wall | status | ratio vs 4x4 |
+|---|---|---|---|---|
+| 4x4 | 95,516 | 429s | DONE | — |
+| 4x5 | >= 452,569 | >5,400s | TIMEOUT | **>= 4.74x** |
+| 5x5 | >= 1,194,575 | >21,600s | TIMEOUT | **>= 12.5x** |
+
+**Both registered ratio predictions are unresolved, and neither is confirmed.**
+5x5 reached only 12.5x against a `>= 20x` prediction, so prediction 1 is *not*
+confirmed from below the way Amendment 1 hoped — it needs ~1.9M and stopped at
+1.19M. Observed steady rates: 4x5 ~91 resolutions/s, 5x5 ~57 resolutions/s.
+
+**My time estimates in the original registration were wrong by roughly 5-10x.**
+Stating that plainly rather than quietly re-tuning: the caps were set from a
+3x3->4x4 extrapolation that badly underestimated how the per-conflict cost
+grows with the formula. That estimation error, not the hardware, is what cost
+this run its headroom.
+
+**Change.** 4x6 was killed mid-run (strictly harder than a 4x5 that could not
+close in 90 min, so a guaranteed timeout), 4x7 dropped, and the whole
+remaining window given to **4x5 alone with a 9.5h cap** (18:50 -> 04:20,
+leaving buffer before the ~05:57 reboot). The `@reboot` cron now resumes the
+same single-case plan.
+
+**Why 4x5 and not 5x5**, given ~10.9h left and only room for one:
+- A closed case is a **measurement**; every other outcome is a bound. 4x5 is
+  by far the likeliest of the remaining cases to close, so it is the only
+  route to a second real number tonight.
+- Prediction 2 is the claim most likely to be *wrong* — the whole two-axis
+  framing rests on the rectangular axis being flat, and at `>= 4.74x` it is
+  already leaving the predicted 1.3x-5x band. Testing your own weakest claim
+  beats adding support to the stronger one.
+- 5x5 would need ~9.25h from scratch just to cross 1.9M (the search is
+  deterministic, so a shorter re-run only re-treads the same trajectory and
+  banks nothing new). That would buy a one-directional bound instead of a
+  measurement.
+
+**Left open, and worth a follow-up run:** 5x5's `>= 12.5x` sits well below the
+48x measured for 3x3 -> 4x4. If 5x5's true ratio lands near 15-25x, the
+expansion-axis multiplier is *decreasing*, which contradicts the rising-
+multiplier pattern pigeonhole shows. This ladder cannot settle that on this
+hardware — it needs either much more time or a faster runtime.
