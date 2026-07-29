@@ -1,0 +1,51 @@
+# ============================================================
+# Tseitin torus ladder -- one case per process, progress-emitting
+# ============================================================
+# Solves a single tseitin_torus_case with the budgeted CDCL session API and
+# emits a progress line at a fixed wall-clock interval. The point of the
+# progress lines is survival: this box reboots daily around 05:57 and kills
+# whatever is running, so a case that does not finish must still leave a
+# conflicts-vs-time trajectory behind. A binary finished/killed result would
+# lose the entire night's work on the one case that matters most.
+#
+# Usage: eigenscript benchmarks/tseitin_ladder.eigs <rows> <cols> [progress_seconds]
+#
+# Proof recording is deliberately NOT enabled here: proofs buffer whole in
+# memory (GAPS.md) and this box has ~2.4GB free.
+
+load_file of "lib/int_vector.eigs"
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+ladder_argv is args of null
+ladder_rows is 4
+ladder_cols is 4
+progress_seconds is 60
+
+if (len of ladder_argv) > 0:
+    ladder_rows is floor of (num of ladder_argv[0])
+if (len of ladder_argv) > 1:
+    ladder_cols is floor of (num of ladder_argv[1])
+if (len of ladder_argv) > 2:
+    progress_seconds is floor of (num of ladder_argv[2])
+
+ladder_case is tseitin_torus_case of [ladder_rows, ladder_cols, 1]
+print of f"START case={ladder_case.name} rows={ladder_rows} cols={ladder_cols} vars={ladder_case.nvars} clauses={len of ladder_case.clauses} expected={ladder_case.expected}"
+
+ladder_t0 is monotonic_ns of null
+ladder_last_report is ladder_t0
+ladder_session is cdcl_begin of [ladder_case.nvars, ladder_case.clauses, null]
+
+loop while ladder_session.status == "RUNNING":
+    cdcl_step of [ladder_session, 20000]
+    ladder_now is monotonic_ns of null
+    if ((ladder_now - ladder_last_report) / 1000000000) >= progress_seconds:
+        ladder_last_report is ladder_now
+        print of f"PROGRESS case={ladder_case.name} elapsed_s={(ladder_now - ladder_t0) / 1000000000} conflicts={ladder_session.stats.conflicts} resolutions={ladder_session.stats.resolutions} learnts={ladder_session.stats.learnts} peak_learnts={ladder_session.stats.peak_learnts} max_level={ladder_session.stats.max_level} decisions={ladder_session.stats.decisions} propagations={ladder_session.stats.propagations}"
+
+ladder_t1 is monotonic_ns of null
+ladder_result is cdcl_result of [ladder_session.status, ladder_session.model, ladder_session.stats, ladder_session.state]
+assert of [ladder_result.status == ladder_case.expected, f"ladder status mismatch {ladder_case.name}"]
+
+print of f"DONE case={ladder_case.name} rows={ladder_rows} cols={ladder_cols} vars={ladder_case.nvars} clauses={len of ladder_case.clauses} status={ladder_result.status} elapsed_s={(ladder_t1 - ladder_t0) / 1000000000} conflicts={ladder_result.conflicts} resolutions={ladder_result.resolutions} learnts={ladder_result.learnts} learnt_lits={ladder_result.learnt_literals} peak_learnts={ladder_result.peak_learnts} max_level={ladder_result.max_level} decisions={ladder_result.decisions} propagations={ladder_result.propagations} restarts={ladder_result.restarts}"
