@@ -1048,7 +1048,8 @@ define cdcl_default_options() as:
         "phase_saving": 1,
         "compact_policy": "deferred",
         "compact_min_deleted": 64,
-        "compact_waste_percent": 50
+        "compact_waste_percent": 50,
+        "proof": 0
     }
 
 define cdcl_merge_options(opts) as:
@@ -1101,7 +1102,57 @@ define cdcl_merge_options(opts) as:
             merged_opts.compact_waste_percent is 0
         if merged_opts.compact_waste_percent > 100:
             merged_opts.compact_waste_percent is 100
+    if (has_key of [opts, "proof"]) != 0:
+        merged_opts.proof is 0
+        if opts.proof != 0:
+            merged_opts.proof is 1
     return merged_opts
+
+# ------------------------------------------------------------
+# DRAT proof recording
+# ------------------------------------------------------------
+# On UNSAT the CDCL search *is* a resolution refutation: every learnt clause
+# is a RUP consequence of the clauses derived so far, and the run ends with
+# the empty clause. Emitting that sequence in DRAT lets an external checker
+# (drat-trim) verify an UNSAT answer, which is otherwise the one result this
+# solver reports that nothing can check -- a SAT answer self-verifies against
+# the model, an UNSAT answer does not.
+#
+# Additions only, no `d` deletion lines. Deletions are a checker-speed
+# optimization, never a soundness requirement: withholding them only leaves
+# the checker with a superset of our clauses, which can make a RUP check
+# succeed but never fail. A proof that always verifies beats a smaller one
+# that can spuriously fail.
+
+define proof_enabled(state) as:
+    if state == null:
+        return 0
+    if state.proof == null:
+        return 0
+    return 1
+
+define proof_add_clause(state, clause) as:
+    if (proof_enabled of state) == 0:
+        return null
+    for proof_lit in clause:
+        text_builder_append of [state.proof, proof_lit]
+        text_builder_append of [state.proof, " "]
+    text_builder_append_line of [state.proof, "0"]
+    return null
+
+define proof_add_empty(state) as:
+    # The empty clause is RUP wherever we conclude UNSAT: either unit
+    # propagation already conflicts at level 0, or conflict analysis derived
+    # it outright.
+    if (proof_enabled of state) == 0:
+        return null
+    text_builder_append_line of [state.proof, "0"]
+    return null
+
+define proof_text(state) as:
+    if (proof_enabled of state) == 0:
+        return null
+    return text_builder_to_string of state.proof
 
 define cdcl_restart(state, asg, stats) as:
     if (len of state.trail_lim) == 0:
@@ -1191,8 +1242,11 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "conflicts_since_restart": 0,
         "order_heap": [],
         "order_pos": int_vector_filled of [nvars + 1, -1],
-        "conflict": -1
+        "conflict": -1,
+        "proof": null
     }
+    if cdcl_opts.proof != 0:
+        state.proof is text_builder_new of null
 
     for ci in range of (clause_store_len of store):
         local clause is clause_store_clause_counted of [store, ci, stats]
@@ -1204,12 +1258,14 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
             stats.conflicts += 1
             state.conflict is ci
             state.ok is 0
+            proof_add_empty of state
         elif clause_size == 1:
             append of [state.watch_a, 0]
             append of [state.watch_b, 0]
             if (enqueue_cdcl of [asg, state, clause_store_lit of [store, ci, 0], ci, 0, stats, 1]) == 0:
                 state.conflict is ci
                 state.ok is 0
+                proof_add_empty of state
         else:
             append of [state.watch_a, 0]
             append of [state.watch_b, 1]
@@ -1477,6 +1533,8 @@ define minimize_clause(clause, seen, state, store, stats) as:
 
 define add_cdcl_clause(store, state, clause, learnt, stats) as:
     local ci is clause_store_add_clause of [store, clause]
+    if learnt != 0:
+        proof_add_clause of [state, clause]
     init_clause_metadata of [state, clause, learnt, stats]
     state.clause_lbd[ci] is clause_level_span of [clause, state]
     if (len of clause) == 0:
@@ -1581,11 +1639,20 @@ define cdcl_result(status, model, stats, state) as:
         "minimize_removed": stats.minimize_removed,
         "minimize_steps": stats.minimize_steps,
         "lbd_kept_glue": stats.lbd_kept_glue,
-        "lbd_improved": stats.lbd_improved
+        "lbd_improved": stats.lbd_improved,
+        "peak_learnts": stats.peak_learnts,
+        "max_level": stats.max_level,
+        "proof": proof_text of state
     }
 
 define cdcl_empty_stats() as:
     return {
+        # The proof-shape triple: refutation size (resolutions/learnt_literals),
+        # clause space (peak_learnts), and depth (max_level). Size is already
+        # counted below; these two are the axes --proof-bench needs and are the
+        # ones a size-only view hides.
+        "peak_learnts": 0,
+        "max_level": 0,
         "decisions": 0,
         "propagations": 0,
         "conflicts": 0,
@@ -1688,6 +1755,7 @@ define cdcl_step(session, budget) as:
         remaining -= 1
         if (run_watched_queue_cdcl of [nvars, session.store, asg, state, stats]) == 0:
             if (len of state.trail_lim) == 0:
+                proof_add_empty of state
                 session.status is "UNSAT"
                 return session.status
 
@@ -1696,6 +1764,7 @@ define cdcl_step(session, budget) as:
             state.conflicts_since_restart += 1
             local analysis is analyze_conflict_cdcl of [session.store, state, state.conflict, stats]
             if (len of analysis.clause) == 0:
+                proof_add_empty of state
                 session.status is "UNSAT"
                 return session.status
 
@@ -1718,6 +1787,12 @@ define cdcl_step(session, budget) as:
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
             local removed_learnts is reduce_learnt_db of [session.store, state, stats]
+            # reduce_learnt_db refreshes stats.active_learnts on every call
+            # (including its early return), so this is the live clause-space
+            # figure at each conflict -- the peak is what bounds memory, not
+            # the end-of-solve count cdcl_result reports.
+            if stats.active_learnts > stats.peak_learnts:
+                stats.peak_learnts is stats.active_learnts
             if removed_learnts > 0:
                 if (should_compact_deleted_clauses of [session.store, state, stats]) != 0:
                     session.store is compact_deleted_clauses of [nvars, session.store, state, stats]
@@ -1731,6 +1806,8 @@ define cdcl_step(session, budget) as:
             return session.status
 
         cdcl_push_level of state
+        if (len of state.trail_lim) > stats.max_level:
+            stats.max_level is len of state.trail_lim
         stats.decisions += 1
         local decision_lit is decision_lit_cdcl of [state, v, stats]
         enqueue_cdcl of [asg, state, decision_lit, -1, len of state.trail_lim, stats, 0]

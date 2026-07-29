@@ -53,6 +53,9 @@ $EIGS minisat.eigs --cdcl                tests/fixtures/simple_sat.cnf  # CDCL
 # Correctness sweep (fixtures, parser shapes, generated cases)
 ./tests/run_smoke.sh
 
+# External oracle for UNSAT: emit DRAT refutations and have drat-trim check them
+DRAT_TRIM=/path/to/drat-trim ./tests/run_proof_check.sh
+
 # Trend logs into benchmarks/runs/ (ignored)
 ./benchmarks/run_trends.sh quick    1   # quick profile, size 1
 ./benchmarks/run_trends.sh evidence 2 /tmp/eigenminisat-evidence.log  # bounded larger-case decisions
@@ -63,8 +66,12 @@ $EIGS minisat.eigs --cdcl                tests/fixtures/simple_sat.cnf  # CDCL
 The bench modes (`--bench`, `--restart-bench`, `--phase-bench`,
 `--copy-bench`, `--storage-bench`, `--metadata-bench`, `--parse-bench`,
 `--scan-parse-bench`, `--diagnostic-bench`, `--file-bench`,
-`--corpus-bench`, `--heuristic-bench`, `--random-bench`) each isolate a specific
-pressure surface — see `README.md` for the per-mode counter list.
+`--corpus-bench`, `--heuristic-bench`, `--random-bench`, `--proof-bench`) each
+isolate a specific pressure surface — see `README.md` for the per-mode counter
+list. `--proof-bench` is the odd one out: it measures the refutation's shape
+(size / space / depth), not the runtime, and is deliberately NOT in
+`run_smoke.sh` because the hard families cost seconds per solve. It runs as its
+own CI step.
 
 ## Layout
 
@@ -104,10 +111,61 @@ pressure surface — see `README.md` for the per-mode counter list.
   inline caches fire (the `Inline tiny accessors` commit pattern).
 - **n=5 for any perf claim.** Trend logs help — `run_trends.sh evidence`
   emits a compact summary line for paste-into-commit-msg style
-  comparisons.
+  comparisons. **This is a wall-time rule, not a counter rule.** The solver
+  is deterministic: conflicts, resolutions, learnts, peak_learnts and
+  max_level are byte-identical across runs of the same input and policy
+  (verified). Claims about *counters* need n=1; re-running them five times
+  is wasted budget.
+- **CDCL on UNSAT emits a resolution refutation**, so `resolutions` /
+  `learnt_lits` are proof-size measurements, not just search telemetry, and
+  the restart policy is not only a perf knob — CDCL *with* restarts
+  p-simulates general resolution while without them it is weaker. Changing
+  restart behavior changes which proof system is being measured.
+- **Never gate a DRAT check on grepping `s VERIFIED`.** drat-trim prefixes
+  that line with a carriage return, so `grep "^s VERIFIED"` never matches
+  and the check passes unconditionally. Gate on the exit code (0 verified,
+  1 not verified), and keep the planted-fault case in
+  `run_proof_check.sh` — it is what proves the checker is gating at all.
+- **`xor_triangle_case` is the easy XOR regime**, not a hardness probe: it is
+  SAT and closes with zero conflicts. The hard parity family is
+  `tseitin_torus_case` (odd charge). Keep both — the matched odd/even pair at
+  the same size is the control showing the blowup is the parity obstruction
+  and not the encoding.
+- **Pigeonhole and complete-graph coloring are the same family.** k(n+1) with
+  n colors is pigeonhole relabelled; `--proof-bench` shows them producing
+  byte-identical size/space/depth triples. A change that helps only these two
+  is exploiting counting structure — check it against Tseitin before
+  believing it generalizes.
 - **Don't add a "true third-party" CNF file** unless its provenance
   and size are routine-validation friendly. The vendored structural
   corpus is the bar.
+
+## Proof complexity surface
+
+The solver doubles as a proof-complexity instrument, because a CDCL refutation
+*is* a resolution refutation:
+
+- `--cdcl --proof FILE` writes a DRAT refutation; `drat-trim` verifies it.
+  This is the only external oracle the UNSAT path has ever had — before it,
+  an over-pruning bug reported UNSAT and every assertion still passed.
+- `--proof-bench` reports size / space / depth per policy per family.
+- The two UNSAT families are hard for *different* reasons: pigeonhole by
+  counting (Haken 1985, 2^Omega(n)) and Tseitin by parity plus graph expansion
+  (Urquhart 1987, 2^Omega(min(rows,cols))). Both must blow up exponentially;
+  a ladder that comes back polynomial means the generator or the counters
+  are broken, not that the theorem is wrong. That makes the bench
+  self-validating in the way a planted fault validates a checker.
+- Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
+  n = 3..6 (x5.4, x6.1, x9.7, multiplier rising). Tseitin 3x3 = 1974
+  resolutions; 4x4 = 95516 (x48 for one step of the expansion axis, ~450s).
+  The square axis is the real hardness axis, and it goes intractable
+  immediately under the interpreter — hence the odd/even control pair at 3x3
+  instead of a square ladder.
+
+Honest ceiling: measurement bounds proof size from *above*. Every result that
+matters in proof complexity is a lower bound, and those are theorems. This
+instrument validates that a family behaves as theory predicts and falsifies
+"that family is easy" claims — it does not settle anything.
 
 ## Current state
 

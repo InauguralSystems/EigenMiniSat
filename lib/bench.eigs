@@ -155,6 +155,97 @@ define complete_graph_color_case(nodes, colors) as:
         "expected": expected_status
     }
 
+# ------------------------------------------------------------
+# Tseitin formulas over a toroidal grid -- the hard XOR family
+# ------------------------------------------------------------
+# Every edge of a 4-regular rows x cols torus carries a variable, and every
+# vertex constrains the XOR of its four incident edges to that vertex's
+# charge. With an odd total charge the formula is UNSAT, and resolution
+# refutations of a Tseitin formula over a graph with expansion e need size
+# 2^Omega(e) -- for the torus that is 2^Omega(min(rows, cols)) (Urquhart 1987).
+#
+# This is a *different* hardness mechanism from pigeonhole. Pigeonhole is hard
+# because of counting; Tseitin is hard because of parity plus graph expansion.
+# A solver change that helps both is real; one that helps only pigeonhole is
+# exploiting counting structure. `xor_triangle_case` is the tractable regime
+# (it is SAT and closes with zero conflicts) -- keep it as the easy baseline,
+# not as the XOR pressure case.
+#
+# rows and cols must be >= 3 so a vertex's four incident edges stay distinct.
+
+define torus_h_edge(row, col, cols) as:
+    return (row * cols) + col + 1
+
+define torus_v_edge(row, col, rows, cols) as:
+    return (rows * cols) + (row * cols) + col + 1
+
+define tseitin_vertex_edges(row, col, rows, cols) as:
+    local left is (col + cols - 1) % cols
+    local up is (row + rows - 1) % rows
+    local edges is []
+    append of [edges, torus_h_edge of [row, col, cols]]
+    append of [edges, torus_h_edge of [row, left, cols]]
+    append of [edges, torus_v_edge of [row, col, rows, cols]]
+    append of [edges, torus_v_edge of [up, col, rows, cols]]
+    return edges
+
+define tseitin_parity_clauses(edges, charge) as:
+    # XOR(edges) == charge, expanded as the 2^(degree-1) clauses that forbid
+    # each assignment of the wrong parity. The clause forbidding assignment a
+    # is false exactly at a: negate the literals a sets true.
+    local degree is len of edges
+    local total is 1
+    for _bit in range of degree:
+        total is total * 2
+    local out is []
+    for mask in range of total:
+        local rest is mask
+        local ones is 0
+        local clause is []
+        local j is 0
+        loop while j < degree:
+            if (rest % 2) == 1:
+                ones += 1
+                append of [clause, 0 - edges[j]]
+            else:
+                append of [clause, edges[j]]
+            rest is floor of (rest / 2)
+            j += 1
+        if (ones % 2) != charge:
+            append of [out, clause]
+    return out
+
+define tseitin_torus_case(rows, cols, charge_odd) as:
+    if rows < 3:
+        rows is 3
+    if cols < 3:
+        cols is 3
+    local clauses is []
+    for row in range of rows:
+        for col in range of cols:
+            # A single unit of charge makes the total odd, hence UNSAT.
+            local charge is 0
+            if charge_odd != 0:
+                if row == 0:
+                    if col == 0:
+                        charge is 1
+            local edges is tseitin_vertex_edges of [row, col, rows, cols]
+            for vertex_clause in (tseitin_parity_clauses of [edges, charge]):
+                append of [clauses, vertex_clause]
+
+    local expected_status is "SAT"
+    local label is f"tseitin-torus-{rows}x{cols}-even"
+    if charge_odd != 0:
+        expected_status is "UNSAT"
+        label is f"tseitin-torus-{rows}x{cols}-odd"
+
+    return {
+        "name": label,
+        "nvars": 2 * rows * cols,
+        "clauses": clauses,
+        "expected": expected_status
+    }
+
 define benchmark_cases(size) as:
     if size < 1:
         size is 1
@@ -1496,3 +1587,163 @@ define run_random_benchmarks(size) as:
             assert of [model_satisfies of [r.nvars, r.clauses, result.model], f"random model mismatch {label}"]
         print of f"random {label}: status={result.status} vars={c.nvars} clauses={nclauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} learnts={result.learnts} learnt_lits={result.learnt_literals} minimize_checks={result.minimize_checks} minimize_removed={result.minimize_removed} minimize_steps={result.minimize_steps} compact_runs={result.compact_runs} compact_clause_lits={result.compact_clause_lits} restarts={result.restarts} ms={ms}"
     return len of cases
+
+# ============================================================
+# Proof-shape benchmark: refutation size / space / depth
+# ============================================================
+# On an UNSAT instance CDCL does not merely decide -- it emits a resolution
+# refutation. Conflict analysis IS resolution, and the sequence of learnt
+# clauses is the proof. So these runs measure proof complexity directly:
+#
+#   size  = resolutions, learnt_literals, learnts  (how big the refutation is)
+#   space = peak_learnts   (live learnt clauses at the high-water mark)
+#   depth = max_level      (deepest decision level reached)
+#
+# All three are reported together because they trade against each other: the
+# supercritical-tradeoff results concern families where minimizing one blows
+# another up superlinearly. A conflicts-only or time-only view hides that, and
+# a solver policy that "wins" on size while blowing up space is not a win.
+#
+# Each family is a ladder, so growth is visible within a single run. Both
+# UNSAT families must blow up exponentially -- pigeonhole by Haken 1985,
+# Tseitin by Urquhart 1987. A ladder that comes back polynomial means the
+# generator or the counters are broken, not that the theorem is wrong. That
+# makes this bench self-validating in the way a planted fault validates a
+# checker.
+#
+# Runtime note: the Tseitin hardness axis is min(rows, cols), so the square
+# torus is where the exponential actually lives. 4x4 already exceeds practical
+# runtime under the interpreter, which is why the ladder pairs 3x3-odd with
+# its 3x3-even control instead of stepping to 4x4 -- same graph, same clause
+# count, charge parity flipped. The control closing with zero conflicts is the
+# evidence that the blowup is the parity obstruction and not the encoding.
+
+define proof_ladder_families(size) as:
+    if size < 1:
+        size is 1
+    local families is []
+
+    local php_cases is []
+    for php_step in range of 3:
+        local php_holes is size + 2 + php_step
+        # pigeonhole_case carries no expected status; more pigeons than holes
+        # is UNSAT by construction.
+        local php_case is pigeonhole_case of [php_holes + 1, php_holes]
+        append of [php_cases, {
+            "name": php_case.name,
+            "nvars": php_case.nvars,
+            "clauses": php_case.clauses,
+            "expected": "UNSAT"
+        }]
+    append of [families, {
+        "family": "pigeonhole",
+        "hardness": "counting; 2^Omega(n) resolution (Haken 1985)",
+        "cases": php_cases
+    }]
+
+    local color_cases is []
+    for color_step in range of 3:
+        local color_count is size + 2 + color_step
+        append of [color_cases, complete_graph_color_case of [color_count + 1, color_count]]
+    append of [families, {
+        "family": "graph-coloring",
+        "hardness": "counting; pigeonhole relabelled, not an independent family",
+        "cases": color_cases
+    }]
+
+    local tseitin_cases is []
+    local tseitin_side is size + 2
+    append of [tseitin_cases, tseitin_torus_case of [tseitin_side, tseitin_side, 1]]
+    append of [tseitin_cases, tseitin_torus_case of [tseitin_side, tseitin_side, 0]]
+    append of [families, {
+        "family": "tseitin-torus",
+        "hardness": "parity + expansion; 2^Omega(min(rows,cols)) (Urquhart 1987)",
+        "cases": tseitin_cases
+    }]
+
+    return families
+
+define proof_bench_policies() as:
+    # Three policies, not the full heuristic sweep: the Tseitin case costs
+    # seconds per solve, so the sweep width is the runtime knob here.
+    local proof_policies is []
+    append of [proof_policies, {
+        "name": "geom-saved",
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "saved"
+    }]
+    append of [proof_policies, {
+        "name": "luby-saved",
+        "restart_policy": "luby",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "saved"
+    }]
+    append of [proof_policies, {
+        "name": "geom-negative",
+        "restart_policy": "geometric",
+        "restart_first": 3,
+        "restart_growth": 2,
+        "phase_policy": "negative"
+    }]
+    return proof_policies
+
+define run_proof_benchmarks(size) as:
+    local proof_families is proof_ladder_families of size
+    local proof_policies is proof_bench_policies of null
+    local proof_case_count is 0
+
+    for proof_family in proof_families:
+        print of f"proof family {proof_family.family}: hardness={proof_family.hardness}"
+
+        for proof_policy in proof_policies:
+            local proof_options is {
+                "restart_policy": proof_policy.restart_policy,
+                "restart_first": proof_policy.restart_first,
+                "restart_growth": proof_policy.restart_growth,
+                "phase_policy": proof_policy.phase_policy
+            }
+            local ladder_sizes is []
+            local ladder_spaces is []
+            local ladder_depths is []
+
+            for proof_case in proof_family.cases:
+                local pt0 is monotonic_ns of null
+                local proof_result is solve_cnf_cdcl_with_options of [proof_case.nvars, proof_case.clauses, proof_options]
+                local pt1 is monotonic_ns of null
+                local pms is (pt1 - pt0) / 1000000
+
+                assert of [proof_result.status == proof_case.expected, f"proof status mismatch {proof_case.name} {proof_policy.name}"]
+                if proof_result.status == "SAT":
+                    assert of [model_satisfies of [proof_case.nvars, proof_case.clauses, proof_result.model], f"proof model mismatch {proof_case.name} {proof_policy.name}"]
+
+                # Depth can only be credited on a refutation; a SAT close walks
+                # down once and never backjumps, so its triple is a control.
+                if proof_result.status == "UNSAT":
+                    append of [ladder_sizes, proof_result.resolutions]
+                    append of [ladder_spaces, proof_result.peak_learnts]
+                    append of [ladder_depths, proof_result.max_level]
+
+                print of f"proof {proof_policy.name} {proof_family.family} {proof_case.name}: status={proof_result.status} vars={proof_case.nvars} clauses={len of proof_case.clauses} size_resolutions={proof_result.resolutions} size_learnt_lits={proof_result.learnt_literals} size_learnts={proof_result.learnts} space_peak_learnts={proof_result.peak_learnts} depth_max_level={proof_result.max_level} conflicts={proof_result.conflicts} restarts={proof_result.restarts} ms={pms}"
+                proof_case_count += 1
+
+            if (len of ladder_sizes) > 1:
+                local growth_text is ""
+                local growth_i is 1
+                loop while growth_i < (len of ladder_sizes):
+                    local prev_size is ladder_sizes[growth_i - 1]
+                    local ratio_text is "n/a"
+                    if prev_size > 0:
+                        ratio_text is str of (floor of ((ladder_sizes[growth_i] / prev_size) * 100) / 100)
+                    if growth_text != "":
+                        growth_text is growth_text + ","
+                    growth_text is growth_text + ratio_text
+                    growth_i += 1
+                local sizes_text is join of [ladder_sizes, ","]
+                local spaces_text is join of [ladder_spaces, ","]
+                local depths_text is join of [ladder_depths, ","]
+                print of f"proof ladder {proof_policy.name} {proof_family.family}: sizes={sizes_text} spaces={spaces_text} depths={depths_text} size_growth={growth_text}"
+
+    return proof_case_count
