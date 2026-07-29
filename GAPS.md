@@ -5,6 +5,28 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- **DRAT deletion lines not emitted (2026-07-29).** Proof recording writes
+  additions only. Sound — withholding `d` lines leaves the checker with a
+  superset of our clauses, which can only make a RUP check succeed, never
+  fail — but it costs checker time on large refutations. Emitting them needs
+  the clause literals at deletion time in `reduce_learnt_db`, and interacts
+  with compaction's index remapping, so it was deliberately deferred: a proof
+  that always verifies beats a smaller one that can spuriously fail. Revisit
+  if `drat-trim` time becomes the bottleneck in `run_proof_check.sh` (at
+  present the whole script is ~5.6s).
+- **Whole-proof buffering (2026-07-29).** `write_text` is the only file-write
+  builtin — there is no append — so a DRAT proof accumulates in a
+  `text_builder` and is written once at the end. Fine at current sizes
+  (Tseitin 3x3 is 673 lines), but a solve large enough to matter would hold
+  the entire proof in memory. If that becomes real pressure, the upstream
+  ask is a streaming/append file handle, not a local workaround.
+- **Tseitin square axis is intractable under the interpreter (2026-07-29).**
+  Hardness scales as 2^Omega(min(rows,cols)), so the square torus is the real
+  axis: 3x3 = 1974 resolutions in ~1.7s, 4x4 = 95516 in ~450s (x48 for one
+  step). `--proof-bench` therefore pairs 3x3-odd with its 3x3-even SAT control
+  instead of stepping to 4x4. This is a runtime ceiling, not a generator
+  limit — worth revisiting whenever VM/AOT throughput moves.
+
 - **Library composition convention (2026-07-04):** `lib/solver.eigs` no
   longer self-loads `int_vector.eigs` — entry points compose (same split as
   tidelog's cbor/store). Driven by the EigenOS solver-window experiment:

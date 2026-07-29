@@ -18,5 +18,20 @@ jobs:
           cd /tmp/eigenscript && make build
           echo "/tmp/eigenscript/src" >> $GITHUB_PATH
 
+      - name: Build drat-trim
+        run: |
+          git clone --depth 1 https://github.com/marijnheule/drat-trim.git /tmp/drat-trim
+          cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c
+          echo "/tmp/drat-trim" >> $GITHUB_PATH
+
       - name: Run solver tests
         run: tests/run_smoke.sh
+
+      - name: Verify UNSAT refutations (DRAT)
+        run: tests/run_proof_check.sh
+
+      # Kept out of run_smoke.sh on purpose: the hard families cost seconds per
+      # solve and would push the smoke suite well past its runtime baseline.
+      # Running it here keeps the mode from rotting.
+      - name: Proof-shape benchmark
+        run: eigenscript minisat.eigs --proof-bench --size 1

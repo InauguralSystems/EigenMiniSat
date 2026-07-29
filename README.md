@@ -40,7 +40,10 @@ variable ordering, learnt clauses, and database reduction have since landed
 ../EigenScript/src/eigenscript minisat.eigs --file-bench --size 1
 ../EigenScript/src/eigenscript minisat.eigs --corpus-bench [--manifest tests/corpus/manifest.txt]
 ../EigenScript/src/eigenscript minisat.eigs --random-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --proof-bench --size 1
+../EigenScript/src/eigenscript minisat.eigs --cdcl --proof out.drat tests/corpus/pigeonhole_4_3.cnf
 tests/run_smoke.sh
+tests/run_proof_check.sh
 benchmarks/run_trends.sh quick 1
 benchmarks/run_trends.sh evidence 2 /tmp/eigenminisat-evidence.log
 benchmarks/summarize_trend.sh /tmp/eigenminisat-evidence.log
@@ -115,6 +118,42 @@ with CDCL.
 `--random-bench` generates random 3-SAT instances at the hard phase-transition
 clause/variable ratio and solves them with CDCL, reporting per-case SAT/UNSAT
 status and solver counters for search pressure on unstructured input.
+`--proof-bench` measures the *shape* of the refutation rather than the time to
+find it. On an UNSAT instance CDCL emits a resolution refutation — conflict
+analysis is resolution and the learnt-clause sequence is the proof — so the run
+reports three axes together: size (`size_resolutions`, `size_learnt_lits`,
+`size_learnts`), clause space (`space_peak_learnts`, the high-water mark rather
+than the surviving count), and depth (`depth_max_level`). Each family is a
+ladder so growth is visible in one run, and a `proof ladder` summary line gives
+the per-step size ratios. The three axes trade against each other, so a policy
+that wins on size can lose on space — that tradeoff is the point of the mode
+and a conflicts-only view hides it. Not part of `tests/run_smoke.sh`: the hard
+families cost seconds per solve, so it runs as its own CI step (~18s at size 1).
+
+## Proofs and the UNSAT oracle
+
+A SAT answer self-verifies — check the model against the clauses. An UNSAT
+answer has nothing to check it, so a bug that over-prunes the search reports
+`s UNSATISFIABLE` and the whole suite still passes. `--proof` closes that hole:
+
+```bash
+../EigenScript/src/eigenscript minisat.eigs --cdcl --proof out.drat problem.cnf
+drat-trim problem.cnf out.drat        # exit 0 = verified, 1 = not verified
+```
+
+The emitted DRAT proof is one line per learnt clause plus a final empty clause,
+and `drat-trim` — which shares no code with this solver — checks it
+independently. `tests/run_proof_check.sh` runs this across the UNSAT corpus in
+CI, including a planted-fault case that removes lemmas from a valid proof and
+requires the checker to *reject* it. Without that negative control, a
+misconfigured checker would pass everything.
+
+Proof recording is additions-only, with no `d` deletion lines. Deletions are a
+checker-speed optimization and never a soundness requirement: withholding them
+leaves the checker with a superset of our clauses, which can only make a RUP
+check succeed, never fail. Gate on `drat-trim`'s exit code — it prefixes its
+`s VERIFIED` line with a carriage return, so line-anchored greps silently never
+match and a check written that way passes no matter what the solver emitted.
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and

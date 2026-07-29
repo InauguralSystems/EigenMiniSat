@@ -9,7 +9,7 @@ load_file of "lib/bench.eigs"
 
 define parse_args() as:
     argv is args of null
-    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": ""}
+    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": ""}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
@@ -39,6 +39,12 @@ define parse_args() as:
             cfg.mode is "corpus_bench"
         elif arg == "--random-bench":
             cfg.mode is "random_bench"
+        elif arg == "--proof-bench":
+            cfg.mode is "proof_bench"
+        elif arg == "--proof":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.proof is argv[i]
         elif arg == "--watched":
             cfg.solver is "watched"
         elif arg == "--persistent":
@@ -78,6 +84,8 @@ define print_help() as:
     print of "  eigenscript minisat.eigs --file-bench --size N"
     print of "  eigenscript minisat.eigs --corpus-bench [--manifest PATH]"
     print of "  eigenscript minisat.eigs --random-bench --size N"
+    print of "  eigenscript minisat.eigs --proof-bench --size N"
+    print of "  eigenscript minisat.eigs --cdcl --proof out.drat <file.cnf>"
     return null
 
 cfg is parse_args of null
@@ -110,6 +118,8 @@ elif cfg.mode == "corpus_bench":
     run_corpus_benchmarks of cfg.corpus_manifest
 elif cfg.mode == "random_bench":
     run_random_benchmarks of cfg.size
+elif cfg.mode == "proof_bench":
+    run_proof_benchmarks of cfg.size
 elif cfg.path == "":
     print_help of null
     assert of [0, "missing DIMACS path"]
@@ -117,13 +127,20 @@ else:
     parsed is parse_dimacs_file of cfg.path
     assert_dimacs_ok of parsed
     t0 is monotonic_ns of null
-    result is solve_cnf of [parsed.nvars, parsed.clauses]
+    # Dispatch once. This used to run the scan solver unconditionally and then
+    # overwrite its result with the selected solver's, so every --watched /
+    # --persistent / --cdcl run paid for a full DPLL solve it discarded.
     if cfg.solver == "watched":
         result is solve_cnf_watched of [parsed.nvars, parsed.clauses]
     elif cfg.solver == "persistent":
         result is solve_cnf_persistent of [parsed.nvars, parsed.clauses]
     elif cfg.solver == "cdcl":
-        result is solve_cnf_cdcl of [parsed.nvars, parsed.clauses]
+        cdcl_opts is null
+        if cfg.proof != "":
+            cdcl_opts is {"proof": 1}
+        result is solve_cnf_cdcl_with_options of [parsed.nvars, parsed.clauses, cdcl_opts]
+    else:
+        result is solve_cnf of [parsed.nvars, parsed.clauses]
     t1 is monotonic_ns of null
     ms is (t1 - t0) / 1000000
 
@@ -135,3 +152,12 @@ else:
     if cfg.solver == "cdcl":
         counters is counters + f" learnts={result.learnts} backjumps={result.backjumps} resolutions={result.resolutions} bumps={result.activity_bumps} decays={result.activity_decays} heap_pops={result.order_pops} heap_inserts={result.order_inserts} heap_skips={result.order_skips} clause_allocs={result.clause_allocs} learnt_allocs={result.learnt_allocs} learnt_lits={result.learnt_literals} store_copies={result.store_clause_copies} store_copy_lits={result.store_clause_copy_lits} analysis_rebuilds={result.analysis_rebuilds} analysis_rebuild_lits={result.analysis_rebuild_lits} analysis_store_scans={result.analysis_store_scans} analysis_store_lits={result.analysis_store_lits} analysis_native_learnts={result.analysis_native_learnts} clause_bumps={result.clause_activity_bumps} clause_decays={result.clause_activity_decays} reduce_runs={result.reduce_runs} reduce_scans={result.reduce_scans} learnt_deleted={result.learnt_deleted} locked_kept={result.learnt_kept_locked} deleted_watch_skips={result.deleted_watch_skips} active_learnts={result.active_learnts} compact_policy={result.compact_policy} compact_checks={result.compact_checks} compact_deferred={result.compact_deferred} pending_deleted={result.compact_pending_deleted} compact_runs={result.compact_runs} compact_removed={result.compact_removed} compact_kept={result.compact_kept} compact_clause_copies={result.compact_clause_copies} compact_clause_lits={result.compact_clause_lits} watch_rebuilds={result.watch_rebuilds} watch_detaches={result.watch_detaches} watch_detach_scans={result.watch_detach_scans} watch_detach_removed={result.watch_detach_removed} watch_prunes={result.watch_prunes} watch_prune_scans={result.watch_prune_scans} watch_prune_removed={result.watch_prune_removed} compact_replays={result.compact_replays} restarts={result.restarts} restart_cancels={result.restart_cancels} restart_budget={result.restart_budget} phase_saves={result.phase_saves} phase_flips={result.phase_flips} phase_pos={result.phase_pos_decisions} phase_neg={result.phase_neg_decisions}"
     print of (counters + f" ms={ms}")
+
+    if cfg.proof != "":
+        if cfg.solver != "cdcl":
+            print of "c --proof needs --cdcl (only the CDCL path records a refutation); no proof written"
+        elif result.status != "UNSAT":
+            print of "c satisfiable: no refutation to write (check the model instead)"
+        else:
+            write_text of [cfg.proof, result.proof]
+            print of f"c proof written to {cfg.proof}"

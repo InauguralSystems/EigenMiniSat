@@ -671,4 +671,57 @@ assert_eq of ["budgeted SAT session", budget_sat_session.status, "SAT"]
 assert_true of ["budgeted SAT model satisfies", model_satisfies of [budget_sat_case.nvars, budget_sat_case.clauses, budget_sat_session.model]]
 print of "  budgeted CDCL sessions: ok"
 
+# --- Tseitin torus generator ---------------------------------------------
+# Structure is asserted here (cheap); the expensive part -- that the odd-charge
+# case is genuinely UNSAT and its refutation verifies -- is covered by
+# tests/run_proof_check.sh against drat-trim, which keeps this suite fast.
+tseitin_odd is tseitin_torus_case of [3, 4, 1]
+assert_eq of ["tseitin odd expected UNSAT", tseitin_odd.expected, "UNSAT"]
+assert_eq of ["tseitin var count is one per torus edge", tseitin_odd.nvars, 24]
+assert_eq of ["tseitin clause count is 2^(deg-1) per vertex", len of tseitin_odd.clauses, 96]
+for tseitin_clause in tseitin_odd.clauses:
+    assert_eq of ["tseitin clause width is the vertex degree", len of tseitin_clause, 4]
+
+# Same graph, same clause count, charge parity flipped: this one is satisfiable.
+# The pair is the control that isolates parity as the source of hardness.
+tseitin_even is tseitin_torus_case of [3, 4, 0]
+assert_eq of ["tseitin even expected SAT", tseitin_even.expected, "SAT"]
+assert_eq of ["tseitin even same var count", tseitin_even.nvars, tseitin_odd.nvars]
+assert_eq of ["tseitin even same clause count", len of tseitin_even.clauses, len of tseitin_odd.clauses]
+tseitin_even_result is solve_cnf_cdcl of [tseitin_even.nvars, tseitin_even.clauses]
+assert_eq of ["tseitin even solves SAT", tseitin_even_result.status, "SAT"]
+assert_true of ["tseitin even model satisfies", model_satisfies of [tseitin_even.nvars, tseitin_even.clauses, tseitin_even_result.model]]
+
+# Degenerate sides are clamped to 3 so a vertex's four incident edges stay distinct.
+tseitin_clamped is tseitin_torus_case of [1, 2, 1]
+assert_eq of ["tseitin clamps rows/cols to 3", tseitin_clamped.nvars, 18]
+print of "  tseitin torus generator: ok"
+
+# --- Proof-shape counters -------------------------------------------------
+# Asserted on a cheap pigeonhole case, not the Tseitin one -- these solve the
+# instance and this suite is the fast gate.
+# peak_learnts is the high-water mark, not the end-of-solve count, so it must
+# be at least the surviving active_learnts. max_level must be positive on any
+# instance that took a decision.
+proof_php is pigeonhole_case of [6, 5]
+proof_shape is solve_cnf_cdcl of [proof_php.nvars, proof_php.clauses]
+assert_eq of ["proof-shape case is UNSAT", proof_shape.status, "UNSAT"]
+assert_true of ["peak_learnts >= surviving active_learnts", proof_shape.peak_learnts >= proof_shape.active_learnts]
+assert_true of ["peak_learnts <= total learnts", proof_shape.peak_learnts <= proof_shape.learnts]
+assert_true of ["max_level positive when decisions were made", proof_shape.max_level > 0]
+assert_true of ["max_level bounded by variable count", proof_shape.max_level <= proof_php.nvars]
+print of "  proof-shape counters: ok"
+
+# --- DRAT recording -------------------------------------------------------
+# Off by default (null options) and on when asked. Line count must be one per
+# learnt clause plus the final empty clause (text_builder_append_line leaves a
+# trailing newline, so the split yields one extra empty element).
+assert_eq of ["proof recording off by default", proof_shape.proof, null]
+proof_on is solve_cnf_cdcl_with_options of [proof_php.nvars, proof_php.clauses, {"proof": 1}]
+assert_eq of ["proof run still UNSAT", proof_on.status, "UNSAT"]
+assert_true of ["proof text recorded", (len of proof_on.proof) > 0]
+assert_eq of ["proof line per learnt plus empty clause", len of (split of [proof_on.proof, "\n"]), proof_on.learnts + 2]
+assert_eq of ["recording does not change the search", proof_on.resolutions, proof_shape.resolutions]
+print of "  DRAT recording: ok"
+
 print of "\n=== All EigenMiniSat solver tests passed ==="
