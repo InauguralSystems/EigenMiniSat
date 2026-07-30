@@ -242,3 +242,69 @@ Unresolved. 5x5 needs `>= ~1.9M` resolutions to confirm; the 6h attempt reached
 
 Note the asymmetry: a timeout can confirm this prediction but cannot falsify
 it. Only a closed 5x5 can do that.
+
+## Prediction 1 — UNRESOLVED (final, 2026-07-30 05:05)
+
+5x5 timed out again at the 8.5h cap: **1,549,543 resolutions = 16.22x**, short
+of the `>= 20x` threshold by 360,777. Not confirmed, not falsified. Two
+attempts totalling 14.5h of compute produced only a lower bound, and because
+there is no single-solve resume the second attempt re-derived the first
+attempt's entire trajectory before adding anything.
+
+| attempt | cap | reached | ratio |
+|---|---|---|---|
+| 1 | 6h | 1,194,575 | >= 12.5x |
+| 2 | 8.5h | 1,549,543 | >= 16.22x |
+
+### Root cause of every bad estimate this run: the rate decays
+
+Measured on attempt 2 — resolutions/s falls by half over the run as the learnt
+database grows:
+
+| elapsed | resolutions | rate |
+|---|---|---|
+| 0.4 h | 157,860 | 76 res/s |
+| 1.3 h | 400,993 | 65 res/s |
+| 2.6 h | 660,221 | 52 res/s |
+| 4.4 h | 980,865 | 45 res/s |
+| 6.3 h | 1,267,570 | 39 res/s |
+| 8.4 h | 1,549,543 | 35 res/s |
+
+Every projection made during this run extrapolated an early-phase rate and
+therefore overshot — three times, in the same direction, for the same reason.
+**Any cap or ETA for this workload must assume a decaying rate.** A linear
+extrapolation from the first hour is worthless. If 5x5's true size is near the
+48x that 3x3 -> 4x4 showed (~4.6M resolutions), finishing it in the
+interpreter needs on the order of 40h, not one night.
+
+### What should have been done first
+
+1. **Probe before scheduling.** A 10-minute run measuring rate *and its decay*
+   would have shown 5x5 was out of reach and collapsed the five-case ladder
+   into one decision. Instead the whole schedule was extrapolated from a single
+   data point (3x3 -> 4x4).
+2. **Check that a timeout is recoverable before relying on timeouts.** The
+   design leaned on "a capped case still yields a trajectory." True, but nearly
+   worthless: with no resume the trajectory cannot be extended, only
+   re-derived. That makes cap sizing a bet-the-run decision rather than a
+   hedge, and it was sized as though it were a hedge.
+3. **Question the runtime instead of accepting it.** "The square axis goes
+   intractable under the interpreter" was recorded as a *finding* and then a
+   night was spent confirming it, while `ouroboros/aot` exists. Fixing the
+   instrument comes before spending nights measuring around it.
+
+### Recommended next step — not another night of interpreter 5x5
+
+Either of these before any further 5x5 attempt:
+
+- **AOT feasibility probe** (`ouroboros/aot`): can the solver be compiled, and
+  what is the real speedup on this workload? If it lands anywhere near the
+  order of magnitude the AOT path has shown elsewhere, 5x5 becomes a
+  single-session run rather than a multi-day one.
+- **Serializable CDCL session state.** `cdcl_begin`/`cdcl_step` is already a
+  checkpoint mechanism in every respect except that the session cannot be
+  written to disk and reloaded. With that, a capped run resumes instead of
+  restarting, and long-run cap sizing stops being load-bearing.
+
+The ladder's central result (axis separation, x48.4 vs x5.77) does not depend
+on 5x5 and stands.
