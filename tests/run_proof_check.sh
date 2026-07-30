@@ -8,10 +8,13 @@
 # hole: --cdcl --proof emits a DRAT refutation and drat-trim, which shares no
 # code with this solver, verifies it independently.
 #
-# drat-trim signals its verdict in the exit code (0 verified, 1 not verified).
-# Do NOT grep for "s VERIFIED" -- drat-trim prefixes that line with a carriage
-# return, so line-anchored patterns silently never match and the check passes
-# no matter what the solver emitted.
+# drat-trim signals its verdict in the exit code: 0 verified, NONZERO not.
+# Test for zero, never for a specific failure code -- an invalid proof can exit
+# 1 or 255 (255 observed on a corrupted refutation), so `-eq 1` would let a
+# rejected proof through.
+# And do NOT grep for "s VERIFIED": drat-trim prefixes that line with a
+# carriage return, so line-anchored patterns silently never match and the check
+# passes no matter what the solver emitted.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
