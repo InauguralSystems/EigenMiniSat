@@ -170,3 +170,75 @@ same single-case plan.
 expansion-axis multiplier is *decreasing*, which contradicts the rising-
 multiplier pattern pigeonhole shows. This ladder cannot settle that on this
 hardware — it needs either much more time or a faster runtime.
+
+# Outcome
+
+Banked 2026-07-29 20:40 CDT. Written after the predictions above, which are
+unedited. **5x5 is still running** — see the open item at the end.
+
+## Measurements (closed cases only)
+
+| case | vars | clauses | resolutions | conflicts | learnt_lits | peak_learnts | max_level | wall |
+|---|---|---|---|---|---|---|---|---|
+| 3x3 | 18 | 72 | 1,974 | 673 | 3,557 | 143 | 11 | 1.7s |
+| 4x4 | 32 | 128 | 95,516 | 27,388 | 208,781 | 832 | 20 | 429s |
+| 4x5 | 40 | 160 | 551,098 | 135,285 | 1,109,225 | 1,619 | 27 | 6,285s |
+
+## Prediction 2 — band missed, core claim CONFIRMED
+
+Predicted 1.3x-5x per fixed-expansion step, with ~20x as the falsification
+threshold. **Measured 4x4 -> 4x5 = 5.77x.**
+
+The narrow band is missed (5.77 > 5), so the prediction as stated is wrong at
+the margin. The claim it was testing survives cleanly: 5.77x is nowhere near
+the 20x that would mean the rectangular axis is also exponential.
+
+**The axis separation is real and now measured on both sides with closed cases:**
+
+| axis | step | multiplier |
+|---|---|---|
+| expansion (`min(r,c)` grows) | 3x3 -> 4x4 | **x48.4** |
+| fixed-expansion (formula grows) | 4x4 -> 4x5 | **x5.77** |
+
+The expansion axis is **8.4x steeper per step**. That is the ladder's central
+result and it holds.
+
+## Prediction 3 — CONFIRMED
+
+Space grows far slower than size; the size/space ratio climbs steadily, so
+learnt-DB reduction is bounding clause space rather than letting it track proof
+size.
+
+| case | resolutions | peak_learnts | size/space |
+|---|---|---|---|
+| 3x3 | 1,974 | 143 | 14 |
+| 4x4 | 95,516 | 832 | 115 |
+| 4x5 | 551,098 | 1,619 | 340 |
+
+## Prediction 4 — correct
+
+5x5 did exceed its 6h cap, and the trajectory bounded it from below as designed.
+
+## Calibration lesson
+
+4x5 closed at **6,285s** against an original cap of 5,400s — it missed by
+**884 seconds, under 15 minutes.** The first cap was within ~15% of sufficient
+and still produced nothing but a bound. Two things follow for future long runs
+on this box: budget caps with a real margin rather than a point estimate, and
+prefer one case with generous headroom over several that each nearly finish.
+A case that nearly closes banks exactly as little as one that never starts.
+
+## Open: prediction 1
+
+Unresolved. 5x5 needs `>= ~1.9M` resolutions to confirm; the 6h attempt reached
+1,194,575 (`>= 12.5x`) without closing. Relaunched 2026-07-29 20:35 with an
+8.5h cap. Outcomes:
+
+- closes anywhere `>= 1.9M` -> prediction 1 confirmed
+- closes below `~1.9M` -> prediction 1 **falsified**, and the expansion-axis
+  multiplier is *decreasing* (48.4x then under 20x), which would contradict the
+  rising-multiplier pattern pigeonhole shows and is the more interesting result
+- times out again -> bound tightens toward ~18x, still unresolved
+
+Note the asymmetry: a timeout can confirm this prediction but cannot falsify
+it. Only a closed 5x5 can do that.
