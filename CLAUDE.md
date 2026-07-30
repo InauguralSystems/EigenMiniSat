@@ -140,6 +140,40 @@ own CI step.
   and size are routine-validation friendly. The vendored structural
   corpus is the bar.
 
+## Solver correctness: what actually gates it
+
+- **`--proof` + drat-trim is the only thing that catches unsound search.** It
+  found a real soundness bug on 2026-07-30 (see below) that every assertion in
+  the suite missed, because the *answer* was still UNSAT — pigeonhole is
+  unsatisfiable either way. A correct verdict reached by unsound reasoning is
+  invisible to a status assertion.
+- **`--model` emits DIMACS v-lines** so a SAT answer is externally checkable
+  too. Without it only UNSAT had an oracle.
+- **`tests/fuzz_differential.py`** — random instances across six shape families
+  (incl. tautological clauses, duplicate literals, unit-heavy, unused vars),
+  all four solver paths must agree, SAT models checked, UNSAT proofs
+  drat-trim'd. **`tests/fuzz_policy.py`** — the same oracle across compaction /
+  restart / phase policies on conflict-rich instances. Run both after any
+  change to propagation, conflict analysis, reduction or compaction.
+- **Small instances do not exercise the hard code.** 0 of 180 random instances
+  reached compaction; 4 reached clause-DB reduction. Reaching compaction needs
+  `--compact-policy eager` plus a few hundred conflicts. Any test that matters
+  for reduction/compaction must say so explicitly.
+- **`clause_locked` must scan the whole clause** (fixed 2026-07-30). It checked
+  position 0, which is wrong here: unlike MiniSat this solver never swaps
+  literals into slots 0/1, it tracks watch POSITIONS in `watch_a`/`watch_b`,
+  propagation moves them to arbitrary indices, and `rebuild_watches` resets
+  them to 0/1 regardless of which literal is asserting. So a learnt clause
+  still serving as a reason looked unlocked, got deleted, and the next
+  compaction remapped `state.reason[v]` to -1 — after which conflict analysis
+  reads an implied literal as a decision and can learn an unsound clause.
+  drat-trim REJECTED the resulting refutations. Regression:
+  `tests/fixtures/pigeonhole_6_5.cnf` under eager+luby in `run_proof_check.sh`.
+- **Counters banked before 2026-07-30 came from the buggy solver and shift
+  under the fix** — more clauses are correctly kept locked, so the search
+  differs. Tseitin 3x3 went 673 -> 619 learnt clauses. Re-measure before
+  comparing anything to a pre-fix number.
+
 ## Proof complexity surface
 
 The solver doubles as a proof-complexity instrument, because a CDCL refutation

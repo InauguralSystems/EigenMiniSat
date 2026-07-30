@@ -67,6 +67,22 @@ for cnf in $CASES; do
     fi
 done
 
+# Compaction-path regression (clause_locked position-0 bug, fixed 2026-07-30).
+# The cases above are all too small to trigger physical compaction, so they
+# cannot catch a dangling-reason bug. This one forces ~25 compactions and was
+# REJECTED by drat-trim before the fix.
+reg_cnf="tests/fixtures/pigeonhole_6_5.cnf"
+reg_proof="$WORK/pigeonhole_6_5_eager.drat"
+"$EIGS" minisat.eigs --cdcl --compact-policy eager --restart-policy luby \
+    --proof "$reg_proof" "$reg_cnf" >/dev/null
+if "$DRAT_TRIM" "$reg_cnf" "$reg_proof" >/dev/null 2>&1; then
+    echo "ok   pigeonhole_6_5 under eager compaction: refutation verified"
+else
+    echo "FAIL pigeonhole_6_5 under eager compaction: drat-trim rejected"
+    echo "     a learnt clause still in use as a reason was deleted (see clause_locked)"
+    fail=1
+fi
+
 # Planted fault: the checker must REJECT a proof with a needed lemma removed.
 # Without this, a checker that silently verifies everything (wrong path, bad
 # build, misread exit code) would let every case above pass.

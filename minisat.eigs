@@ -9,7 +9,7 @@ load_file of "lib/bench.eigs"
 
 define parse_args() as:
     argv is args of null
-    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": ""}
+    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": "", "show_model": 0, "compact_policy": "", "restart_policy": "", "phase_policy": ""}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
@@ -45,6 +45,20 @@ define parse_args() as:
             if i + 1 < (len of argv):
                 i += 1
                 cfg.proof is argv[i]
+        elif arg == "--model":
+            cfg.show_model is 1
+        elif arg == "--compact-policy":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.compact_policy is argv[i]
+        elif arg == "--restart-policy":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.restart_policy is argv[i]
+        elif arg == "--phase-policy":
+            if i + 1 < (len of argv):
+                i += 1
+                cfg.phase_policy is argv[i]
         elif arg == "--watched":
             cfg.solver is "watched"
         elif arg == "--persistent":
@@ -86,6 +100,10 @@ define print_help() as:
     print of "  eigenscript minisat.eigs --random-bench --size N"
     print of "  eigenscript minisat.eigs --proof-bench --size N"
     print of "  eigenscript minisat.eigs --cdcl --proof out.drat <file.cnf>"
+    print of "  eigenscript minisat.eigs --cdcl --model <file.cnf>"
+    print of "  eigenscript minisat.eigs --cdcl [--compact-policy eager|deferred|lazy]"
+    print of "                                 [--restart-policy geometric|luby]"
+    print of "                                 [--phase-policy saved|positive|negative|saved_negative] <file.cnf>"
     return null
 
 cfg is parse_args of null
@@ -135,9 +153,19 @@ else:
     elif cfg.solver == "persistent":
         result is solve_cnf_persistent of [parsed.nvars, parsed.clauses]
     elif cfg.solver == "cdcl":
-        cdcl_opts is null
+        # Build options from the CLI so the reduction/compaction/restart
+        # machinery is reachable without writing bench code. Before this, the
+        # eager-compaction path could only be driven from lib/bench.eigs, which
+        # is why randomized testing never reached it.
+        cdcl_opts is {}
         if cfg.proof != "":
-            cdcl_opts is {"proof": 1}
+            cdcl_opts.proof is 1
+        if cfg.compact_policy != "":
+            cdcl_opts.compact_policy is cfg.compact_policy
+        if cfg.restart_policy != "":
+            cdcl_opts.restart_policy is cfg.restart_policy
+        if cfg.phase_policy != "":
+            cdcl_opts.phase_policy is cfg.phase_policy
         result is solve_cnf_cdcl_with_options of [parsed.nvars, parsed.clauses, cdcl_opts]
     else:
         result is solve_cnf of [parsed.nvars, parsed.clauses]
@@ -146,6 +174,17 @@ else:
 
     if result.status == "SAT":
         print of "s SATISFIABLE"
+        # DIMACS v-lines. Without these a SAT answer is not externally
+        # checkable -- the mirror of the gap --proof closes for UNSAT. Gated on
+        # a flag so existing bench/baseline output is unchanged.
+        if cfg.show_model != 0:
+            model_line is "v"
+            for model_var in range of parsed.nvars:
+                model_lit is model_var + 1
+                if result.model[model_lit] < 0:
+                    model_lit is 0 - model_lit
+                model_line is model_line + f" {model_lit}"
+            print of (model_line + " 0")
     else:
         print of "s UNSATISFIABLE"
     counters is f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts}"

@@ -5,6 +5,23 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- **SOUNDNESS BUG FOUND AND FIXED (2026-07-30): `clause_locked` checked only
+  literal position 0.** This solver tracks watch POSITIONS in
+  `watch_a`/`watch_b` rather than swapping literals into slots 0/1 (MiniSat's
+  invariant), and `rebuild_watches` resets those positions to 0/1 on
+  compaction. So position 0 is not reliably the asserting literal, a learnt
+  clause still serving as a reason was judged unlocked, `reduce_learnt_db`
+  deleted it, and `compact_deleted_clauses` remapped `state.reason[v]` to -1.
+  Conflict analysis then reads that implied literal as a decision and can learn
+  an unsound clause. Confirmed by drat-trim REJECTING refutations of
+  pigeonhole-7-6 and of three random 3-SAT instances under eager compaction.
+  Fixed by scanning the clause (O(width), no measurable cost at these sizes).
+  **The counters banked before this date came from the buggy solver and change
+  under the fix.**
+  Root cause of the *miss*: the GAPS entry below records `clause_locked` being
+  changed to an O(1) position-0 check as an optimization, and nothing in the
+  suite could see the difference — small instances never compact.
+
 - **DRAT deletion lines not emitted (2026-07-29).** Proof recording writes
   additions only. Sound — withholding `d` lines leaves the checker with a
   superset of our clauses, which can only make a RUP check succeed, never

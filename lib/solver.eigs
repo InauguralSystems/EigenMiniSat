@@ -756,13 +756,32 @@ define decay_clause_activity(state, stats) as:
     return null
 
 define clause_locked(store, state, ci) as:
-    if (clause_store_size of [store, ci]) < 1:
+    # A clause is locked when it is the reason for some currently-assigned
+    # variable. Deleting a locked clause leaves a dangling reason: reduction
+    # only sets a flag, but the next compaction physically removes the clause
+    # and remaps state.reason[v] to -1, after which conflict analysis reads an
+    # IMPLIED literal as a decision and can learn an unsound clause.
+    #
+    # This must scan the clause. It cannot just check position 0 (as it did
+    # until 2026-07-30): unlike MiniSat this solver never swaps literals into
+    # slots 0/1 -- it tracks watch POSITIONS in watch_a/watch_b, which
+    # propagation moves to arbitrary indices, and rebuild_watches then resets
+    # them to 0/1 without regard to which literal is asserting. So neither
+    # position 0 nor the watch positions reliably hold the asserting literal.
+    # Confirmed unsound: pigeonhole-7-6 under --compact-policy eager produced a
+    # refutation that drat-trim REJECTED.
+    local size is clause_store_size of [store, ci]
+    if size < 1:
         return 0
-    local v is lit_abs of (clause_store_lit of [store, ci, 0])
-    if v >= (len of state.reason):
-        return 0
-    if state.reason[v] == ci:
-        return 1
+    local off is store.offsets[ci]
+    local lits is store.lits
+    local reason is state.reason
+    local nreason is len of reason
+    for pos in range of size:
+        local v is lit_abs of lits[off + pos]
+        if v < nreason:
+            if reason[v] == ci:
+                return 1
     return 0
 
 define count_active_learnts(state) as:
