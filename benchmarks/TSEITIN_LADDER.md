@@ -308,3 +308,78 @@ Either of these before any further 5x5 attempt:
 
 The ladder's central result (axis separation, x48.4 vs x5.77) does not depend
 on 5x5 and stands.
+
+# Adversarial review — 2026-07-30
+
+Review of this document's own claims. Two are withdrawn.
+
+## F1 — RETRACTED: the axis-separation result
+
+The "expansion axis is 8.4x steeper" headline compared **steps with unequal
+variable increments**: 3x3 -> 4x4 adds 14 variables, 4x4 -> 4x5 adds 8. Part of
+the x48.4 vs x5.77 gap is simply the bigger jump.
+
+Normalised per variable:
+
+| step | axis | +vars | ratio | per-variable |
+|---|---|---|---|---|
+| 3x3 -> 4x4 | expansion | +14 | x48.39 | 1.319x |
+| 4x4 -> 4x5 | flat | +8 | x5.77 | 1.245x |
+| 4x5 -> 5x5 | expansion | +10 | `>=`x2.81 | `>=`1.109x |
+
+Growth per variable is **monotonically decreasing and indifferent to which axis
+moved.** And the one clean single-dimension expansion step available
+(4x5 -> 5x5, where `min` goes 4 -> 5) is `>=`2.81x — *lower* than the flat
+step's 5.77x, i.e. currently the opposite direction.
+
+Note the design confound: starting from a square torus you cannot raise
+`min(r,c)` without adding both a row and a column, so "square cases" bundles
+expansion with a double-size jump. The step that breaks the confound is a
+**size-matched pair: 4x6 (48 vars, min=4) vs 5x5 (50 vars, min=5)**. 4x6 was
+killed mid-run as "more of the same on the cheap axis" — that judgement
+destroyed the control for the headline claim.
+
+**Status: the two-axis story is unsupported by this data.** Prediction 2's
+falsification threshold (20x) still was not crossed, so nothing here shows the
+rectangular axis *is* exponential either. The question is open, and 4x6 is the
+cheapest experiment that would move it.
+
+## F2 — WITHDRAWN: prediction 3 was vacuous
+
+"Space grows sub-linearly in size" is true but says nothing about Tseitin.
+`resolutions` is cumulative and unbounded; `peak_learnts` is pinned to the
+reduction schedule — `learnt_limit` starts at 4 and grows +2 per reduce run, so
+`peak_learnts ~= 4 + 2 * reduce_runs` (143, 832, 1619, 1842 imply ~70, ~414,
+~808, ~919 reduce runs). The ratio climbing is a restatement of the DB policy.
+A real size-vs-space result needs proof space for a *fixed* refutation.
+
+## F3 — REFUTED (a review hypothesis, not a prior claim)
+
+Hypothesis: the rate decay (76 -> 35 res/s) is an implementation artifact,
+because `count_active_learnts` is O(total clauses) and runs every conflict.
+Tested with an incrementally maintained counter: 4x4 went 429.2s -> **410.4s,
+just 4.4%**, with byte-identical counters. **Refuted.** The decay is not that
+scan, and the conclusion that 5x5 is out of reach under the interpreter stands.
+
+## F4 — the O(1) counter is a bad trade regardless
+
+It introduces an invariant only `build_cdcl_state` maintains. The hand-built
+`reduce_state` in `tests/test_solver.eigs` broke instantly with "cannot compare
+none and num". `count_active_learnts` derives from the arrays and needs no
+invariant — worth keeping for 4%, especially with the EigenOS ROM-bundle path
+constructing state independently.
+
+## What survives the review
+
+- **The generator is genuine.** Every edge appears in exactly two vertices'
+  incident lists, every vertex has degree 4 with four distinct edges, verified
+  for 3x3, 3x4, 4x4, 4x5, 5x5, 3x7, 6x4. That incidence-exactly-2 property is
+  what makes XOR-ing all vertex constraints cancel every edge and leave
+  `0 = sum(charges)`, so odd charge really does imply UNSAT.
+- **The closed measurements**: 3x3 = 1,974, 4x4 = 95,516, 4x5 = 551,098.
+- **The DRAT oracle.** Only one `add_cdcl_clause` site emits (learnt=1);
+  compaction does not route through it, so there is no double-emission. With
+  drat-trim verification plus the planted-fault rejection, the claim holds.
+- **Pigeonhole == coloring**, refined: the CNFs are *not* byte-identical (clause
+  order differs) but have identical variable and clause counts and produce
+  byte-identical solver counters. Same principle, as claimed.

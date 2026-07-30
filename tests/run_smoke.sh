@@ -8,6 +8,7 @@ EIGS="${EIGENSCRIPT_BIN:-$(command -v eigenscript || echo ../EigenScript/src/eig
 
 cd "$ROOT"
 "$EIGS" tests/test_solver.eigs
+"$EIGS" tests/test_tseitin_invariant.eigs
 "$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/simple_sat.cnf

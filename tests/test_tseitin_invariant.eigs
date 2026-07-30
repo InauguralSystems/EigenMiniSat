@@ -1,0 +1,53 @@
+# Structural oracle for the Tseitin generator: every edge must appear in EXACTLY
+# two vertices' incident-edge lists. That is what makes XOR-ing all vertex
+# constraints cancel every edge and leave 0 = sum(charges), so odd charge implies
+# UNSAT. Cheap (no solving), and it is the check that separates "a genuine Tseitin
+# formula" from "some UNSAT CNF that happens to look like one".
+load_file of "lib/int_vector.eigs"
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+# ADVERSARIAL INVARIANT: in a Tseitin formula every edge must appear in EXACTLY
+# two vertices' incident-edge lists. That is what makes XOR-ing all vertex
+# constraints cancel every edge and leave 0 = sum(charges), which is the whole
+# reason odd charge implies UNSAT. If any edge appears 1 or 3 times, the object
+# is not a Tseitin formula and every number banked from it is meaningless.
+for spec in [[3, 3], [3, 4], [4, 4], [4, 5], [5, 5], [3, 7], [6, 4]]:
+    rows is spec[0]
+    cols is spec[1]
+    counts is int_vector_filled of [(2 * rows * cols) + 1, 0]
+    degree_ok is 1
+    for r in range of rows:
+        for c in range of cols:
+            edges is tseitin_vertex_edges of [r, c, rows, cols]
+            if (len of edges) != 4:
+                degree_ok is 0
+            # distinctness within the vertex
+            for i in range of 4:
+                for j in range of 4:
+                    if i < j:
+                        if edges[i] == edges[j]:
+                            degree_ok is 0
+            for e in edges:
+                counts[e] += 1
+    bad is 0
+    lo is 99
+    hi is 0
+    for v in range of (2 * rows * cols):
+        n is counts[v + 1]
+        if n != 2:
+            bad += 1
+        if n < lo:
+            lo is n
+        if n > hi:
+            hi is n
+    verdict is "FAIL"
+    if bad == 0:
+        if degree_ok == 1:
+            verdict is "ok"
+    assert of [bad == 0, f"tseitin edge incidence != 2 for {rows}x{cols}"]
+    assert of [degree_ok == 1, f"tseitin vertex not degree-4-distinct for {rows}x{cols}"]
+    print of f"{rows}x{cols}: edges={2 * rows * cols} incidence_min={lo} incidence_max={hi} wrong_incidence={bad} degree4_distinct={degree_ok} -> {verdict}"
+
+print of "=== Tseitin structural invariant: ok ==="
