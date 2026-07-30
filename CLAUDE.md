@@ -157,23 +157,38 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   self-validating in the way a planted fault validates a checker.
 - Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
   n = 3..6 (x5.4, x6.1, x9.7, multiplier rising).
-- **Tseitin has two axes and they are NOT the same** (ladder run 2026-07-29,
-  `benchmarks/TSEITIN_LADDER.md` is the record of record):
-
-  | axis | step | multiplier |
-  |---|---|---|
-  | expansion, `min(rows,cols)` grows | 3x3 -> 4x4 | **x48.4** |
-  | fixed-expansion, formula grows | 4x4 -> 4x5 | **x5.77** |
-
-  Closed cases: 3x3 = 1,974 resolutions (1.7s), 4x4 = 95,516 (429s),
-  4x5 = 551,098 (6,285s). The expansion axis is 8.4x steeper per step, so
-  **scale the square dimension when you want hardness and the rectangular one
-  when you want a bigger formula at constant hardness.** 5x5 exceeded a 6h cap
-  at 1.19M resolutions without closing — it is out of reach here.
-- Space is bounded, size is not: size/space (`resolutions` / `peak_learnts`)
-  climbs 14 -> 115 -> 340 across 3x3/4x4/4x5. Learnt-DB reduction is doing its
-  job; if that ratio ever stops climbing, suspect reduction before suspecting
-  the family.
+- **Tseitin closed measurements** (ladder run 2026-07-29,
+  `benchmarks/TSEITIN_LADDER.md` is the record of record): 3x3 = 1,974
+  resolutions (1.7s), 4x4 = 95,516 (429s), 4x5 = 551,098 (6,285s). 5x5 is out
+  of reach here — two attempts totalling 14.5h reached only 1,549,543 without
+  closing.
+- **RETRACTED 2026-07-30 (adversarial review): there is no measured "two axis"
+  separation.** An earlier version of this file claimed the expansion axis was
+  8.4x steeper than the fixed-expansion axis and told you to scale the square
+  dimension for hardness. That compared steps with unequal variable increments
+  (3x3->4x4 adds 14 vars, 4x4->4x5 adds 8). Normalised per variable the growth
+  is 1.319x, 1.245x, then `>=`1.109x — *decreasing*, and indifferent to which
+  axis moved. Worse, the only clean single-dimension expansion step in the data
+  (4x5 -> 5x5) is `>=`2.81x, which is *lower* than the flat step's 5.77x. The
+  size-matched control that could settle it is **4x6 (48 vars, min=4) against
+  5x5 (50 vars, min=5)** — and 4x6 was killed mid-run as "more of the same on
+  the cheap axis", destroying the control. Do not repeat the claim without
+  running 4x6.
+- **Do not read `resolutions` / `peak_learnts` as a size-vs-space finding.**
+  That ratio climbs by construction: `resolutions` is cumulative and unbounded
+  while `peak_learnts` is pinned to the reduction schedule
+  (`learnt_limit` starts at 4 and grows +2 per reduce run, so
+  `peak_learnts ~= 4 + 2 * reduce_runs`). It measures the DB policy, not the
+  formula family. A real size-vs-space result needs proof space for a *fixed*
+  refutation, not a policy-capped high-water mark.
+- **`count_active_learnts` is O(total clauses) and runs every conflict** (via
+  `reduce_learnt_db`), but it is NOT the bottleneck: replacing it with an
+  incrementally maintained counter bought only **4.4%** at 4x4 (429.2s ->
+  410.4s, counters byte-identical). Do not "fix" it — the incremental version
+  adds a state invariant that only `build_cdcl_state` maintains, and the
+  hand-built `reduce_state` in `tests/test_solver.eigs` breaks immediately
+  ("cannot compare none and num"). `count_active_learnts` derives from the
+  arrays and needs no invariant; that robustness is worth 4%.
 - **Long-run caps need margin, not point estimates.** 4x5 closed at 6,285s
   against a 5,400s cap — missed by under 15 minutes and banked nothing but a
   bound. A case that nearly closes banks exactly as little as one that never
