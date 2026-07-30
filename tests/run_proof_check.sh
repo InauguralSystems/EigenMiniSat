@@ -8,10 +8,13 @@
 # hole: --cdcl --proof emits a DRAT refutation and drat-trim, which shares no
 # code with this solver, verifies it independently.
 #
-# drat-trim signals its verdict in the exit code (0 verified, 1 not verified).
-# Do NOT grep for "s VERIFIED" -- drat-trim prefixes that line with a carriage
-# return, so line-anchored patterns silently never match and the check passes
-# no matter what the solver emitted.
+# drat-trim signals its verdict in the exit code: 0 verified, NONZERO not.
+# Test for zero, never for a specific failure code -- an invalid proof can exit
+# 1 or 255 (255 observed on a corrupted refutation), so `-eq 1` would let a
+# rejected proof through.
+# And do NOT grep for "s VERIFIED": drat-trim prefixes that line with a
+# carriage return, so line-anchored patterns silently never match and the check
+# passes no matter what the solver emitted.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -66,6 +69,22 @@ for cnf in $CASES; do
         fail=1
     fi
 done
+
+# Compaction-path regression (clause_locked position-0 bug, fixed 2026-07-30).
+# The cases above are all too small to trigger physical compaction, so they
+# cannot catch a dangling-reason bug. This one forces ~25 compactions and was
+# REJECTED by drat-trim before the fix.
+reg_cnf="tests/fixtures/pigeonhole_6_5.cnf"
+reg_proof="$WORK/pigeonhole_6_5_eager.drat"
+"$EIGS" minisat.eigs --cdcl --compact-policy eager --restart-policy luby \
+    --proof "$reg_proof" "$reg_cnf" >/dev/null
+if "$DRAT_TRIM" "$reg_cnf" "$reg_proof" >/dev/null 2>&1; then
+    echo "ok   pigeonhole_6_5 under eager compaction: refutation verified"
+else
+    echo "FAIL pigeonhole_6_5 under eager compaction: drat-trim rejected"
+    echo "     a learnt clause still in use as a reason was deleted (see clause_locked)"
+    fail=1
+fi
 
 # Planted fault: the checker must REJECT a proof with a needed lemma removed.
 # Without this, a checker that silently verifies everything (wrong path, bad
