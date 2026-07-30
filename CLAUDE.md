@@ -156,11 +156,29 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   are broken, not that the theorem is wrong. That makes the bench
   self-validating in the way a planted fault validates a checker.
 - Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
-  n = 3..6 (x5.4, x6.1, x9.7, multiplier rising). Tseitin 3x3 = 1974
-  resolutions; 4x4 = 95516 (x48 for one step of the expansion axis, ~450s).
-  The square axis is the real hardness axis, and it goes intractable
-  immediately under the interpreter — hence the odd/even control pair at 3x3
-  instead of a square ladder.
+  n = 3..6 (x5.4, x6.1, x9.7, multiplier rising).
+- **Tseitin has two axes and they are NOT the same** (ladder run 2026-07-29,
+  `benchmarks/TSEITIN_LADDER.md` is the record of record):
+
+  | axis | step | multiplier |
+  |---|---|---|
+  | expansion, `min(rows,cols)` grows | 3x3 -> 4x4 | **x48.4** |
+  | fixed-expansion, formula grows | 4x4 -> 4x5 | **x5.77** |
+
+  Closed cases: 3x3 = 1,974 resolutions (1.7s), 4x4 = 95,516 (429s),
+  4x5 = 551,098 (6,285s). The expansion axis is 8.4x steeper per step, so
+  **scale the square dimension when you want hardness and the rectangular one
+  when you want a bigger formula at constant hardness.** 5x5 exceeded a 6h cap
+  at 1.19M resolutions without closing — it is out of reach here.
+- Space is bounded, size is not: size/space (`resolutions` / `peak_learnts`)
+  climbs 14 -> 115 -> 340 across 3x3/4x4/4x5. Learnt-DB reduction is doing its
+  job; if that ratio ever stops climbing, suspect reduction before suspecting
+  the family.
+- **Long-run caps need margin, not point estimates.** 4x5 closed at 6,285s
+  against a 5,400s cap — missed by under 15 minutes and banked nothing but a
+  bound. A case that nearly closes banks exactly as little as one that never
+  started. Prefer one case with generous headroom over several that each nearly
+  finish.
 
 Honest ceiling: measurement bounds proof size from *above*. Every result that
 matters in proof complexity is a lower bound, and those are theorems. This
