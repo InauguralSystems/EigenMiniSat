@@ -5,6 +5,10 @@ Predictions below are committed ahead of the run so the result can falsify
 them. Do not edit the predictions after reading results — append an outcome
 section instead.
 
+> **2026-07-30:** every counter in this document up to the *Post-soundness-fix
+> status* section at the bottom was measured on the pre-fix solver (#74,
+> `clause_locked`). Read that section before comparing against any number here.
+
 ## What is being measured
 
 Resolution refutation size, clause space, and depth for Tseitin formulas over
@@ -383,3 +387,38 @@ constructing state independently.
 - **Pigeonhole == coloring**, refined: the CNFs are *not* byte-identical (clause
   order differs) but have identical variable and clause counts and produce
   byte-identical solver counters. Same principle, as claimed.
+
+# Post-soundness-fix status — 2026-07-30
+
+Every counter above this section was measured on the **pre-fix solver**: the
+`clause_locked` position-0 bug (fixed in `0a9fe58`, #74) let learnt clauses
+still serving as reasons be deleted, so the search trajectory — and therefore
+every counter — differs under the fixed solver. The UNSAT verdicts stand (odd
+charge is UNSAT by construction), but pre-fix counters must not be compared
+against post-fix runs.
+
+Post-fix re-measurements (this box, same generator, default policies):
+
+| case | resolutions | conflicts | wall | pre-fix banked |
+|---|---|---|---|---|
+| 3x3-odd | 1,850 | 619 | ~2.2s | 1,974 / 673 |
+| 4x4-odd | 96,733 | 27,421 | ~671s | 95,516 / 27,388 |
+
+- Counter shifts are small (3x3 −6.3%, 4x4 +1.3% in resolutions) — the searches
+  are different but the family's shape is unchanged. The 3x3 → 4x4 step is now
+  **x52.3** (was x48.4).
+- Wall times are single runs (counter claims need n=1; the solver is
+  deterministic). The 4x4 wall (671s vs ~450s pre-fix) is not a measured
+  regression claim — the fix makes `clause_locked` O(width) and the box was not
+  idle; an n=5 comparison would be needed to attribute it.
+- **4x5 and 5x5 are not re-measured.** 4x5 cost 6,285s pre-fix and 5x5 never
+  closed in 14.5h; both stay blocked on a faster tier. The AOT probe this
+  document recommended was run 2026-07-30 and **failed to compile**: the
+  emitter has no `dot_assign` statement emission (72 sites in
+  `lib/solver.eigs`), filed as ouroboros#86. That issue is now the critical
+  path for 5x5 and for the 4x6-vs-5x5 control from the F1 retraction.
+- The review's retractions (F1 axis-separation, F2 vacuous space prediction)
+  are methodological and stand regardless of the counter shifts. "The closed
+  measurements" listed under *What survives the review* survive only as
+  pre-fix values — superseded by the table here for 3x3 and 4x4, and 4x5's
+  551,098 carries the pre-fix caveat until re-measured.
