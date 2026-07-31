@@ -12,10 +12,12 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   therefore include on the order of a thousand silent early loop exits per
   run. Soundness is unaffected — conflicts are re-verified and drat-trim
   accepts the refutations — but banked counters measure "solver + periodic
-  loop truncation", deterministically per runtime version. Do not compare
-  long-run counters across runtime versions until #772 lands; after it lands,
-  the ladder needs another re-bank (third counter regime: pre-clause_locked,
-  post-clause_locked, post-#772).
+  loop truncation", deterministically per runtime version. **#772 shipped in
+  EigenScript v0.34.0 (PR #773); the CI pin is now v0.34.0.** All Tseitin
+  ladder counters banked on v0.33.0-or-earlier are pre-#772; the ladder's
+  third counter regime (pre-clause_locked / post-clause_locked / post-#772)
+  is now actionable — re-bank 3x3/4x4 on v0.34.0 before comparing anything
+  new against them.
 - **SOUNDNESS BUG FOUND AND FIXED (2026-07-30): `clause_locked` checked only
   literal position 0.** This solver tracks watch POSITIONS in
   `watch_a`/`watch_b` rather than swapping literals into slots 0/1 (MiniSat's
