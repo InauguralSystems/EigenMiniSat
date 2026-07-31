@@ -422,3 +422,26 @@ Post-fix re-measurements (this box, same generator, default policies):
   measurements" listed under *What survives the review* survive only as
   pre-fix values — superseded by the table here for 3x3 and 4x4, and 4x5's
   551,098 carries the pre-fix caveat until re-measured.
+
+## Third regime check — EigenScript #772 (v0.34.0, 2026-07-31): NO-OP at these sizes
+
+EigenScript #772 (fixed in v0.34.0) revealed the runtime had been silently
+breaking the running loop every 1e8 cumulative *in-frame* iterations, which
+put every long ladder run under suspicion of a third counter regime.
+Re-measured on the released v0.34.0 (tag-verified binary):
+
+| case | resolutions | conflicts | vs post-clause_locked bank |
+|---|---|---|---|
+| 3x3-odd | 1,850 | 619 | **byte-identical** |
+| 4x4-odd | 96,733 | 27,421 | **byte-identical** (655s wall) |
+
+The pre-#772 cap counter reset at every call frame, and this harness solves
+via `cdcl_begin`/`cdcl_step` with a 300-conflict budget per step — each step
+is its own frame and stays far under 1e8 iterations, so the cap never fired
+inside the ladder. **Regimes 2 and 3 coincide: the post-clause_locked bank
+(2026-07-30) stands as-is on v0.34.0.** Only two counter regimes exist in
+this document: pre-clause_locked (all numbers above the post-fix section)
+and post-clause_locked (its table, unchanged by #772). Caveat kept: this
+no-op finding is about the *stepped* harness — a monolithic solve call at 4x5+
+scale on a pre-v0.34.0 runtime could still have crossed 1e8 in one frame,
+so the 4x5 551,098 figure keeps its pre-fix caveat on both counts.
