@@ -5,6 +5,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
 
 ## Open Watchlist
 
+- **Upstream EigenScript #772 (2026-07-31): the runtime silently breaks the
+  running loop every 1e8 cumulative loop iterations** (default sandbox cap
+  active outside any sandbox; found by polymethod's differential oracle).
+  Long CDCL runs (Tseitin 4x4+, pigeonhole overnight runs, ~1e11 iterations)
+  therefore include on the order of a thousand silent early loop exits per
+  run. Soundness is unaffected — conflicts are re-verified and drat-trim
+  accepts the refutations — but banked counters measure "solver + periodic
+  loop truncation", deterministically per runtime version. Do not compare
+  long-run counters across runtime versions until #772 lands; after it lands,
+  the ladder needs another re-bank (third counter regime: pre-clause_locked,
+  post-clause_locked, post-#772).
 - **SOUNDNESS BUG FOUND AND FIXED (2026-07-30): `clause_locked` checked only
   literal position 0.** This solver tracks watch POSITIONS in
   `watch_a`/`watch_b` rather than swapping literals into slots 0/1 (MiniSat's
