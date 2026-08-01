@@ -445,3 +445,27 @@ and post-clause_locked (its table, unchanged by #772). Caveat kept: this
 no-op finding is about the *stepped* harness — a monolithic solve call at 4x5+
 scale on a pre-v0.34.0 runtime could still have crossed 1e8 in one frame,
 so the 4x5 551,098 figure keeps its pre-fix caveat on both counts.
+
+## Off-box control launch — 2026-07-31 (operational note, no new predictions)
+
+The F1-retraction control (**4x6, 48 vars, min=4 vs 5x5, 50 vars, min=5**)
+launched as two HF Space CPU lanes — `ems-tseitin-4x6` and `ems-tseitin-5x5`,
+tag `tseitin-control-2026-07-31`, results to the private
+`InauguralSystems/eigenminisat-results` dataset. Pins: EigenScript v0.34.0
+(tag), EigenMiniSat 92cb48b. Harness: `benchmarks/tseitin_ladder.eigs`
+(stepped sessions, progress every 300s), no cap — the calibration lesson
+applied; periodic log uploads mean a killed lane still banks a bound.
+
+**Preflight gate, run per-lane before the long case:** 3x3 and 4x4 must
+reproduce the post-clause_locked v0.34.0 bank **byte-identically**
+(1,850/619 and 96,733/27,421 resolutions/conflicts). Counters are the result
+of record and the control compares lane counters against the devbox-banked
+4x4, so cross-host counter portability is load-bearing; a preflight mismatch
+kills the lane loudly and is itself a finding. Wall times from the lanes are
+per-host color only and must not be compared with devbox walls.
+
+What the control decides when both cases close: if 5x5 resolutions clearly
+exceed 4x6's at matched size (~±2 vars), the expansion axis survives the F1
+retraction; if they land close, the "min(r,c) is the hardness axis" story is
+dead at this scale. Prediction 1's `>= 20x` threshold (>= ~1.9M resolutions
+vs the 4x4 bank) also finally resolves if 5x5 closes.
