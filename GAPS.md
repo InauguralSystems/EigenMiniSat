@@ -13,13 +13,17 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   run. Soundness is unaffected — conflicts are re-verified and drat-trim
   accepts the refutations — but banked counters measure "solver + periodic
   loop truncation", deterministically per runtime version. **#772 shipped in
-  EigenScript v0.34.0 (PR #773); the CI pin is now v0.34.0. RE-BANK DONE
+  EigenScript v0.34.0 (PR #773); the CI pin is now v0.35.1. RE-BANK DONE
   (2026-07-31): 3x3 and 4x4 on the released v0.34.0 are byte-identical to
   the post-clause_locked bank** — the stepped `cdcl_begin`/`cdcl_step`
   harness resets the old cap's per-frame counter every 300-conflict step, so
   the cap never fired inside the ladder; regimes 2 and 3 coincide. See the
   ladder's "Third regime check" section. The pre-clause_locked 4x5 number
-  keeps its caveat.
+  keeps its caveat. **RE-VERIFIED on the released v0.35.1 (2026-08-03, at
+  the pin bump): 3x3 = 1,850 resolutions / 619 conflicts and 4x4 = 96,733 /
+  27,421, both byte-identical to the v0.34.0 bank** (UNSAT, 4x4 wall 675s
+  on the devbox — wall is per-host color only). The runtime bump did not
+  move a single solver-visible counter, so no re-bank was needed.
 - **SOUNDNESS BUG FOUND AND FIXED (2026-07-30): `clause_locked` checked only
   literal position 0.** This solver tracks watch POSITIONS in
   `watch_a`/`watch_b` rather than swapping literals into slots 0/1 (MiniSat's
