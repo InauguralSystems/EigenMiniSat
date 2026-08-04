@@ -13,7 +13,7 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   run. Soundness is unaffected — conflicts are re-verified and drat-trim
   accepts the refutations — but banked counters measure "solver + periodic
   loop truncation", deterministically per runtime version. **#772 shipped in
-  EigenScript v0.34.0 (PR #773); the CI pin is now v0.35.2. RE-BANK DONE
+  EigenScript v0.34.0 (PR #773); the CI pin is now v0.36.0. RE-BANK DONE
   (2026-07-31): 3x3 and 4x4 on the released v0.34.0 are byte-identical to
   the post-clause_locked bank** — the stepped `cdcl_begin`/`cdcl_step`
   harness resets the old cap's per-frame counter every 300-conflict step, so
