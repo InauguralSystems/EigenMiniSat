@@ -191,23 +191,25 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   self-validating in the way a planted fault validates a checker.
 - Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
   n = 3..6 (x5.4, x6.1, x9.7, multiplier rising).
-- **Tseitin closed measurements** (ladder run 2026-07-29,
-  `benchmarks/TSEITIN_LADDER.md` is the record of record): 3x3 = 1,974
-  resolutions (1.7s), 4x4 = 95,516 (429s), 4x5 = 551,098 (6,285s). 5x5 is out
-  of reach here — two attempts totalling 14.5h reached only 1,549,543 without
-  closing.
-- **RETRACTED 2026-07-30 (adversarial review): there is no measured "two axis"
-  separation.** An earlier version of this file claimed the expansion axis was
-  8.4x steeper than the fixed-expansion axis and told you to scale the square
-  dimension for hardness. That compared steps with unequal variable increments
-  (3x3->4x4 adds 14 vars, 4x4->4x5 adds 8). Normalised per variable the growth
-  is 1.319x, 1.245x, then `>=`1.109x — *decreasing*, and indifferent to which
-  axis moved. Worse, the only clean single-dimension expansion step in the data
-  (4x5 -> 5x5) is `>=`2.81x, which is *lower* than the flat step's 5.77x. The
-  size-matched control that could settle it is **4x6 (48 vars, min=4) against
-  5x5 (50 vars, min=5)** — and 4x6 was killed mid-run as "more of the same on
-  the cheap axis", destroying the control. Do not repeat the claim without
-  running 4x6.
+- **Tseitin closed measurements** (post-clause_locked regime;
+  `benchmarks/TSEITIN_LADDER.md` is the record of record): 3x3 = 1,850
+  resolutions, 4x4 = 96,733, 4x5 = 489,112, 4x6 = 3,798,224,
+  **5x5 = 13,292,633**. 4x5+ closed on HF Space lanes (EigenScript v0.34.0,
+  byte-identical 3x3/4x4 preflights on each lane, so the counters are one
+  regime with the devbox bank); every pre-fix figure — including the old
+  4x5 = 551,098 — is superseded. Cross-host wall times are color only.
+- **RETRACTED 2026-07-30, then the control RAN (2026-08-05) and the axis
+  survives.** An earlier version of this file claimed an "8.4x steeper"
+  expansion axis from steps with unequal variable increments — that
+  comparison stays retracted; do not cite it. The size-matched control it
+  demanded — **4x6 (48 vars, min=4) vs 5x5 (50 vars, min=5)** — has now
+  closed: 5x5 cost **x3.50** the resolutions of 4x6 at matched size
+  (x1.87/var over the 2-var step, vs the flat axis's x1.29/var on 4x5→4x6).
+  Raising min(r,c) is the expensive way to add variables at this scale.
+  Prediction 1 confirmed at x137.4 (threshold was x20). Expansion-step
+  multipliers grow (3x3→4x4 = x52.3, 4x4→5x5 = x137.4); flat steps at min=4
+  run x5.06, x7.77. Two-case comparison, upper-bound instrument — the ladder
+  doc carries the full scope discipline.
 - **Do not read `resolutions` / `peak_learnts` as a size-vs-space finding.**
   That ratio climbs by construction: `resolutions` is cumulative and unbounded
   while `peak_learnts` is pinned to the reduction schedule

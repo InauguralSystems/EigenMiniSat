@@ -469,3 +469,52 @@ exceed 4x6's at matched size (~±2 vars), the expansion axis survives the F1
 retraction; if they land close, the "min(r,c) is the hardness axis" story is
 dead at this scale. Prediction 1's `>= 20x` threshold (>= ~1.9M resolutions
 vs the 4x4 bank) also finally resolves if 5x5 closes.
+
+## Control result — 2026-08-05: both lanes closed; the expansion axis survives
+
+Both control lanes closed UNSAT with green preflights (3x3 and 4x4
+byte-identical to the devbox v0.34.0 bank on both lanes, so every number
+below is one counter regime — post-clause_locked — and directly comparable).
+The 4x6 lane was then reused to re-measure 4x5 post-fix, retiring the last
+pre-fix figure in the ladder.
+
+**The post-clause_locked bank, now complete (resolutions / conflicts):**
+
+| case | vars | min(r,c) | resolutions | conflicts | host |
+|---|---|---|---|---|---|
+| 3x3 | 18 | 3 | 1,850 | 619 | devbox + both lanes (preflight) |
+| 4x4 | 32 | 4 | 96,733 | 27,421 | devbox + both lanes (preflight) |
+| 4x5 | 40 | 4 | 489,112 | 118,082 | HF lane (supersedes pre-fix 551,098) |
+| 4x6 | 48 | 4 | 3,798,224 | 695,815 | HF lane |
+| 5x5 | 50 | 5 | 13,292,633 | 3,305,826 | HF lane |
+
+**The control verdict: at matched size, min=5 costs x3.50 what min=4 costs**
+(5x5 = 13,292,633 vs 4x6 = 3,798,224; 50 vs 48 vars). That is not "close" —
+the expansion axis survives its retraction *as measured at this scale*. The
+per-variable view that drove the F1 retraction agrees now that the control
+exists: the flat step 4x5→4x6 grows x7.77 over 8 added vars (x1.29/var),
+while the cross-axis step 4x6→5x5 jumps x3.50 over 2 added vars (x1.87/var).
+Raising min(r,c) is the more expensive way to add variables, which is what
+"expansion drives hardness" predicts and what the pre-retraction data could
+not legitimately show.
+
+**Prediction 1 — CONFIRMED.** The threshold was 5x5 >= 20x the 4x4 bank
+(>= ~1.9M resolutions). Measured: **x137.4**. For the axis ladder: the
+expansion steps are 3x3→4x4 = x52.3 and 4x4→5x5 = x137.4 — the multiplier
+itself grows, as an exponential-in-min(r,c) family should — while the flat
+steps at min=4 run x5.06, x7.77.
+
+Scope kept honest: this is one family, one size point per step, an
+upper-bound instrument (the solver's refutation bounds proof size from
+above), and the x3.50 is a two-case comparison, not a fitted curve. It
+settles what the retraction demanded settled — the size-matched control now
+exists and it did not kill the axis — nothing more.
+
+Operational notes for the next long lane: free HF Spaces auto-sleep on HTTP
+inactivity (dataset polling generates none) — the 5x5 lane slept at 24.0h /
+8.55M resolutions and was restarted 2026-08-02; the deterministic rerun
+retraced and closed at 76.6h wall (run-1 partial preserved as
+`run1-partial-24h.log` in the dataset). Keep-alive pings must target the
+Space itself; a devbox cron entry (every 30 min) plus a daily monotone
+frontier snapshot in the dataset is the pattern that held. Wall times above
+are per-host color; counters are the record.
