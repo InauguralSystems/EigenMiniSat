@@ -518,3 +518,45 @@ retraced and closed at 76.6h wall (run-1 partial preserved as
 Space itself; a devbox cron entry (every 30 min) plus a daily monotone
 frontier snapshot in the dataset is the pattern that held. Wall times above
 are per-host color; counters are the record.
+
+---
+
+## RE-MEASUREMENT REQUIRED — 2026-08-09 (#84 / #85 / #86)
+
+Every number above was measured under three CDCL defects that have since been
+fixed, and all three change the search:
+
+- **#84** — variable activity never rescaled, so `var_inc` saturated at 1e308 on
+  conflict 13,828 and VSIDS collapsed to static lowest-index-first branching.
+  3x3 (619 conflicts) ran entirely in the healthy regime; 4x4 (27,388) spent
+  most of its run in the degenerate one; 4x5 and beyond were wholly degenerate.
+- **#85** — the deletion key packed LBD and activity into one scalar with a
+  fixed 1e6 factor, so LBD stopped being the major term at ~13,805 conflicts.
+- **#86** — the learnt DB was sized by a constant (4, +2 per reduce run) rather
+  than against the instance.
+
+Re-measured on the same instance and binary, options-selected arms (BASELINE.md
+has the full table):
+
+| case | resolutions (banked, ALL-OLD) | resolutions (new defaults) |
+|---|---|---|
+| 3x3 | 1,974 *(1,850 re-run under ALL-OLD)* | 1,681 |
+| 4x4 | 95,516 *(96,733 re-run under ALL-OLD)* | 33,873 |
+| 4x5 | 551,098 | **not re-measured** |
+| 5x5 | (never closed) | **not re-measured** |
+
+The ALL-OLD re-runs reproduce the banked 4x4 to within 1.3%, so the banked
+figures are sound *for the policy they were measured under*.
+
+**What this does and does not do to the ladder's result.** The expansion step
+`3x3 -> 4x4` moves from **x48.4** to **x20.2**. The ladder's central claim is
+not that multiplier but the *separation* between the expansion axis and the
+fixed-expansion axis (`4x4 -> 4x5 = x5.77`), and that comparison no longer has
+both sides measured under the same policy. Nothing here refutes the
+separation — 4x5 has simply not been re-run. Until it is, treat every
+multiplier above as a measurement of the old DB/heuristic policy as much as of
+the formula family, which is exactly the confound #86 was filed about.
+
+Cost of the re-measurement: 4x5 was 6,285 s under the old policy; the new
+defaults closed 4x4 in 350 s against 769 s, so a 4x5 re-run is plausibly ~1 h
+on this box and belongs on the off-box lanes rather than in a session.
