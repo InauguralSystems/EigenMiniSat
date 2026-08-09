@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+### Parser
+- **Genuine SATLIB files parse (#83).** Every instance in the `uf`/`uuf`
+  archives ends with a two-line trailer — a line holding only `%`, then a
+  line holding only `0`. Neither belongs to the formula. `%` reached the
+  token loop and raised `non-integer token %`, and the `0` closed an empty
+  `state.current` into a phantom clause, so `assert_dimacs_ok` aborted before
+  anything was solved. The parser now cuts the text at the `%` line **before
+  tokenizing**, in one place shared by all four parse paths — including
+  `parse_dimacs_text_ints`, whose `scan_ints` swallows the `%` silently and
+  would otherwise be left with only the clause-count mismatch.
+
+  The solver was never implicated: with the trailer stripped by hand, 40
+  `uf20-91` instances (all SAT, models verified) and 15 `uuf50-218` (all
+  UNSAT, refutations drat-trim'd) came back 55/55 correct. This was input
+  fidelity only.
+
+- **A bare `0` with no preceding literals is a parse error.** Skipping `%`
+  without discarding the `0` leaves the phantom empty clause in place, which
+  makes any instance trivially unsatisfiable — and the DRAT oracle does not
+  catch it: the one-line refutation drat-trim verifies is genuinely RUP
+  against the clause list it was handed, and a checker cannot know those
+  clauses are not the file. A corrupted parse would then produce a wrong
+  verdict *with a signed proof*, the over-pruning failure mode arriving
+  through the parser instead of the search. The guard closes it even when the
+  header's declared count happens to reconcile with the phantom, which is the
+  case no count check can see.
+
+- **The vendored corpus carries the trailer** and `run_smoke.sh` gates on the
+  **verdict** of a known-SAT SATLIB-shaped fixture on every propagation path,
+  not on `ok == 1`. The fixtures were generated locally by the same author as
+  the parser, so they shared its assumption that the archives are clean
+  DIMACS: they agreed with the parser and both disagreed with the outside
+  world. A parse-only assertion cannot tell the fix from the trap above.
+
 ### Proofs
 - **DRAT proof emission.** `--cdcl --proof FILE` writes a DRAT refutation of
   an UNSAT instance: one line per learnt clause plus the final empty clause.

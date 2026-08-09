@@ -1,0 +1,11 @@
+c SATLIB-shaped SAT fixture (#83): same formula as simple_sat.cnf, plus the
+c two-line `%` / `0` trailer every uf/uuf archive instance carries. Neither
+c line belongs to the formula; reading the `0` as a clause terminator closes
+c an empty clause and turns this into a trivially UNSAT instance.
+p cnf 3 3
+1 2 0
+-1 3 0
+-2 3 0
+
+%
+0
