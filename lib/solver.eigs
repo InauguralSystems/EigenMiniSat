@@ -769,6 +769,25 @@ define init_clause_metadata(state, clause, learnt, stats) as:
         stats.learnt_literals += len of clause
     return null
 
+# #85: MiniSat's claRescaleActivity constants, the clause-side mirror of the
+# variable-side pair above. Without them `clause_inc = 1 / 0.999^conflicts`
+# saturates at 1e308 past ~708,000 conflicts, and since every learnt clause is
+# bumped at creation, EVERY activity becomes 1e308 -- the sort key goes
+# constant and reduction deletes in scan order, oldest first, ignoring both
+# LBD and activity.
+CLAUSE_RESCALE_LIMIT is 1e20
+CLAUSE_RESCALE_FACTOR is 1e-20
+
+define rescale_clause_activity(state, stats) as:
+    local n is len of state.clause_activity
+    local i is 0
+    loop while i < n:
+        state.clause_activity[i] is state.clause_activity[i] * CLAUSE_RESCALE_FACTOR
+        i += 1
+    state.clause_inc is state.clause_inc * CLAUSE_RESCALE_FACTOR
+    stats.clause_rescales += 1
+    return null
+
 define bump_clause_db_activity(state, ci, stats) as:
     if ci < 0:
         return null
@@ -778,6 +797,9 @@ define bump_clause_db_activity(state, ci, stats) as:
         return null
     state.clause_activity[ci] is state.clause_activity[ci] + state.clause_inc
     stats.clause_activity_bumps += 1
+    if state.clause_rescale_limit > 0:
+        if state.clause_activity[ci] > state.clause_rescale_limit:
+            rescale_clause_activity of [state, stats]
     return null
 
 define decay_clause_activity(state, stats) as:
@@ -894,6 +916,39 @@ define find_low_activity_learnt(store, state, stats) as:
     stats.reduce_scans += 1
     return best
 
+# #85: deletion order for reduce_learnt_db.
+#
+# The original key packed both terms into one scalar:
+#
+#     (0 - clause_lbd[ci]) * 1000000 + clause_activity[ci]
+#
+# which makes LBD the major term only while activity stays below the 1e6 scale
+# factor. It does not: `clause_inc = 1 / 0.999^conflicts` crosses 1e6 at about
+# 13,805 conflicts, and measured on Tseitin 4x4 the top activity was ~190x the
+# LBD term -- so the sort was effectively activity-only, and "LBD-based clause
+# management (Glucose-style)" applied for roughly the first 14k conflicts of
+# any run and not at all on the longer ladder rungs.
+#
+# `lbd_major` sorts on the PAIR instead, so no constant has to bound the
+# activity range: sort by the minor key, then stably by the major one.
+# `sort_by` breaks ties by original index (the runtime's sort_by_pair_cmp), so
+# the activity order survives the second pass and the result is an exact
+# two-key sort -- no packing, no precision budget, scale-free by construction.
+#
+# `packed` selects the original key. Every ladder rung banked before #85 ran
+# under it, so comparing across the change needs both arms in one binary.
+define sort_reduce_candidates(candidates, state) as:
+    if state.clause_sort_key == "packed":
+        define packed_key(ci) as:
+            return (0 - state.clause_lbd[ci]) * 1000000 + state.clause_activity[ci]
+        return sort_by of [candidates, packed_key]
+    define activity_key(ci) as:
+        return state.clause_activity[ci]
+    define lbd_key(ci) as:
+        return 0 - state.clause_lbd[ci]
+    local by_activity is sort_by of [candidates, activity_key]
+    return sort_by of [by_activity, lbd_key]
+
 define reduce_learnt_db(store, state, stats) as:
     active is count_active_learnts of state
     if active <= state.learnt_limit:
@@ -915,11 +970,18 @@ define reduce_learnt_db(store, state, stats) as:
                         append of [candidates, ci]
     stats.reduce_scans += 1
 
-    define lbd_activity_key(ci) as:
-        return (0 - state.clause_lbd[ci]) * 1000000 + state.clause_activity[ci]
-    sorted_candidates is sort_by of [candidates, lbd_activity_key]
+    sorted_candidates is sort_reduce_candidates of [candidates, state]
 
     target_delete is floor of (active / 2)
+    # #85: deletion ORDER only decides anything when there are more candidates
+    # than the run intends to delete. When target_delete >= len(candidates) the
+    # run deletes every candidate it has and any sort produces the same result,
+    # so a key change is inert on that instance no matter how wrong the key is.
+    # These two counters make that visible instead of leaving a reader to infer
+    # it from an A/B that came back identical.
+    stats.reduce_candidates += len of candidates
+    if (len of candidates) > target_delete:
+        stats.reduce_order_bound += 1
     deleted is 0
     for ci in sorted_candidates:
         if deleted >= target_delete:
@@ -1103,6 +1165,10 @@ define cdcl_default_options() as:
         # index order. Kept selectable because every ladder rung banked before
         # this fix ran under it -- comparing across the change needs both.
         "var_rescale_limit": VAR_RESCALE_LIMIT,
+        # #85: 0 selects the pre-#85 unrescaled clause activity, and
+        # "packed" the pre-#85 sort key -- the pair the older rungs ran under.
+        "clause_rescale_limit": CLAUSE_RESCALE_LIMIT,
+        "clause_sort_key": "lbd_major",
         "proof": 0
     }
 
@@ -1114,6 +1180,14 @@ define cdcl_merge_options(opts) as:
         merged_opts.var_rescale_limit is opts.var_rescale_limit
         if merged_opts.var_rescale_limit < 0:
             merged_opts.var_rescale_limit is 0
+    if (has_key of [opts, "clause_rescale_limit"]) != 0:
+        merged_opts.clause_rescale_limit is opts.clause_rescale_limit
+        if merged_opts.clause_rescale_limit < 0:
+            merged_opts.clause_rescale_limit is 0
+    if (has_key of [opts, "clause_sort_key"]) != 0:
+        merged_opts.clause_sort_key is opts.clause_sort_key
+        if merged_opts.clause_sort_key != "packed":
+            merged_opts.clause_sort_key is "lbd_major"
     if (has_key of [opts, "restart_policy"]) != 0:
         merged_opts.restart_policy is opts.restart_policy
         if merged_opts.restart_policy != "luby":
@@ -1289,6 +1363,8 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "clause_lbd": [],
         "clause_inc": 1,
         "clause_decay": 0.999,
+        "clause_rescale_limit": cdcl_opts.clause_rescale_limit,
+        "clause_sort_key": cdcl_opts.clause_sort_key,
         "learnt_limit": 4,
         "restart_policy": cdcl_opts.restart_policy,
         "restart_first": cdcl_opts.restart_first,
@@ -1643,6 +1719,7 @@ define cdcl_result(status, model, stats, state) as:
         "resolutions": stats.resolutions,
         "activity_bumps": stats.activity_bumps,
         "var_rescales": stats.var_rescales,
+        "clause_rescales": stats.clause_rescales,
         "activity_decays": stats.activity_decays,
         "order_pops": stats.order_pops,
         "order_inserts": stats.order_inserts,
@@ -1661,6 +1738,8 @@ define cdcl_result(status, model, stats, state) as:
         "clause_activity_decays": stats.clause_activity_decays,
         "reduce_runs": stats.reduce_runs,
         "reduce_scans": stats.reduce_scans,
+        "reduce_candidates": stats.reduce_candidates,
+        "reduce_order_bound": stats.reduce_order_bound,
         "learnt_deleted": stats.learnt_deleted,
         "learnt_kept_locked": stats.learnt_kept_locked,
         "deleted_watch_skips": stats.deleted_watch_skips,
@@ -1722,6 +1801,7 @@ define cdcl_empty_stats() as:
         "activity_bumps": 0,
         "activity_decays": 0,
         "var_rescales": 0,
+        "clause_rescales": 0,
         "order_pops": 0,
         "order_inserts": 0,
         "order_skips": 0,
@@ -1739,6 +1819,8 @@ define cdcl_empty_stats() as:
         "clause_activity_decays": 0,
         "reduce_runs": 0,
         "reduce_scans": 0,
+        "reduce_candidates": 0,
+        "reduce_order_bound": 0,
         "learnt_deleted": 0,
         "learnt_kept_locked": 0,
         "deleted_watch_skips": 0,
