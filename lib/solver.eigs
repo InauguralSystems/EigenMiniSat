@@ -699,9 +699,39 @@ define choose_var_cdcl(asg, state, stats) as:
             stats.order_skips += 1
     return choose_var of asg
 
+# #84: MiniSat's varRescaleActivity constants. The limit is where the increment
+# is far enough from the double ceiling that no bump can saturate; the factor is
+# its reciprocal, so a rescale is exact in binary floating point only to the
+# extent 1e-100 is -- what matters is that it is uniform, not that it is exact.
+VAR_RESCALE_LIMIT is 1e100
+VAR_RESCALE_FACTOR is 1e-100
+
+define rescale_var_activity(state, stats) as:
+    # MiniSat's varRescaleActivity: divide every activity AND the increment by
+    # the same constant. Uniform scaling is order-preserving, so the heap stays
+    # valid and no re-heapify is needed -- only the exponent moves.
+    local n is len of state.activity
+    local i is 0
+    loop while i < n:
+        state.activity[i] is state.activity[i] * VAR_RESCALE_FACTOR
+        i += 1
+    state.var_inc is state.var_inc * VAR_RESCALE_FACTOR
+    stats.var_rescales += 1
+    return null
+
 define bump_var_activity(state, v, stats) as:
     state.activity[v] is state.activity[v] + state.var_inc
     stats.activity_bumps += 1
+    # `var_inc` grows as 1 / var_decay^conflicts and, unrescaled, reaches the
+    # double ceiling on conflict 13,828: 1e308 + 1e308 == 1e308, so every
+    # further bump is a no-op, activities tie, and `order_better` falls through
+    # to its `a < b` tie-break -- branching silently becomes static
+    # lowest-index-first. The heap keeps running; VSIDS does not (#84).
+    # `var_rescale_limit` of 0 selects that old unrescaled behaviour, which is
+    # what the pre-#84 ladder rungs were measured under.
+    if state.var_rescale_limit > 0:
+        if state.activity[v] > state.var_rescale_limit:
+            rescale_var_activity of [state, stats]
     order_update_var of [state, v]
     return null
 
@@ -1068,6 +1098,11 @@ define cdcl_default_options() as:
         "compact_policy": "deferred",
         "compact_min_deleted": 64,
         "compact_waste_percent": 50,
+        # #84: 0 selects the pre-#84 unrescaled behaviour, where var_inc
+        # saturates at 1e308 on conflict 13,828 and VSIDS collapses to static
+        # index order. Kept selectable because every ladder rung banked before
+        # this fix ran under it -- comparing across the change needs both.
+        "var_rescale_limit": VAR_RESCALE_LIMIT,
         "proof": 0
     }
 
@@ -1075,6 +1110,10 @@ define cdcl_merge_options(opts) as:
     merged_opts is cdcl_default_options of null
     if opts == null:
         return merged_opts
+    if (has_key of [opts, "var_rescale_limit"]) != 0:
+        merged_opts.var_rescale_limit is opts.var_rescale_limit
+        if merged_opts.var_rescale_limit < 0:
+            merged_opts.var_rescale_limit is 0
     if (has_key of [opts, "restart_policy"]) != 0:
         merged_opts.restart_policy is opts.restart_policy
         if merged_opts.restart_policy != "luby":
@@ -1243,6 +1282,7 @@ define build_cdcl_state(nvars, store, asg, stats, opts) as:
         "bump_generation": 0,
         "var_inc": 1,
         "var_decay": 0.95,
+        "var_rescale_limit": cdcl_opts.var_rescale_limit,
         "clause_learnt": [],
         "clause_deleted": [],
         "clause_activity": [],
@@ -1602,6 +1642,7 @@ define cdcl_result(status, model, stats, state) as:
         "backjumps": stats.backjumps,
         "resolutions": stats.resolutions,
         "activity_bumps": stats.activity_bumps,
+        "var_rescales": stats.var_rescales,
         "activity_decays": stats.activity_decays,
         "order_pops": stats.order_pops,
         "order_inserts": stats.order_inserts,
@@ -1680,6 +1721,7 @@ define cdcl_empty_stats() as:
         "resolutions": 0,
         "activity_bumps": 0,
         "activity_decays": 0,
+        "var_rescales": 0,
         "order_pops": 0,
         "order_inserts": 0,
         "order_skips": 0,

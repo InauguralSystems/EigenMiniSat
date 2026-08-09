@@ -376,3 +376,44 @@ fire on locals; tiny one-line accessors (`clause_store_lit`,
 inner-loop iter that the JIT couldn't elide. Manual inlining +
 hoisting is what bytecode JIT specialization would do automatically.
 
+
+## VSIDS saturation, before and after rescaling — 2026-08-09 (#84)
+
+The audit issue's claim, measured directly. `var_inc` grows as
+`1 / var_decay^conflicts` and, unrescaled, reaches the double ceiling on
+conflict 13,828: `1e308 + 1e308 == 1e308`, so every further bump is a no-op,
+activities tie, and `order_better` falls through to its `a < b` tie-break —
+branching becomes static lowest-index-first while the heap keeps running.
+
+Instrument: `cdcl_begin` / `cdcl_step` stepped session, stopped at a conflict
+budget, reporting `var_inc` and the number of *distinct* values in the activity
+array (the observable that matters — tied activities are indistinguishable to
+the heuristic). `var_rescale_limit: 0` selects the pre-#84 behaviour, so both
+arms are the same binary and differ only in that option.
+
+Tseitin torus 4x4 (`tseitin_torus_case of [4, 4, 1]`, 33 variables), stopped at
+a 16,000-conflict budget:
+
+| | `var_rescale_limit: 0` (pre-#84) | default `1e100` (post-#84) |
+|---|---|---|
+| conflicts reached | 16,007 | 16,088 |
+| `var_inc` | **1e+308** (saturated) | 2.41e+58 (live) |
+| distinct var activities | **10 / 33** | **31 / 33** |
+| `var_rescales` | 0 | 3 |
+| wall clock | 262.8 s | 271.8 s |
+
+23 of 33 variables were indistinguishable to VSIDS; after the fix, 2 are. The
+three rescales cost nothing measurable — each is one pass over 33 doubles, and
+the wall-clock difference is inside the noise band for this case on this box.
+
+**What this does and does not show.** It shows the heuristic is alive rather
+than collapsed, which is a mechanism claim and is what the fix was for. It does
+**not** show a search-quality win: neither arm closes the instance, this is n=1
+per arm on one family, and the conflict counts differ only because the arms
+diverge after the first rescale. Any "the solver got better" claim needs the
+ladder re-measurement, not this table.
+
+Instances that never cross the limit are bit-identical before and after —
+Tseitin 3x3 (619 conflicts, `var_inc` peaks at 5.8e13) and pigeonhole-6-5 (149
+conflicts, 1.98e3) reproduce every counter exactly, so nothing banked below
+~4,500 conflicts moves.
