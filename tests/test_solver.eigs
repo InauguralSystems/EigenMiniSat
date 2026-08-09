@@ -447,6 +447,39 @@ assert_true of ["pigeonhole 4-3 luby restarts", php4_luby.restarts > 0]
 assert_eq of ["pigeonhole 4-3 luby restart index", php4_luby.restart_index, php4_luby.restarts]
 print of "  restart policies: ok"
 
+# #84: variable-activity rescaling. `var_inc` grows as 1 / var_decay^conflicts
+# and, unrescaled, hits the double ceiling on conflict 13,828 — 1e308 + 1e308
+# == 1e308, so further bumps are no-ops, activities tie, and `order_better`
+# falls through to `a < b`: branching becomes static lowest-index-first while
+# the heap keeps running. Rescaling is a pure REPARAMETERISATION: dividing
+# every activity and the increment by the same constant preserves every
+# comparison, so the search must be bit-identical no matter where the limit
+# sits. That invariant is the gate here — it is what makes the rescale safe,
+# and it is cheap. The evidence that the collapse itself is gone needs ~16k
+# conflicts and is banked in BASELINE.md, not run per-suite.
+rescale_ref is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"var_rescale_limit": 0}]
+assert_eq of ["rescale baseline UNSAT", rescale_ref.status, "UNSAT"]
+assert_eq of ["rescale baseline does not rescale", rescale_ref.var_rescales, 0]
+for rescale_limit in [0.001, 1]:
+    rescale_run is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"var_rescale_limit": rescale_limit}]
+    assert_eq of [f"rescale limit {rescale_limit} same status", rescale_run.status, rescale_ref.status]
+    assert_eq of [f"rescale limit {rescale_limit} same decisions", rescale_run.decisions, rescale_ref.decisions]
+    assert_eq of [f"rescale limit {rescale_limit} same conflicts", rescale_run.conflicts, rescale_ref.conflicts]
+    assert_eq of [f"rescale limit {rescale_limit} same resolutions", rescale_run.resolutions, rescale_ref.resolutions]
+    assert_true of [f"rescale limit {rescale_limit} fired", rescale_run.var_rescales > 0]
+# A limit above the instance's activity range simply never fires, and the run
+# is identical again — the check is scale-free, not tuned to a magic number.
+rescale_high is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"var_rescale_limit": 1000}]
+assert_eq of ["rescale limit above range never fires", rescale_high.var_rescales, 0]
+assert_eq of ["rescale limit above range same conflicts", rescale_high.conflicts, rescale_ref.conflicts]
+# The default limit is high enough that a small instance never reaches it, so
+# the fix is inert below threshold — every counter banked before #84 on an
+# instance that stays under 1e100 is unchanged by it.
+rescale_default is solve_cnf_cdcl of [php4.nvars, php4.clauses]
+assert_eq of ["default limit inert on small instances", rescale_default.var_rescales, 0]
+assert_eq of ["default limit same conflicts", rescale_default.conflicts, rescale_ref.conflicts]
+print of "  variable-activity rescaling: ok"
+
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case
 grid_concat_text is case_to_dimacs_text_concat of grid_case

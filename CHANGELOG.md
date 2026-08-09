@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+### CDCL Solver
+- **Variable-activity rescaling (#84).** `bump_var_activity` added `var_inc`
+  and nothing ever rescaled, so `var_inc = 1 / var_decay^conflicts` reached the
+  double ceiling on conflict **13,828**. `1e308 + 1e308 == 1e308`, so every
+  bump past that is a no-op: activities tie, `order_better` falls through to
+  its `a < b` tie-break, and branching silently becomes static
+  lowest-index-first while the heap keeps running. MiniSat's
+  `varRescaleActivity` — divide every activity and the increment by 1e100 once
+  an activity exceeds 1e100 — had no counterpart here.
+
+  Measured on Tseitin 4x4 at a 16,000-conflict budget: **10 of 33** distinct
+  variable activities before, **31 of 33** after, `var_inc` 1e308 (saturated)
+  before and 2.4e58 (live) after, at equal wall clock. Banked in BASELINE.md.
+
+  Rescaling is a pure reparameterisation — uniform scaling preserves every
+  comparison, so the heap needs no re-heapify and a run is bit-identical
+  wherever the limit sits. `tests/test_solver.eigs` gates exactly that: the
+  same instance at limits 0.001, 1, 1000 and the default produces identical
+  decisions, conflicts and resolutions, with `var_rescales` the only counter
+  that moves. Instances that never cross the limit are unchanged, so nothing
+  banked below ~4,500 conflicts shifts.
+
+  `var_rescale_limit` is a CDCL option (default `1e100`); **0 selects the
+  pre-#84 unrescaled behaviour**, which is what every ladder rung banked before
+  this fix ran under — comparing across the change needs both arms in one
+  binary. New counter `var_rescales`, printed by the CLI.
+
 ### Parser
 - **Genuine SATLIB files parse (#83).** Every instance in the `uf`/`uuf`
   archives ends with a two-line trailer — a line holding only `%`, then a
