@@ -214,10 +214,15 @@ reduce_state is {
     "learnt_limit": 1,
     "lbd_kept_glue": 0
 }
+# #85: this fixture enumerates the stat keys reduce_learnt_db touches. A new
+# counter in the solver is a `null + num` failure here, not a silent zero —
+# keep it in step with cdcl_empty_stats.
 reduce_stats is {
     "active_learnts": 0,
     "reduce_runs": 0,
     "reduce_scans": 0,
+    "reduce_candidates": 0,
+    "reduce_order_bound": 0,
     "learnt_deleted": 0,
     "learnt_kept_locked": 0,
     "watch_rebuilds": 0,
@@ -479,6 +484,82 @@ rescale_default is solve_cnf_cdcl of [php4.nvars, php4.clauses]
 assert_eq of ["default limit inert on small instances", rescale_default.var_rescales, 0]
 assert_eq of ["default limit same conflicts", rescale_default.conflicts, rescale_ref.conflicts]
 print of "  variable-activity rescaling: ok"
+
+# #85: deletion order. The old key packed both terms into one scalar,
+# `(0 - lbd) * 1000000 + activity`, so LBD is the major term only while
+# activity stays under 1e6 — and `clause_inc = 1 / 0.999^conflicts` crosses
+# 1e6 at about 13,805 conflicts. Past that the sort is effectively
+# activity-only. Below it the two keys agree, which is why no instance small
+# enough for a suite can tell them apart: the ordering itself is the unit
+# under test, driven directly at activities the packed key cannot survive.
+# ci 1 is a high-LBD clause with high activity; ci 2 is a glue-ish low-LBD
+# clause with none. Deletion takes from the front.
+sortkey_state is {
+    "clause_lbd":      [0, 5, 3],
+    "clause_activity": [0, 1e7, 0],
+    "clause_sort_key": "lbd_major"
+}
+sortkey_major is sort_reduce_candidates of [[1, 2], sortkey_state]
+assert_eq of ["lbd_major deletes the high-LBD clause first", sortkey_major[0], 1]
+assert_eq of ["lbd_major keeps the glue clause", sortkey_major[1], 2]
+sortkey_state.clause_sort_key is "packed"
+sortkey_packed is sort_reduce_candidates of [[1, 2], sortkey_state]
+assert_eq of ["packed key inverts once activity passes 1e6", sortkey_packed[0], 2]
+
+# Within one LBD level the tie-break is activity, lowest deleted first — the
+# two-pass sort must not lose that, which is what makes the stable second pass
+# load-bearing rather than incidental.
+tie_state is {
+    "clause_lbd":      [0, 4, 4, 4],
+    "clause_activity": [0, 9e9, 1e9, 5e9],
+    "clause_sort_key": "lbd_major"
+}
+tie_sorted is sort_reduce_candidates of [[1, 2, 3], tie_state]
+assert_eq of ["tie-break lowest activity first", tie_sorted[0], 2]
+assert_eq of ["tie-break middle activity second", tie_sorted[1], 3]
+assert_eq of ["tie-break highest activity last", tie_sorted[2], 1]
+
+# Clause-activity rescaling is the same reparameterisation argument as #84 —
+# under the pair sort it preserves every comparison, so the run is identical
+# wherever the limit sits. (It is NOT order-preserving under the packed key:
+# scaling activity changes its weight against the fixed 1e6 term, which is one
+# reason the two fixes belong together.)
+clause_ref is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"clause_rescale_limit": 0}]
+assert_eq of ["clause rescale baseline UNSAT", clause_ref.status, "UNSAT"]
+assert_eq of ["clause rescale baseline does not rescale", clause_ref.clause_rescales, 0]
+for clause_limit in [0.001, 1]:
+    clause_run is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"clause_rescale_limit": clause_limit}]
+    assert_eq of [f"clause limit {clause_limit} same status", clause_run.status, clause_ref.status]
+    assert_eq of [f"clause limit {clause_limit} same conflicts", clause_run.conflicts, clause_ref.conflicts]
+    assert_eq of [f"clause limit {clause_limit} same resolutions", clause_run.resolutions, clause_ref.resolutions]
+    assert_eq of [f"clause limit {clause_limit} same deletions", clause_run.learnt_deleted, clause_ref.learnt_deleted]
+    assert_true of [f"clause limit {clause_limit} fired", clause_run.clause_rescales > 0]
+
+# Below the crossover the two keys agree exactly, so nothing banked under
+# ~13.8k conflicts moves.
+sortkey_packed_run is solve_cnf_cdcl_with_options of [php4.nvars, php4.clauses, {"clause_sort_key": "packed"}]
+assert_eq of ["keys agree below the crossover", sortkey_packed_run.conflicts, clause_ref.conflicts]
+assert_eq of ["keys agree on deletions below the crossover", sortkey_packed_run.learnt_deleted, clause_ref.learnt_deleted]
+
+# The deletion ORDER only decides anything when a reduce run has more
+# candidates than it intends to delete. `reduce_order_bound` counts the runs
+# where that holds, so a key change that comes back byte-identical on some
+# instance can be explained rather than shrugged at — on Tseitin 4x4 under the
+# pre-#86 DB schedule only 40 of 451 reduce runs were order-bound, and on
+# pigeonhole 4-3 there are no candidates at all (every learnt clause is glue),
+# so the sort never runs. That is why an A/B on a small instance proves
+# nothing about the key and the ordering is unit-tested directly above.
+assert_eq of ["no candidates means no order-bound runs", clause_ref.reduce_candidates, 0]
+assert_eq of ["and nothing to delete", clause_ref.learnt_deleted, 0]
+order_bound_case is parse_dimacs_file of "tests/fixtures/pigeonhole_6_5.cnf"
+order_bound_run is solve_cnf_cdcl of [order_bound_case.nvars, order_bound_case.clauses]
+assert_true of ["candidates counted where reduction has choices",
+                order_bound_run.reduce_candidates > 0]
+assert_true of ["order-bound runs never exceed reduce runs",
+                order_bound_run.reduce_order_bound <= order_bound_run.reduce_runs]
+assert_true of ["deletions never exceed candidates",
+                order_bound_run.learnt_deleted <= order_bound_run.reduce_candidates]
+print of "  LBD-major deletion order: ok"
 
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case

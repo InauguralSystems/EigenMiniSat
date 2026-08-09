@@ -417,3 +417,35 @@ Instances that never cross the limit are bit-identical before and after —
 Tseitin 3x3 (619 conflicts, `var_inc` peaks at 5.8e13) and pigeonhole-6-5 (149
 conflicts, 1.98e3) reproduce every counter exactly, so nothing banked below
 ~4,500 conflicts moves.
+
+## Deletion order is rarely load-bearing under a tiny learnt DB — 2026-08-09 (#85)
+
+`reduce_learnt_db` sorts its candidates and then deletes `floor(active / 2)` of
+them. When the candidate list is no longer than that target, **every candidate
+is deleted and the sort decides nothing** — a key change is inert there no
+matter how wrong the key is. `reduce_order_bound` counts the runs where the
+candidate list is longer, i.e. the runs where order actually decides something.
+
+Measured with the pre-#86 learnt-limit schedule (`learnt_limit_initial: 4`,
+growth 1, increment 2), which is what every banked rung ran under:
+
+| instance | reduce runs | candidates | order-bound runs |
+|---|---|---|---|
+| pigeonhole 4-3 | 2 | 0 | 0 |
+| k4 3-coloring | 2 | 0 | 0 |
+| pigeonhole 6-5 | 22 | 108 | 4 |
+| Tseitin 3x3 | 73 | 589 | 21 |
+| Tseitin 4x4 (closed) | 451 | — | 40 |
+
+On the two smallest instances there are no candidates at all: every learnt
+clause is glue (`lbd <= 2`) and the sort never runs. On Tseitin 4x4 only 40 of
+451 reduce runs were order-bound, which is why an A/B of `packed` against
+`lbd_major` at a 16,000-conflict budget came back **byte-identical** — the key
+was correct to change and had almost nothing to decide. Under #86's sized DB
+the same instance is order-bound in **39 of 39** runs.
+
+The consequence for testing: no instance small enough for the suite can
+distinguish the two keys, so the ordering is unit-tested directly instead —
+`sort_reduce_candidates` driven at activities above the 1e6 scale factor, where
+the packed key demonstrably inverts (it deletes a low-LBD glue-ish clause ahead
+of a high-LBD one).

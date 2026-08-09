@@ -3,6 +3,41 @@
 ## [Unreleased]
 
 ### CDCL Solver
+- **LBD is the major deletion key again, and clause activity rescales (#85).**
+  `reduce_learnt_db` sorted deletion candidates by a packed scalar,
+  `(0 - clause_lbd[ci]) * 1000000 + clause_activity[ci]`, which makes LBD the
+  major term only while activity stays below 1e6. It does not:
+  `clause_inc = 1 / 0.999^conflicts` crosses 1e6 at about **13,805 conflicts**,
+  and on Tseitin 4x4 the top activity was ~190x the LBD term — so the sort was
+  effectively activity-only, and "LBD-based clause management (Glucose-style)"
+  applied for roughly the first 14k conflicts of a run and not at all on the
+  longer ladder rungs. Past ~708,000 conflicts `clause_inc` saturates at 1e308
+  and, since every learnt clause is bumped at creation, *every* activity
+  becomes 1e308: the key goes constant and reduction deletes in scan order,
+  oldest first, ignoring both LBD and activity.
+
+  The key now sorts on the **pair** — sort by activity, then stably by LBD, so
+  the activity order survives as the tie-break (`sort_by` breaks ties by
+  original index). No constant has to bound the activity range, and the result
+  is an exact two-key sort rather than a packed scalar with a precision budget.
+  Clause activity also rescales, mirroring #84's variable-side fix, so the
+  tie-break itself cannot degenerate.
+
+  Two new counters make the policy observable: `reduce_candidates` and
+  `reduce_order_bound`, the latter counting reduce runs that had **more
+  candidates than they intended to delete** — the only runs where deletion
+  order decides anything. That number is why an A/B of the two keys on a small
+  instance proves nothing: on pigeonhole 4-3 every learnt clause is glue and
+  the sort never runs at all, and on Tseitin 4x4 under the pre-#86 DB schedule
+  only **40 of 451** reduce runs were order-bound. The ordering is therefore
+  unit-tested directly, at activities the packed key cannot survive.
+
+  `clause_sort_key` (`"lbd_major"` default, `"packed"` for the old key) and
+  `clause_rescale_limit` (default 1e20, 0 disables) are CDCL options, so the
+  pre-#85 pair stays selectable in the same binary. Below the crossover the two
+  keys agree exactly, so nothing banked under ~13.8k conflicts moves.
+
+### CDCL Solver
 - **Variable-activity rescaling (#84).** `bump_var_activity` added `var_inc`
   and nothing ever rescaled, so `var_inc = 1 / var_decay^conflicts` reached the
   double ceiling on conflict **13,828**. `1e308 + 1e308 == 1e308`, so every
