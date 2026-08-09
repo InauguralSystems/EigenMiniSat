@@ -2,6 +2,32 @@
 # DIMACS CNF parser
 # ============================================================
 
+# Every instance in the SATLIB uf/uuf archives ends with a two-line trailer:
+#
+#     4 -16 -5 0
+#     %
+#     0
+#
+# `%` is an artifact of the SATLIB distribution, not part of DIMACS CNF, and
+# nothing after it belongs to the formula — the trailing `0` in particular is
+# not a clause terminator but padding. Reading it as one closes an EMPTY
+# clause, which makes the formula trivially unsatisfiable, so a corrupted
+# parse would answer `s UNSATISFIABLE` for a known-SAT instance and emit a
+# one-line DRAT refutation that drat-trim correctly verifies (#83): a checker
+# validates a refutation against the clauses it is handed, and cannot know
+# they are not the file. So the trailer is cut off the TEXT, before any
+# tokenizer sees it, and all four parse paths share this one cut — including
+# `parse_dimacs_text_ints`, whose `scan_ints` would silently swallow the `%`
+# and leave only the count mismatch behind.
+define _strip_satlib_trailer(text) as:
+    lines is split of [text, "\n"]
+    kept is []
+    for line in lines:
+        if (trim of (str_replace of [line, "\r", ""])) == "%":
+            return join of [kept, "\n"]
+        append of [kept, line]
+    return text
+
 define _is_comment_or_empty(line) as:
     line is trim of line
     if line == "":
@@ -83,6 +109,8 @@ define _process_dimacs_parts(state, parts, line_no) as:
             continue
         lit is floor of (num of tok)
         if lit == 0:
+            if (len of state.current) == 0:
+                _add_parse_error of [state.errors, f"line {line_no}: empty clause (a 0 with no preceding literals)"]
             append of [state.clauses, state.current]
             state.current is []
         else:
@@ -123,6 +151,8 @@ define _process_dimacs_int_rows(state, rows, line_no) as:
             continue
         lit is floor of row[6]
         if lit == 0:
+            if (len of state.current) == 0:
+                _add_parse_error of [state.errors, f"line {line_no}: empty clause (a 0 with no preceding literals)"]
             append of [state.clauses, state.current]
             state.current is []
         else:
@@ -175,6 +205,7 @@ define _finish_parse_state(state) as:
     }
 
 define parse_dimacs_text(text) as:
+    text is _strip_satlib_trailer of text
     lines is split of [text, "\n"]
     state is _empty_parse_state of null
     line_no is 0
@@ -193,6 +224,7 @@ define parse_dimacs_text(text) as:
     return _finish_parse_state of state
 
 define parse_dimacs_text_scan(text) as:
+    text is _strip_satlib_trailer of text
     state is _empty_parse_state of null
     parts is []
     token is ""
@@ -245,6 +277,7 @@ define parse_dimacs_text_scan(text) as:
     return _finish_parse_state of state
 
 define parse_dimacs_text_tokens(text) as:
+    text is _strip_satlib_trailer of text
     rows is scan_int_tokens of [text, "c"]
     state is _empty_parse_state of null
     line_rows is []
@@ -266,6 +299,7 @@ define parse_dimacs_text_tokens(text) as:
     return _finish_parse_state of state
 
 define parse_dimacs_text_ints(text) as:
+    text is _strip_satlib_trailer of text
     ints is scan_ints of [text, "c"]
     state is _empty_parse_state of null
 
@@ -285,6 +319,8 @@ define parse_dimacs_text_ints(text) as:
     loop while i < (len of ints):
         lit is floor of ints[i]
         if lit == 0:
+            if (len of state.current) == 0:
+                _add_parse_error of [state.errors, "empty clause (a 0 with no preceding literals)"]
             append of [state.clauses, state.current]
             state.current is []
         else:

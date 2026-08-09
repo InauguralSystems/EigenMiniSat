@@ -1,0 +1,10 @@
+c SATLIB-shaped UNSAT fixture (#83): same formula as unit_unsat.cnf, plus the
+c two-line `%` / `0` trailer. The SAT counterpart is the load-bearing one --
+c the phantom empty clause turns SAT into UNSAT, so a wrong verdict there
+c would be masked. This side pins that the trailer does not perturb a real
+c refutation either.
+p cnf 1 2
+1 0
+-1 0
+%
+0

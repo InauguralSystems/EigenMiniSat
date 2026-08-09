@@ -560,6 +560,55 @@ assert_eq of ["crlf split error count", crlf_crlf.error_count, 0]
 assert_dimacs_same of ["crlf matches lf (split)", crlf_lf, crlf_crlf]
 crlf_scan is parse_dimacs_text_scan of "p cnf 2 2\r\n1 -2 0\r\n2 0\r\n"
 assert_dimacs_same of ["crlf split matches scan", crlf_crlf, crlf_scan]
+
+# #83: the SATLIB uf/uuf archives end every instance with a `%` line and a
+# trailing `0`. Neither belongs to the formula. Reading the `0` as a clause
+# terminator closes an EMPTY clause, which makes any instance trivially
+# UNSAT — a wrong verdict that a DRAT checker will happily certify, because
+# the empty clause genuinely is RUP against the clause list it was handed.
+# So the assertion that matters is the VERDICT on a known-SAT instance, not
+# `ok == 1`: a fix that skips `%` but keeps the `0` passes a parse-only check
+# and still answers UNSAT for every SATLIB file.
+satlib_plain is "p cnf 3 3\n1 2 0\n-1 3 0\n-2 3 0\n"
+satlib_trailer is satlib_plain + "%\n0\n"
+satlib_p is parse_dimacs_text of satlib_trailer
+assert_eq of ["satlib trailer parses clean", satlib_p.ok, 1]
+assert_eq of ["satlib trailer error count", satlib_p.error_count, 0]
+assert_eq of ["satlib trailer clause count", len of satlib_p.clauses, 3]
+assert_dimacs_same of ["satlib trailer matches trailer-free",
+                       parse_dimacs_text of satlib_plain, satlib_p]
+# All four paths cut the same trailer — `parse_dimacs_text_ints` especially,
+# whose scan_ints never sees the `%` at all and would otherwise be left with
+# only the clause-count mismatch.
+assert_dimacs_same of ["satlib trailer scan parser",
+                       satlib_p, parse_dimacs_text_scan of satlib_trailer]
+assert_dimacs_same of ["satlib trailer token parser",
+                       satlib_p, parse_dimacs_text_tokens of satlib_trailer]
+assert_dimacs_same of ["satlib trailer ints parser",
+                       satlib_p, parse_dimacs_text_ints of satlib_trailer]
+satlib_solved is solve_cnf_cdcl of [satlib_p.nvars, satlib_p.clauses]
+assert_eq of ["satlib trailer instance still SAT", satlib_solved.status, "SAT"]
+
+# The trap the fix must not reopen: a bare `0` with no `%` above it is a
+# malformed file, not an empty clause to solve. It reports instead of
+# silently answering UNSAT.
+phantom is parse_dimacs_text of (satlib_plain + "0\n")
+assert_eq of ["phantom empty clause rejected", phantom.ok, 0]
+assert_true of ["phantom empty clause message",
+                contains of [phantom.errors[0], "empty clause"]]
+assert_dimacs_same of ["phantom scan parser", phantom,
+                       parse_dimacs_text_scan of (satlib_plain + "0\n")]
+assert_dimacs_same of ["phantom token parser", phantom,
+                       parse_dimacs_text_tokens of (satlib_plain + "0\n")]
+# The version no count check can catch: the header declares one clause more
+# than the file holds, so the phantom empty clause reconciles the count and
+# every parse diagnostic is happy. Only rejecting the bare `0` itself sees it.
+reconciled is parse_dimacs_text of "p cnf 3 4\n1 2 0\n-1 3 0\n-2 3 0\n0\n"
+assert_eq of ["count-reconciled phantom rejected", reconciled.ok, 0]
+assert_eq of ["count-reconciled phantom clause count ok",
+              reconciled.clause_count_ok, 1]
+assert_true of ["count-reconciled phantom message",
+                contains of [reconciled.errors[0], "empty clause"]]
 print of "  DIMACS parser diagnostics: ok"
 
 manifest_entry is parse_corpus_manifest_line of ["toy|tests/fixtures/simple_sat.cnf|SAT|3|3|fixture", 1]
