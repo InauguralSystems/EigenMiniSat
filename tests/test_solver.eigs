@@ -205,6 +205,10 @@ assert_true of ["copy pressure deeper deleted or glue", copy_deeper_result.delet
 assert_eq of ["copy pressure deeper no watch prunes", copy_deeper_result.watch_prunes, 0]
 print of "  copy pressure helpers: ok"
 
+# Same rule as the stats fixture below: this enumerates the state fields
+# reduce_learnt_db reads, so a new field is a loud `null` arithmetic failure
+# here rather than a silent default. #86 added the two schedule fields; growth
+# 1 + increment 2 is the pre-#86 +2 step this fixture's expectations assume.
 reduce_state is {
     "clause_learnt": [0, 1, 1, 1],
     "clause_deleted": [0, 0, 0, 0],
@@ -212,6 +216,9 @@ reduce_state is {
     "clause_lbd": [1, 4, 3, 5],
     "reason": [-1, -1, -1],
     "learnt_limit": 1,
+    "learnt_limit_growth": 1,
+    "learnt_limit_increment": 2,
+    "clause_sort_key": "lbd_major",
     "lbd_kept_glue": 0
 }
 # #85: this fixture enumerates the stat keys reduce_learnt_db touches. A new
@@ -421,8 +428,22 @@ assert_true of ["compaction removes clauses", compact_unsat.compact_removed > 0]
 assert_true of ["compaction rebuilds watches", compact_unsat.watch_rebuilds > 0]
 assert_true of ["compaction replays trail", compact_unsat.compact_replays > 0]
 
+# Compaction is driven by DELETIONS, and #86's instance-sized learnt DB deletes
+# far less: under the shipped sizing this SAT case reduces so rarely that
+# compact_runs never leaves 0, and the path this block exists to exercise goes
+# uncovered. The small-DB schedule is the stress arm for it — the pre-#86
+# constants, kept selectable for exactly this kind of reason. The UNSAT case
+# above still fires under the shipped defaults, so both are covered.
+compact_small_db is {
+    "compact_policy": "eager",
+    "learnt_limit_initial": 4,
+    "learnt_limit_growth": 1,
+    "learnt_limit_increment": 2
+}
 compact_sat_case is gen_random_3sat of [45, 189, 7]
-compact_sat is solve_cnf_cdcl_with_options of [compact_sat_case.nvars, compact_sat_case.clauses, {"compact_policy": "eager"}]
+compact_sat_default is solve_cnf_cdcl_with_options of [compact_sat_case.nvars, compact_sat_case.clauses, {"compact_policy": "eager"}]
+assert_eq of ["compaction sat verdict under shipped sizing", compact_sat_default.status, "SAT"]
+compact_sat is solve_cnf_cdcl_with_options of [compact_sat_case.nvars, compact_sat_case.clauses, compact_small_db]
 assert_eq of ["compaction sat verdict", compact_sat.status, "SAT"]
 assert_true of ["compaction sat runs fire", compact_sat.compact_runs > 0]
 assert_true of ["compaction sat model valid", model_satisfies of [compact_sat_case.nvars, compact_sat_case.clauses, compact_sat.model]]
@@ -560,6 +581,53 @@ assert_true of ["order-bound runs never exceed reduce runs",
 assert_true of ["deletions never exceed candidates",
                 order_bound_run.learnt_deleted <= order_bound_run.reduce_candidates]
 print of "  LBD-major deletion order: ok"
+# #86: learnt-DB sizing. `learnt_limit` was a literal 4 growing by +2 per
+# reduce run — a constant independent of the instance, so on a large formula
+# the solver deletes roughly half of everything it learns for the first
+# several thousand conflicts, and clause learning is close to disabled exactly
+# where it matters most. It is also what pinned `peak_learnts` at
+# ~4 + 2 * reduce_runs, which made the "space" axis of --proof-bench a
+# measurement of this policy rather than of the formula family.
+sizing_store is clause_store_from_clauses of php4.clauses
+sizing_defaults is cdcl_default_options of null
+sizing_auto is initial_learnt_limit of [sizing_store, sizing_defaults]
+# Compare against the same expression the sizing uses: `n * (1/3)` and `n / 3`
+# differ by an ulp, and this assertion is about the policy, not about float
+# associativity.
+assert_eq of ["auto limit sizes against the instance",
+              sizing_auto, (len of php4.clauses) * sizing_defaults.learnt_limit_factor]
+assert_true of ["auto limit is well above the old constant 4", sizing_auto > 4]
+# `of ([[1, 2]])` — parenthesised, so the literal list of one clause is passed
+# WHOLE (#355/#405); the bare form would spread it and hand the store a number.
+sizing_tiny_store is clause_store_from_clauses of ([[1, 2]])
+sizing_tiny is initial_learnt_limit of [sizing_tiny_store, sizing_defaults]
+assert_eq of ["auto limit floors at learnt_limit_min", sizing_tiny, 4]
+sizing_explicit is cdcl_default_options of null
+sizing_explicit.learnt_limit_initial is 17
+assert_eq of ["explicit initial limit wins", initial_learnt_limit of [sizing_store, sizing_explicit], 17]
+
+# The pre-#86 schedule stays selectable, and it must reproduce the old
+# behaviour EXACTLY — this is the arm every banked ladder rung ran under, so a
+# comparison across the change is only meaningful if this arm is faithful.
+# 619 conflicts / 73 reduce runs / 469 deletions is what Tseitin 3x3 measured
+# on main before #86 landed.
+legacy_opts is {"learnt_limit_initial": 4, "learnt_limit_growth": 1, "learnt_limit_increment": 2}
+legacy_33 is tseitin_torus_case of [3, 3, 1]
+legacy_run is solve_cnf_cdcl_with_options of [legacy_33.nvars, legacy_33.clauses, legacy_opts]
+assert_eq of ["legacy schedule UNSAT", legacy_run.status, "UNSAT"]
+assert_eq of ["legacy schedule conflicts", legacy_run.conflicts, 619]
+assert_eq of ["legacy schedule reduce runs", legacy_run.reduce_runs, 73]
+assert_eq of ["legacy schedule deletions", legacy_run.learnt_deleted, 469]
+assert_eq of ["legacy schedule final limit", legacy_run.learnt_limit, 4 + 2 * 73]
+
+# ...and the default schedule must NOT reproduce it, or the fix did nothing.
+sized_run is solve_cnf_cdcl of [legacy_33.nvars, legacy_33.clauses]
+assert_eq of ["sized schedule still UNSAT", sized_run.status, "UNSAT"]
+assert_true of ["sized schedule reduces less often", sized_run.reduce_runs < legacy_run.reduce_runs]
+assert_true of ["sized schedule keeps more clauses", sized_run.peak_learnts > legacy_run.peak_learnts]
+assert_true of ["sized schedule starts above 4", sized_run.learnt_limit > 4]
+print of "  learnt-DB sizing: ok"
+
 
 grid_case is grid_implication_case of [4, 4, 1]
 grid_text is case_to_dimacs_text of grid_case

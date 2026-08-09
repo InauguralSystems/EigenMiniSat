@@ -3,6 +3,43 @@
 ## [Unreleased]
 
 ### CDCL Solver
+- **The learnt DB is sized against the instance (#86).** `learnt_limit` started
+  at a literal `4` and grew `+2` per reduce run, deleting `floor(active / 2)`
+  clauses whenever exceeded — a constant independent of the problem, where
+  MiniSat uses `nClauses / 3` grown geometrically. On a large formula that
+  deletes roughly half of everything learnt for the first several thousand
+  conflicts, so clause learning is close to disabled exactly where it matters
+  most; it is also what pinned `peak_learnts` at `~4 + 2 * reduce_runs`, making
+  the "space" axis of `--proof-bench` a measurement of this policy rather than
+  of the formula family.
+
+  Sizing is now `nClauses * learnt_limit_factor` (default 1/3, floored at
+  `learnt_limit_min` = 4) with `learnt_limit_growth` (default 1.1)
+  multiplicative and `learnt_limit_increment` (default 0) additive.
+  `learnt_limit_initial` overrides the auto sizing, and
+  `{initial: 4, growth: 1, increment: 2}` **reproduces the pre-#86 schedule
+  exactly** — asserted in the suite against the counters Tseitin 3x3 measured
+  on main before the change (619 conflicts / 73 reduce runs / 469 deletions).
+
+  Measured on Tseitin 4x4, all arms closed and same binary: ALL-OLD 96,733
+  resolutions / 27,421 conflicts; #84+#85 only 78,015 / 22,092; all defaults
+  **33,873 / 9,986**. That is 2.86x fewer resolutions and 2.2x less wall clock,
+  with #86 accounting for the larger share (-56.6% on top of #84+#85's -19.4%).
+  The ALL-OLD arm reproduces the 2026-07-29 banked figure to within 1.3%, so
+  the comparison is against what the ladder really ran. Full table and the
+  caveats in BASELINE.md.
+
+  **This shifts every banked ladder counter.** The expansion step 3x3 -> 4x4 is
+  x20.2 under the new defaults against x48.4 banked, and the ladder's central
+  axis-separation claim cannot be re-stated until 4x5 is re-measured. Nothing
+  here refutes it; it is simply no longer measured.
+
+  One test-coverage consequence, handled rather than hidden: eager clause-store
+  compaction is driven by deletions, and the sized DB deletes so much less that
+  the SAT compaction case stopped firing. That case now runs on the small-DB
+  arm, which is what the pre-#86 constants are kept selectable for.
+
+### CDCL Solver
 - **LBD is the major deletion key again, and clause activity rescales (#85).**
   `reduce_learnt_db` sorted deletion candidates by a packed scalar,
   `(0 - clause_lbd[ci]) * 1000000 + clause_activity[ci]`, which makes LBD the

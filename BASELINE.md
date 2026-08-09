@@ -449,3 +449,46 @@ distinguish the two keys, so the ordering is unit-tested directly instead —
 `sort_reduce_candidates` driven at activities above the 1e6 scale factor, where
 the packed key demonstrably inverts (it deletes a low-LBD glue-ish clause ahead
 of a high-LBD one).
+
+## Learnt-DB sizing: the whole 3-fix attribution on Tseitin 4x4 — 2026-08-09 (#86)
+
+`learnt_limit` was a literal `4` growing `+2` per reduce run — a constant
+independent of the instance, where MiniSat sizes the DB against the problem
+(`nClauses / 3`, geometric growth). All four arms below are the same binary and
+the same instance (`tseitin_torus_case of [4, 4, 1]`, 32 vars / 128 clauses),
+differing only in CDCL options. Every arm ran to completion (UNSAT).
+
+| arm | resolutions | conflicts | peak_learnts | reduce runs | order-bound runs | wall |
+|---|---|---|---|---|---|---|
+| ALL-OLD (#84/#85/#86 off) | 96,733 | 27,421 | 906 | 451 | 40 | 769 s |
+| #86 off (#84+#85 on) | 78,015 | 22,092 | 820 | 408 | 40 | 567 s |
+| **all defaults** | **33,873** | **9,986** | 1,595 | 39 | 39 | 350 s |
+
+Attribution: #84+#85 together account for **-19.4%** of resolutions; #86 on top
+of them accounts for a further **-56.6%**. Combined, the refutation this solver
+finds is **2.86x smaller** and the run **2.2x faster** in wall clock.
+
+**The ALL-OLD arm reproduces the banked figure**, which is what makes the
+comparison meaningful: 96,733 resolutions / 27,421 conflicts here against
+95,516 / 27,388 banked on 2026-07-29 — within 1.3% and 0.1%. The option arms
+are faithful to what the ladder actually ran.
+
+### What this does not license
+
+The resolution count is a property of **this solver's search**, not of the
+formula family. A smaller refutation means the solver found a better one; it
+says nothing about Tseitin hardness. n=1 per arm, one instance, one family, and
+wall clock on a box with a noisy scheduler.
+
+More importantly: **the banked ladder multipliers were measured under ALL-OLD
+and do not survive unchanged.** 3x3 re-measured under the defaults is 1,681
+resolutions (was 1,850 under ALL-OLD), so the expansion step becomes
+
+    3x3 -> 4x4  =  33,873 / 1,681  =  x20.2       (banked: x48.4)
+
+The ladder's central claim is the *separation* between the expansion axis and
+the fixed-expansion axis, and that cannot be re-stated until 4x5 is
+re-measured — it was banked at 551,098 resolutions under the old policy and
+costs ~1.7 h there. Nothing here refutes the separation; it simply is not
+measured any more. Tracked as its own re-measurement item rather than folded
+into this change.
