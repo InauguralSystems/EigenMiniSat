@@ -486,9 +486,31 @@ resolutions (was 1,850 under ALL-OLD), so the expansion step becomes
 
     3x3 -> 4x4  =  33,873 / 1,681  =  x20.2       (banked: x48.4)
 
-The ladder's central claim is the *separation* between the expansion axis and
-the fixed-expansion axis, and that cannot be re-stated until 4x5 is
-re-measured — it was banked at 551,098 resolutions under the old policy and
-costs ~1.7 h there. Nothing here refutes the separation; it simply is not
-measured any more. Tracked as its own re-measurement item rather than folded
-into this change.
+**Re-measurement completed 2026-08-11 (#94).** 4x5 and 5x5 have since been
+re-run under the new defaults on off-box lanes; `benchmarks/TSEITIN_LADDER.md`
+carries the full three-regime table and is the record of record.
+
+| case | ALL-OLD | new defaults | reduction |
+|---|---|---|---|
+| 3x3 | 1,850 | 1,681 | 1.10x |
+| 4x4 | 96,733 | 33,873 | 2.86x |
+| 4x5 | 489,112 | 47,961 | 10.20x |
+| 5x5 | 13,292,633 | 355,962 | 37.34x |
+
+5x5 wall dropped 76.6 h -> 4.02 h on the same Space class (**19.05x**, not 37x —
+the instance-sized DB costs 1.97x more per conflict, so proof size and
+throughput diverge; use 19x for any scheduling argument).
+
+Outcome, with both sides of each comparison now under one policy:
+
+- **The axis separation SURVIVES** and is marginally wider — per variable,
+  expansion (4x4→5x5) 1.140/var vs flat (4x4→4x5) 1.044/var = 1.091x, against
+  1.073x under ALL-OLD.
+- **The growth of the expansion multiplier DOES NOT.** Under ALL-OLD it grew
+  (x52.3 → x137.4); under the new defaults it shrinks (x20.2 → x10.5).
+  Prediction 1 fails on re-measurement: its threshold was 5x5 >= x20 the 4x4
+  bank, measured x10.51.
+
+The re-measurement therefore separated a claim about the formula family from a
+claim about the solver policy — which is exactly what the arms above were built
+to make possible.

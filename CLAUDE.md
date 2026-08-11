@@ -191,13 +191,23 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   self-validating in the way a planted fault validates a checker.
 - Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
   n = 3..6 (x5.4, x6.1, x9.7, multiplier rising).
-- **Tseitin closed measurements** (post-clause_locked regime;
-  `benchmarks/TSEITIN_LADDER.md` is the record of record): 3x3 = 1,850
-  resolutions, 4x4 = 96,733, 4x5 = 489,112, 4x6 = 3,798,224,
-  **5x5 = 13,292,633**. 4x5+ closed on HF Space lanes (EigenScript v0.34.0,
-  byte-identical 3x3/4x4 preflights on each lane, so the counters are one
-  regime with the devbox bank); every pre-fix figure — including the old
-  4x5 = 551,098 — is superseded. Cross-host wall times are color only.
+- **Tseitin closed measurements — ALWAYS CITE THE REGIME.** Three exist, and
+  position in a document is not a label; reading a figure by which section it
+  sits in is how ALL-OLD counters got proposed as an AOT acceptance gate
+  (ouroboros#86). `benchmarks/TSEITIN_LADDER.md` is the record of record.
+  - **CURRENT (new defaults, EigenMiniSat 6754b29)**: 3x3 = 1,681, 4x4 = 33,873,
+    4x5 = 47,961, **5x5 = 355,962**. 4x6 not re-measured. Conflicts: 592 /
+    9,986 / 12,787 / 87,981.
+  - **ALL-OLD** (post-clause_locked, pre-#84/#85/#86): 3x3 = 1,850,
+    4x4 = 96,733, 4x5 = 489,112, 4x6 = 3,798,224, 5x5 = 13,292,633.
+  - **pre-clause_locked**: 3x3 = 1,974, 4x4 = 95,516, 4x5 = 551,098.
+
+  Every lane preflights 3x3 + 4x4 byte-identically against its own regime, which
+  checks cross-host portability *and* proves which policy the lane ran; lane
+  summaries carry an explicit `policy` field. Cross-host wall times are color
+  only. 5x5 went 76.6 h -> 4.02 h (**19.05x**) while resolutions fell 37.34x —
+  the two are not interchangeable, because the instance-sized DB costs 1.97x
+  more per conflict. Use 19x for throughput arguments, 37x only for proof size.
 - **RETRACTED 2026-07-30, then the control RAN (2026-08-05) and the axis
   survives.** An earlier version of this file claimed an "8.4x steeper"
   expansion axis from steps with unequal variable increments — that
@@ -206,10 +216,27 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   closed: 5x5 cost **x3.50** the resolutions of 4x6 at matched size
   (x1.87/var over the 2-var step, vs the flat axis's x1.29/var on 4x5→4x6).
   Raising min(r,c) is the expensive way to add variables at this scale.
-  Prediction 1 confirmed at x137.4 (threshold was x20). Expansion-step
-  multipliers grow (3x3→4x4 = x52.3, 4x4→5x5 = x137.4); flat steps at min=4
-  run x5.06, x7.77. Two-case comparison, upper-bound instrument — the ladder
-  doc carries the full scope discipline.
+  Two-case comparison, upper-bound instrument — the ladder doc carries the full
+  scope discipline.
+- **Re-measured 2026-08-11 (#94): the separation survives, the multiplier growth
+  does not.** With both sides under one policy for the first time, the axis
+  separation holds and is marginally wider (per-var, anchored at 4x4: expansion
+  1.140/var vs flat 1.044/var = 1.091x, against ALL-OLD's 1.073x). But the
+  expansion multiplier **shrinks** under the new defaults (x20.2 → x10.5) where
+  it grew under ALL-OLD (x52.3 → x137.4), and **Prediction 1 fails on
+  re-measurement** — threshold was 5x5 >= x20 the 4x4 bank, measured x10.51.
+  The old "expansion-step multipliers grow" line was measuring the DB/heuristic
+  policy, not the formula family; do not cite it.
+- **The ladder is runtime-bound, not compute-bound.** Native MiniSat 2.2.1 on
+  the byte-identical CNFs (`benchmarks/dump_tseitin_cnf.eigs` emits them) closes
+  the *entire* ladder on the devbox in under four minutes: 4x4 = 0.25 s,
+  4x5 = 1.66 s, 5x5 = 8.30 s, 5x6 = 31.64 s, 6x6 = 230.61 s. We are ~1,163x
+  slower at 4x4, of which **88% is EigenScript observer entropy computed on
+  every assignment** (EigenScript#915, measured ceiling 8.50x). Our *search* is
+  genuinely better — 25x fewer conflicts than MiniSat at 5x5 — so this is a
+  throughput statement, not a search one. Rung reachability here is a fact about
+  runtime speed, not proof complexity. MiniSat is also usable as a second
+  external UNSAT oracle alongside drat-trim.
 - **Do not read `resolutions` / `peak_learnts` as a size-vs-space finding.**
   That ratio climbs by construction: `resolutions` is cumulative and unbounded
   while `peak_learnts` is pinned to the reduction schedule

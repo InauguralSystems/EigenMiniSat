@@ -199,6 +199,13 @@ the 20x that would mean the rectangular axis is also exponential.
 
 **The axis separation is real and now measured on both sides with closed cases:**
 
+> **REGIME A** (pre-`clause_locked`). The x48.4 / x5.77 pair below is correct
+> *for this regime* — 95,516/1,974 and 551,098/95,516 — and is not
+> interchangeable with the x52.3 / x5.06 pair quoted later (regime B) or the
+> x20.2 / x1.42 pair from the re-measurement (regime C). The "8.4x steeper"
+> claim in this section was retracted 2026-07-30 on methodological grounds; see
+> the retraction below.
+
 | axis | step | multiplier |
 |---|---|---|
 | expansion (`min(r,c)` grows) | 3x3 -> 4x4 | **x48.4** |
@@ -411,12 +418,16 @@ Post-fix re-measurements (this box, same generator, default policies):
   deterministic). The 4x4 wall (671s vs ~450s pre-fix) is not a measured
   regression claim — the fix makes `clause_locked` O(width) and the box was not
   idle; an n=5 comparison would be needed to attribute it.
-- **4x5 and 5x5 are not re-measured.** 4x5 cost 6,285s pre-fix and 5x5 never
-  closed in 14.5h; both stay blocked on a faster tier. The AOT probe this
-  document recommended was run 2026-07-30 and **failed to compile**: the
-  emitter has no `dot_assign` statement emission (72 sites in
-  `lib/solver.eigs`), filed as ouroboros#86. That issue is now the critical
-  path for 5x5 and for the 4x6-vs-5x5 control from the F1 retraction.
+- **4x5 and 5x5 were not re-measured at the time of writing** (4x5 cost 6,285s
+  pre-fix, 5x5 never closed in 14.5h), and this document then treated AOT as
+  the critical path for both — the AOT probe run 2026-07-30 **failed to
+  compile** (`dot_assign` statement emission missing, 72 sites in
+  `lib/solver.eigs`, filed as ouroboros#86).
+  **Superseded 2026-08-11:** both closed on the VM under the corrected policy
+  (4x5 = 47,961 in 136 s; 5x5 = 355,962 in 4.02 h) — see "Re-measurement
+  complete" below. AOT was never the blocker; the #84/#85/#86 defects were.
+  ouroboros#86 remains open on its own merits, but this document should no
+  longer be read as putting the ladder on its critical path.
 - The review's retractions (F1 axis-separation, F2 vacuous space prediction)
   are methodological and stand regardless of the counter shifts. "The closed
   measurements" listed under *What survives the review* survive only as
@@ -480,6 +491,11 @@ pre-fix figure in the ladder.
 
 **The post-clause_locked bank, now complete (resolutions / conflicts):**
 
+> **REGIME: ALL-OLD** (post-`clause_locked`, pre-#84/#85/#86). Every figure in
+> this table measures the old DB/heuristic policy as much as the formula family.
+> Superseded for all axis conclusions by the re-measurement section at the end
+> of this document — see it before citing any multiplier below.
+
 | case | vars | min(r,c) | resolutions | conflicts | host |
 |---|---|---|---|---|---|
 | 3x3 | 18 | 3 | 1,850 | 619 | devbox + both lanes (preflight) |
@@ -498,11 +514,19 @@ Raising min(r,c) is the more expensive way to add variables, which is what
 "expansion drives hardness" predicts and what the pre-retraction data could
 not legitimately show.
 
-**Prediction 1 — CONFIRMED.** The threshold was 5x5 >= 20x the 4x4 bank
-(>= ~1.9M resolutions). Measured: **x137.4**. For the axis ladder: the
-expansion steps are 3x3→4x4 = x52.3 and 4x4→5x5 = x137.4 — the multiplier
-itself grows, as an exponential-in-min(r,c) family should — while the flat
-steps at min=4 run x5.06, x7.77.
+**Prediction 1 — CONFIRMED under ALL-OLD; DOES NOT SURVIVE re-measurement.**
+The threshold was 5x5 >= 20x the 4x4 bank (>= ~1.9M resolutions). Measured
+under ALL-OLD: **x137.4**. Re-measured under the corrected policy:
+**x10.51** — *below* the >= x20 threshold, so the same pre-registered
+prediction fails. See "Re-measurement complete" at the end of this document.
+
+For the axis ladder as measured under ALL-OLD: the expansion steps are
+3x3→4x4 = x52.3 and 4x4→5x5 = x137.4 — the multiplier itself grows, as an
+exponential-in-min(r,c) family should — while the flat steps at min=4 run
+x5.06, x7.77. **The growth of the expansion multiplier is the part that does
+not reproduce**; under the corrected policy the expansion multiplier *shrinks*
+(x20.15 then x10.51). The axis *separation* does survive. Do not cite the
+"multiplier itself grows" claim without reading the re-measurement section.
 
 Scope kept honest: this is one family, one size point per step, an
 upper-bound instrument (the solver's refutation bounds proof size from
@@ -521,7 +545,7 @@ are per-host color; counters are the record.
 
 ---
 
-## RE-MEASUREMENT REQUIRED — 2026-08-09 (#84 / #85 / #86)
+## Re-measurement complete — 2026-08-11 (#84 / #85 / #86, closes #94)
 
 Every number above was measured under three CDCL defects that have since been
 fixed, and all three change the search:
@@ -538,25 +562,91 @@ fixed, and all three change the search:
 Re-measured on the same instance and binary, options-selected arms (BASELINE.md
 has the full table):
 
-| case | resolutions (banked, ALL-OLD) | resolutions (new defaults) |
-|---|---|---|
-| 3x3 | 1,974 *(1,850 re-run under ALL-OLD)* | 1,681 |
-| 4x4 | 95,516 *(96,733 re-run under ALL-OLD)* | 33,873 |
-| 4x5 | 551,098 | **not re-measured** |
-| 5x5 | (never closed) | **not re-measured** |
+### The three regimes
 
-The ALL-OLD re-runs reproduce the banked 4x4 to within 1.3%, so the banked
-figures are sound *for the policy they were measured under*.
+Every banked figure belongs to one of three counter regimes. **Cite the regime
+with the number** — position in this document is not a label, and reading a
+figure by which section it sits in is how ALL-OLD counters ended up proposed as
+an acceptance gate in ouroboros#86.
 
-**What this does and does not do to the ladder's result.** The expansion step
-`3x3 -> 4x4` moves from **x48.4** to **x20.2**. The ladder's central claim is
-not that multiplier but the *separation* between the expansion axis and the
-fixed-expansion axis (`4x4 -> 4x5 = x5.77`), and that comparison no longer has
-both sides measured under the same policy. Nothing here refutes the
-separation — 4x5 has simply not been re-run. Until it is, treat every
-multiplier above as a measurement of the old DB/heuristic policy as much as of
-the formula family, which is exactly the confound #86 was filed about.
+| regime | 3x3 | 4x4 | 4x5 | 4x6 | 5x5 |
+|---|---|---|---|---|---|
+| **A. pre-`clause_locked`** (to 2026-07-29) | 1,974 | 95,516 | 551,098 | — | — |
+| **B. ALL-OLD** (post-`clause_locked`, pre-#84/#85/#86) | 1,850 | 96,733 | 489,112 | 3,798,224 | 13,292,633 |
+| **C. new defaults** (current, EigenMiniSat 6754b29) | **1,681** | **33,873** | **47,961** | not re-measured | **355,962** |
 
-Cost of the re-measurement: 4x5 was 6,285 s under the old policy; the new
-defaults closed 4x4 in 350 s against 769 s, so a 4x5 re-run is plausibly ~1 h
-on this box and belongs on the off-box lanes rather than in a session.
+Regime C conflicts: 3x3 = 592, 4x4 = 9,986, 4x5 = 12,787, 5x5 = 87,981.
+Regime B is the arm every pre-2026-08-09 conclusion in this document was
+measured under; the ALL-OLD option arm reproduces it to within 1.3%, so the
+banked figures are sound *for the policy they were measured under*.
+
+Regime C lanes: `ems-tseitin-4x5-newpolicy` and `ems-tseitin-5x5-newpolicy`,
+EigenScript v0.39.0, EigenMiniSat 6754b29, banked under `tseitin-repolicy/` in
+the results dataset with an explicit `policy` field in each summary. Both lanes
+gated on a 3x3 + 4x4 preflight matching regime C byte-identically — which
+checks cross-host counter portability *and* proves which policy the lane ran.
+
+### The reduction grows steeply with instance size
+
+| case | B (ALL-OLD) | C (new defaults) | reduction |
+|---|---|---|---|
+| 3x3 | 1,850 | 1,681 | 1.10x |
+| 4x4 | 96,733 | 33,873 | 2.86x |
+| 4x5 | 489,112 | 47,961 | 10.20x |
+| 5x5 | 13,292,633 | 355,962 | **37.34x** |
+
+5x5 wall on the same Space class went **275,935 s (76.6 h) -> 14,487 s
+(4.02 h), a 19.05x speedup** — smaller than the 37x resolution gain because the
+instance-sized DB costs more per conflict (0.165 s vs 0.083 s, and
+peak_learnts 13,864 vs 5,164). **The two figures are not interchangeable**: use
+19x for any throughput or scheduling argument, 37x only for proof size.
+
+### What survives, and what does not
+
+**SURVIVES — the axis separation.** Anchored at 4x4, per variable:
+
+| axis | step | +vars | B (ALL-OLD) | C (new defaults) |
+|---|---|---|---|---|
+| expansion (min 4→5) | 4x4→5x5 | +18 | x137.42 (1.315/var) | x10.51 (**1.140/var**) |
+| flat (min stays 4) | 4x4→4x5 | +8 | x5.06 (1.225/var) | x1.42 (**1.044/var**) |
+
+Expansion 1.140/var vs flat 1.044/var = **1.091x** under regime C, against
+1.073x under regime B. Raising `min(r,c)` remains the more expensive way to add
+variables, and the separation is marginally *wider* under the corrected policy.
+This is the first time the comparison has had both sides under one policy.
+
+**DOES NOT SURVIVE — the growth of the expansion multiplier.**
+
+| | 3x3→4x4 | 4x4→5x5 | trend |
+|---|---|---|---|
+| B (ALL-OLD) | x52.3 | x137.4 | grows |
+| C (new defaults) | **x20.2** | **x10.5** | **shrinks** |
+| per-var, B | 1.327 | 1.315 | ~flat |
+| per-var, C | 1.239 | 1.140 | decreasing |
+
+The "multiplier itself grows, as an exponential-in-min(r,c) family should"
+reading above was measuring the DB/heuristic policy, not the formula family.
+**Prediction 1 also fails under regime C**: its threshold was 5x5 >= x20 the
+4x4 bank, and the measured value is **x10.51**. A pre-registered prediction
+that passed under ALL-OLD does not reproduce under the corrected policy.
+
+That asymmetry is the actual result of this re-measurement. It discriminated
+between a claim about the formula family (separation — survives) and a claim
+about the solver policy (multiplier growth — does not), which is precisely what
+a single-regime ladder could never have done. The negative banks.
+
+### Scope note added 2026-08-11: this ladder is runtime-bound, not compute-bound
+
+Native MiniSat 2.2.1 on the byte-identical CNFs, on the devbox
+(`benchmarks/dump_tseitin_cnf.eigs` emits them): 4x4 in **0.25 s**, 4x5 in
+1.66 s, 5x5 in 8.30 s, 5x6 in 31.64 s, 6x6 in **230.61 s**. The entire ladder,
+including rungs this document treats as out of reach, closes in under four
+minutes.
+
+The off-box lanes, the multi-hour runs and the revival conditions in #88 exist
+because EigenMiniSat is ~1,163x slower than a reference C solver on the same
+instance — of which **88% is EigenScript observer entropy computed on every
+assignment** (EigenScript#915; measured ceiling 8.50x). This does not weaken any
+result above — our search is genuinely *better*, needing 25x fewer conflicts
+than MiniSat at 5x5 — but it does relocate the constraint. Rung reachability
+here is a statement about runtime throughput, not about proof complexity.
