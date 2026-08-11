@@ -1,0 +1,19 @@
+# Emit a Tseitin torus case as DIMACS on stdout, so an external solver can be
+# run on the byte-identical instance the ladder solves.
+# Usage: eigenscript benchmarks/dump_tseitin_cnf.eigs <rows> <cols>
+
+load_file of "lib/int_vector.eigs"
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+dump_argv is args of null
+dump_rows is 4
+dump_cols is 4
+if (len of dump_argv) > 0:
+    dump_rows is floor of (num of dump_argv[0])
+if (len of dump_argv) > 1:
+    dump_cols is floor of (num of dump_argv[1])
+
+dump_case is tseitin_torus_case of [dump_rows, dump_cols, 1]
+print of (case_to_dimacs_text of dump_case)
