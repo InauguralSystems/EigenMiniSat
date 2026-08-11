@@ -1,0 +1,18 @@
+# The Tseitin ladder with observer bookkeeping disabled via the language's
+# `unobserved:` block (global depth -- propagates into the solver).
+#
+# WHY THIS EXISTS (2026-08-11, EigenScript#915 / GAPS.md): the runtime computes
+# observer entropy on every assignment even though this solver never reads an
+# observer. Measured on 4x4: 299.95s observed vs 34.73s here (8.6x), counters
+# byte-identical (conflicts=9986 resolutions=33873) -- the wrapper captures the
+# entire measured ceiling of the ungated cost. Search is provably unaffected:
+# every lane preflight gates on byte-identical counters between this harness
+# and the devbox bank.
+#
+# Per the repo rule ("don't bypass an EigenScript gap silently"), BOTH paths
+# stay: benchmarks/tseitin_ladder.eigs is the observed baseline, this is the
+# comparison. The systemic fix (gate the default) is upstream as #915.
+#
+# Usage: eigenscript benchmarks/tseitin_ladder_unobserved.eigs <rows> <cols> [progress_s]
+unobserved:
+    load_file of "benchmarks/tseitin_ladder.eigs"
