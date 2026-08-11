@@ -590,7 +590,7 @@ an acceptance gate in ouroboros#86.
 
 Regime C conflicts: 3x3 = 592, 4x4 = 9,986, 4x5 = 12,787, 5x5 = 87,981.
 
-**5x6 added 2026-08-12 (regime C only — never measured under any earlier
+**5x6 added 2026-08-11 (regime C only — never measured under any earlier
 regime): 613,347 resolutions / 172,150 conflicts** (60 vars, 240 clauses,
 peak_learnts 26,794, max_level 40; lane `ems-tseitin-5x6-newpolicy`, 45.5 min
 wall under the `unobserved:` harness — preflights byte-identical, so the
