@@ -239,9 +239,9 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   external UNSAT oracle alongside drat-trim.
 - **Do not read `resolutions` / `peak_learnts` as a size-vs-space finding.**
   That ratio climbs by construction: `resolutions` is cumulative and unbounded
-  while `peak_learnts` is pinned to the reduction schedule
-  (`learnt_limit` starts at 4 and grows +2 per reduce run, so
-  `peak_learnts ~= 4 + 2 * reduce_runs`). It measures the DB policy, not the
+  while `peak_learnts` is pinned to the reduction schedule (since #86:
+  `nClauses * 1/3` floored at 4, growing x1.1 per reduce run; the pre-#86
+  schedule was `4 + 2 * reduce_runs`). It measures the DB policy, not the
   formula family. A real size-vs-space result needs proof space for a *fixed*
   refutation, not a policy-capped high-water mark.
 - **`count_active_learnts` is O(total clauses) and runs every conflict** (via

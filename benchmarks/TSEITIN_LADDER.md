@@ -9,6 +9,15 @@ section instead.
 > status* section at the bottom was measured on the pre-fix solver (#74,
 > `clause_locked`). Read that section before comparing against any number here.
 
+> **2026-08-11 — READ THIS FIRST.** This document is chronological and its
+> counters span **three regimes**: A (pre-`clause_locked`), B (ALL-OLD:
+> post-`clause_locked`, pre-#84/#85/#86), and C (current defaults). A figure's
+> section position is NOT a reliable regime label. The regime table and the
+> current record live in **"Re-measurement complete — 2026-08-11"** at the
+> bottom; the flat 4x4→4x5 multiplier alone is x5.77 (A), x5.06 (B), or
+> x1.42 (C) depending on regime. Cite nothing from the middle of this document
+> without checking that section.
+
 ## What is being measured
 
 Resolution refutation size, clause space, and depth for Tseitin formulas over
@@ -27,6 +36,8 @@ this ladder:
   `min(r,c)` stays at 4, so hardness should grow much more slowly.
 
 ## Prior measurements (already banked, this box)
+
+*(REGIME A — pre-`clause_locked`; superseded twice, see the header note.)*
 
 | case | resolutions | conflicts | wall |
 |---|---|---|---|
@@ -318,7 +329,9 @@ Either of these before any further 5x5 attempt:
   restarting, and long-run cap sizing stops being load-bearing.
 
 The ladder's central result (axis separation, x48.4 vs x5.77) does not depend
-on 5x5 and stands.
+on 5x5 and stands. *(2026-08-11: those are regime-A figures, and the "8.4x
+steeper" reading of them is retracted immediately below; the separation itself
+was later re-confirmed under regime C — see the final section.)*
 
 # Adversarial review — 2026-07-30
 
