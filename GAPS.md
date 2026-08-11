@@ -62,6 +62,25 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   step). `--proof-bench` therefore pairs 3x3-odd with its 3x3-even SAT control
   instead of stepping to 4x4. This is a runtime ceiling, not a generator
   limit — worth revisiting whenever VM/AOT throughput moves.
+  **Superseded in scale, confirmed in kind (2026-08-11):** the #84/#85/#86
+  policy fixes shrank the searches enough that 4x5 closes in 136s and 5x5 in
+  4.02h off-box (TSEITIN_LADDER.md, regime C) — so "intractable" no longer
+  holds through 5x5. But the ceiling itself got measured and named, next entry.
+- **88% of CDCL runtime is observer entropy the solver never reads
+  (2026-08-11, upstream: EigenScript#915).** `perf` on the real 4x4 solve:
+  entropy functions 81.75% self time, interpreter dispatch 4.21%. The runtime
+  computes `compute_entropy` on EVERY assignment — for a list, walking every
+  element with a `log2` per element — whether or not anything observes the
+  binding, and this solver uses zero observer features. Ceiling probe
+  (observer early-returned, one binary, env-gated): 4x4 wall 299.95s -> 35.28s,
+  **8.50x**, counters byte-identical. Native MiniSat 2.2.1 on the identical
+  CNF: 0.25s (and needs 8.4x MORE conflicts — our search is better, our
+  throughput is not; the whole ladder incl. 6x6 closes native in <4 min,
+  `benchmarks/dump_tseitin_cnf.eigs` emits the CNFs). Also explains why the
+  JIT is a net ~3% LOSS here (compiles 56/62 traces but dispatch is only 4% of
+  the pie) and caps AOT's throughput upside at ~1.04x unless its emitter
+  elides observer updates (flagged on ouroboros#86). No local workaround
+  taken, per convention — the fix belongs upstream.
 
 - **Library composition convention (2026-07-04):** `lib/solver.eigs` no
   longer self-loads `int_vector.eigs` — entry points compose (same split as
