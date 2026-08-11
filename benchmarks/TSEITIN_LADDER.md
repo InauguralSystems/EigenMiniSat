@@ -589,6 +589,19 @@ an acceptance gate in ouroboros#86.
 | **C. new defaults** (current, EigenMiniSat 6754b29) | **1,681** | **33,873** | **47,961** | not re-measured | **355,962** |
 
 Regime C conflicts: 3x3 = 592, 4x4 = 9,986, 4x5 = 12,787, 5x5 = 87,981.
+
+**5x6 added 2026-08-12 (regime C only — never measured under any earlier
+regime): 613,347 resolutions / 172,150 conflicts** (60 vars, 240 clauses,
+peak_learnts 26,794, max_level 40; lane `ems-tseitin-5x6-newpolicy`, 45.5 min
+wall under the `unobserved:` harness — preflights byte-identical, so the
+harness provably leaves search untouched). This was the rung #88 estimated at
+~103M resolutions / >= 25 days from regime-B multipliers; measured, it is 168x
+smaller and ~800x faster. It gives the flat axis a second anchor:
+**flat at min=5 is 5x5→5x6 = x1.72 (1.056/var)**, against flat at min=4's
+x1.42 (1.044/var) and expansion's 1.140–1.239/var — the axis separation
+replicates at two independent flat anchors (1.079x at the min-5 anchor, 1.091x
+at the min-4 anchor). Search-quality gap vs native MiniSat grows with size:
+8.4x fewer conflicts at 4x4, 25x at 5x5, **45x at 5x6**.
 Regime B is the arm every pre-2026-08-09 conclusion in this document was
 measured under; the ALL-OLD option arm reproduces it to within 1.3%, so the
 banked figures are sound *for the policy they were measured under*.
