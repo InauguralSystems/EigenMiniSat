@@ -514,3 +514,42 @@ Outcome, with both sides of each comparison now under one policy:
 The re-measurement therefore separated a claim about the formula family from a
 claim about the solver policy — which is exactly what the arms above were built
 to make possible.
+
+## 2026-08-16: cross-tier wall times — VM vs AOT-native vs reference MiniSat
+
+Machine context: 2-core SSE2 devbox (same box as above; local trend numbers,
+not universal claims). EigenScript v0.39.0; ouroboros AOT at PR #113
+(fix/86-aot-exe-dir), which is the first compiler revision that runs this repo
+end-to-end (`bash aot/build.sh minisat.eigs ems_native`).
+
+Command shape, all three columns on the byte-identical CNF:
+
+```bash
+taskset -c 0 $EIGS minisat.eigs --cdcl FILE      # VM-EMS
+taskset -c 0 ./ems_native --cdcl FILE            # AOT-EMS
+taskset -c 0 /usr/bin/minisat FILE               # native MiniSat 2.2.1
+```
+
+n=5 medians of wall time (counters need only n=1 — deterministic, and VM vs
+AOT was byte-exact on every run, `ms=` field aside). All instances UNSAT;
+MiniSat agrees on every verdict. Tseitin torus, odd charge, current defaults
+(3x3 preflight reproduces the regime-C bank: 1,681 resolutions).
+
+| case | conflicts | resolutions | VM-EMS | AOT-EMS | MiniSat | VM/AOT (same policy) | AOT/MiniSat (policy-confounded) |
+|---|---|---|---|---|---|---|---|
+| 3x3 | 592 | 1,681 | 1.58 s | 1.70 s | 0.01 s | 0.93x | ~170x |
+| 3x4 | 1,104 | 3,317 | 4.50 s | 4.70 s | 0.04 s | 0.96x | ~118x |
+| 3x5 | 2,156 | 6,535 | 13.98 s | 14.86 s | 0.19 s | 0.94x | ~78x |
+| 3x6 | 2,210 | 6,709 | 17.85 s | 18.77 s | 0.11 s | 0.95x | ~171x |
+| 3x7 | 3,594 | 10,586 | 49.94 s | 52.52 s | 0.12 s | 0.95x | ~438x |
+
+Reading: **the AOT tier is ~0.95x — no speedup, marginally slower.** The AOT
+compiles only minisat.eigs's own statements; `load_file` compiles and runs the
+loaded module on the embedded bytecode VM at runtime, so the whole solver core
+executes at VM speed inside the native binary. The VM/AOT column is the clean
+same-solver same-policy number; the MiniSat column is different heuristics
+entirely (and sub-second denominators) — an ambition marker, not a diff. The
+AOT ladder-feasibility hope from TSEITIN_LADDER.md therefore stays parked on
+ouroboros#86's new frontier (native compilation of load_file'd modules; first
+concrete blocker: the AOT's refusal of `local cdcl_opts` boxed-module-global
+shadowing in lib/solver.eigs).
