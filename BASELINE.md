@@ -553,3 +553,36 @@ AOT ladder-feasibility hope from TSEITIN_LADDER.md therefore stays parked on
 ouroboros#86's new frontier (native compilation of load_file'd modules; first
 concrete blocker: the AOT's refusal of `local cdcl_opts` boxed-module-global
 shadowing in lib/solver.eigs).
+
+## 2026-08-17: whole-program native EMS — the load_file wall falls (supersedes the 0.95x table above)
+
+Same machine, same command discipline, same five instances as the 2026-08-16
+section (which stays above for history). What changed: ouroboros #114 (boxed
+`local` shadows) + #115 (element-class inference) let the **whole solver**
+compile natively as a single concatenated program (pin stdlib + lib/*.eigs +
+minisat.eigs, load_file lines stripped, plus a one-line `local negative` fix
+in bench.eigs that the AOT's builtin-clobber guard correctly demanded — see
+ouroboros#86). Verbatim minisat.eigs still routes load_file through the
+embedded VM; static load_file compilation is the remaining #86 item.
+
+Correctness gate before any timing: AOT-concat vs VM-concat on all fixtures +
+4 corpus CNFs x {default, --cdcl} — byte-exact, equal exit codes.
+
+n=5 medians, taskset -c 0, --cdcl, EigenScript v0.39.0 pin:
+
+| case | VM-EMS | AOT-EMS (native) | MiniSat | VM/AOT (same policy) | AOT/MiniSat (policy-confounded) |
+|---|---|---|---|---|---|
+| 3x3 | 1.58 s | 0.29 s | 0.013 s | **5.5x** | ~22x |
+| 3x4 | 4.36 s | 0.68 s | 0.036 s | **6.4x** | ~19x |
+| 3x5 | 13.90 s | 1.74 s | 0.190 s | **8.0x** | ~9x |
+| 3x6 | 17.60 s | 1.94 s | 0.109 s | **9.1x** | ~18x |
+| 3x7 | 49.60 s | 4.46 s | 0.121 s | **11.1x** | ~37x |
+
+Reading: the multiplier GROWS with instance size — 5.5x at 3x3 to **11.1x at
+3x7** — passing the 8.5x ungated-observer ceiling (EigenScript#915) at the
+larger rungs: observer elision is the bulk, with native codegen compounding
+on the residue as fixed startup amortizes. The ladder-feasibility math in
+TSEITIN_LADDER.md moves accordingly: rungs that cost hours on the VM cost
+minutes native (3x7: 50s -> 4.5s). The MiniSat column remains
+policy-confounded (different heuristics; ambition marker only) but the gap
+closed from ~78-438x to ~9-37x.
