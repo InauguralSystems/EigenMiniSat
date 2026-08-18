@@ -32,7 +32,7 @@ Minimum is **v0.11.8** — the earliest release that runs the CDCL suite
 green. The floor is set by a v0.11.x VM fix, not by stdlib integer
 vectors (those shipped in v0.11.2, but that release still crashes the
 CDCL path).
-CI builds and tests against EigenScript **v0.39.0** (pinned in
+CI builds and tests against EigenScript **v0.40.0** (pinned in
 `.github/workflows/ci.yml`): the correctness suite is green — all
 `test_solver.eigs` assertions and the full `run_smoke.sh` pass. The
 `Inline tiny accessors in CDCL hot path` commit captures the hoist
