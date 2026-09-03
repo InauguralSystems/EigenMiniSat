@@ -172,7 +172,7 @@ define dpll_rec(clauses, asg, stats) as:
         next is copy_assignment of asg
         next[v] is val
         stats.decisions += 1
-        result is dpll_rec of [clauses, next, stats]
+        local result is dpll_rec of [clauses, next, stats]
         if result != null:
             return result
 
@@ -489,7 +489,7 @@ define dpll_rec_watched(nvars, clauses, asg, stats) as:
         next is copy_assignment of asg
         next[v] is val
         stats.decisions += 1
-        result is dpll_rec_watched of [nvars, clauses, next, stats]
+        local result is dpll_rec_watched of [nvars, clauses, next, stats]
         if result != null:
             return result
 
@@ -560,7 +560,7 @@ define dpll_rec_persistent(nvars, clauses, asg, state, stats) as:
         stats.decisions += 1
 
         if (enqueue_watched of [asg, state.trail, lit, stats, 0]) != 0:
-            result is dpll_rec_persistent of [nvars, clauses, asg, state, stats]
+            local result is dpll_rec_persistent of [nvars, clauses, asg, state, stats]
             if result != null:
                 return result
 
