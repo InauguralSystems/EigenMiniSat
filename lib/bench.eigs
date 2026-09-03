@@ -591,10 +591,10 @@ define diagnostic_error_summary(parsed) as:
 define run_benchmarks(size) as:
     cases is benchmark_cases of size
     for c in cases:
-        t0 is monotonic_ns of null
-        result is solve_cnf of [c.nvars, c.clauses]
-        t1 is monotonic_ns of null
-        ms is (t1 - t0) / 1000000
+        local t0 is monotonic_ns of null
+        local result is solve_cnf of [c.nvars, c.clauses]
+        local t1 is monotonic_ns of null
+        local ms is (t1 - t0) / 1000000
         print of f"bench scan {c.name}: status={result.status} vars={c.nvars} clauses={len of c.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} ms={ms}"
 
         wt0 is monotonic_ns of null
@@ -652,7 +652,7 @@ define run_phase_benchmarks(size) as:
         pms is (pt1 - pt0) / 1000000
 
         nt0 is monotonic_ns of null
-        negative is solve_cnf_cdcl_with_options of [c.nvars, c.clauses, {"phase_policy": "negative"}]
+        local negative is solve_cnf_cdcl_with_options of [c.nvars, c.clauses, {"phase_policy": "negative"}]
         nt1 is monotonic_ns of null
         nms is (nt1 - nt0) / 1000000
 
@@ -1314,7 +1314,7 @@ define run_metadata_benchmarks(size) as:
     stats is cdcl_empty_stats of null
     asg is make_assignment of metadata_cfg.nvars
 
-    t0 is monotonic_ns of null
+    local t0 is monotonic_ns of null
     state is build_cdcl_state of [metadata_cfg.nvars, store, asg, stats, null]
     assert of [state.ok != 0, "metadata pressure build failed"]
     state.learnt_limit is floor of (metadata_cfg.learnts / 4)
@@ -1327,7 +1327,7 @@ define run_metadata_benchmarks(size) as:
         state.clause_activity[ci] is (i % 17) / 17
         stats.learnts += 1
 
-    t1 is monotonic_ns of null
+    local t1 is monotonic_ns of null
     add_ms is (t1 - t0) / 1000000
 
     rt0 is monotonic_ns of null
@@ -1368,7 +1368,7 @@ define run_parse_benchmarks(size) as:
         print of f"build text_builder {c.name}: text_len={len of text} clauses={len of c.clauses} ms={builder_build_ms}"
 
         pt0 is monotonic_ns of null
-        parsed is parse_dimacs_text of text
+        local parsed is parse_dimacs_text of text
         pt1 is monotonic_ns of null
         pms is (pt1 - pt0) / 1000000
         assert_dimacs_ok of parsed
@@ -1472,7 +1472,7 @@ define run_file_benchmarks(size) as:
         assert of [wrote == 1, "write_text failed for file benchmark"]
 
         pt0 is monotonic_ns of null
-        parsed is parse_dimacs_file of path
+        local parsed is parse_dimacs_file of path
         pt1 is monotonic_ns of null
         pms is (pt1 - pt0) / 1000000
         assert_dimacs_ok of parsed
@@ -1500,7 +1500,7 @@ define run_corpus_benchmarks(manifest_path) as:
 
         pt0 is monotonic_ns of null
         text is read_text of c.path
-        parsed is parse_dimacs_text of text
+        local parsed is parse_dimacs_text of text
         pt1 is monotonic_ns of null
         pms is (pt1 - pt0) / 1000000
         assert_dimacs_ok of parsed
@@ -1579,10 +1579,10 @@ define run_random_benchmarks(size) as:
         nclauses is floor of (c.nvars * ratio)
         r is gen_random_3sat of [c.nvars, nclauses, c.seed]
         label is f"random-3sat-{c.nvars}-{c.seed}"
-        t0 is monotonic_ns of null
-        result is solve_cnf_cdcl of [r.nvars, r.clauses]
-        t1 is monotonic_ns of null
-        ms is (t1 - t0) / 1000000
+        local t0 is monotonic_ns of null
+        local result is solve_cnf_cdcl of [r.nvars, r.clauses]
+        local t1 is monotonic_ns of null
+        local ms is (t1 - t0) / 1000000
         if result.status == "SAT":
             assert of [model_satisfies of [r.nvars, r.clauses, result.model], f"random model mismatch {label}"]
         print of f"random {label}: status={result.status} vars={c.nvars} clauses={nclauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts} learnts={result.learnts} learnt_lits={result.learnt_literals} minimize_checks={result.minimize_checks} minimize_removed={result.minimize_removed} minimize_steps={result.minimize_steps} compact_runs={result.compact_runs} compact_clause_lits={result.compact_clause_lits} restarts={result.restarts} ms={ms}"

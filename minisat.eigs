@@ -9,7 +9,7 @@ load_file of "lib/bench.eigs"
 
 define parse_args() as:
     argv is args of null
-    cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": "", "show_model": 0, "compact_policy": "", "restart_policy": "", "phase_policy": ""}
+    local cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": "", "show_model": 0, "compact_policy": "", "restart_policy": "", "phase_policy": ""}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
