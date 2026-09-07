@@ -1,0 +1,6 @@
+{
+  "name": "eigenminisat",
+  "version": "0.1.0",
+  "description": "SAT solver written in EigenScript (DPLL / watched literals / persistent watch trail / CDCL), doubling as a proof-complexity instrument.",
+  "deps": {}
+}
