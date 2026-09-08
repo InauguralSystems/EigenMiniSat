@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Native MiniSat is the answer oracle. EMS-VM is the AOT output oracle.
-# All heavy work is sequential; a timeout is always a named failure.
+# All heavy work is sequential; solver/emitter timeouts are named failures.
 set -Eeuo pipefail
 export LC_ALL=C
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -17,7 +17,8 @@ Usage: benchmarks/run_native_oracle.sh [--selftest] [--rungs '3x3 4x4']
 Defaults: rungs 3x3 4x4; all tests/corpus/**/*.cnf and tests/fixtures/*.cnf.
 --instances replaces BOTH default file directories (recursively); an empty
 directory together with --rungs '' is a deliberate zero-instance FAILURE.
-Omitted standard ladder rungs print SKIPPED (budget), never PASS.
+Any ladder selection also runs the mandatory 3x3/4x4 regime preflights.
+Other omitted standard rungs print SKIPPED (budget), never PASS.
 
 Environment (CLI options take precedence):
   RUNGS='3x3 4x4'            Space- or comma-separated dimensions, each >= 3
@@ -25,7 +26,7 @@ Environment (CLI options take precedence):
   EIGS_DIR=...               Default /home/jon/src/wt/es-v043
   EIGENSCRIPT_BIN=...        VM; with AOT must be EIGS_DIR/src/eigenscript
   MINISAT_BIN=...            Default /usr/bin/minisat
-  AOT=auto                  auto/on/off; auto skips only absent toolchains
+  AOT=auto                  auto skips absent/unbuildable tools; on requires AOT
   AOT_BUILD=.../aot/build.sh  Default dev-box ouroboros toolchain
   AOT_BINARY=...             Explicit reuse of a previously built EMS binary
   SOLVE_TIMEOUT=120          Seconds per solver AND emitter; timeout FAILS
@@ -87,6 +88,7 @@ EIGS=$(realpath "$EIGS")
 MINISAT=$(realpath "$MINISAT")
 [[ -x "$EIGS" && -x "$MINISAT" ]] || fail setup toolchain 'solver is not executable'
 vm_cmd=("$EIGS" "$ROOT/minisat.eigs")
+emitter_cmd=("$EIGS" "$ROOT/benchmarks/dump_tseitin_cnf.eigs")
 aot_cmd=()
 work=$(mktemp -d /tmp/ems-native-oracle.XXXXXX)
 cleanup() {
@@ -133,6 +135,21 @@ check_population() {
 }
 ((selftest)) || check_population
 
+# A ladder lane always preflights both regime anchors, even when the requested
+# measurement omits one. File-only and empty selections do not acquire rungs.
+lane_rungs=()
+preflight_added=0
+if ((${#rungs[@]})); then
+    lane_rungs=(3x3 4x4)
+    for rung in 3x3 4x4; do
+        [[ ${seen[$rung]+yes} ]] || preflight_added=$((preflight_added+1))
+    done
+    for rung in "${rungs[@]}"; do
+        [[ "$rung" == 3x3 || "$rung" == 4x4 ]] || lane_rungs+=("$rung")
+    done
+    selected=$((selected+preflight_added))
+fi
+
 run_zero() {
     local name=$1 arm=$2 out=$3 err=$4 cap=$5 rc
     shift 5
@@ -145,7 +162,32 @@ run_zero() {
     fi
 }
 
+build_aot() {
+    local source_root=$1
+    mkdir -p "$work/ouroboros" || return
+    tar -C "$source_root" --exclude='build' --exclude='*.o' --exclude='*.a' \
+        -cf "$work/toolchain.tar" eigs.json aot src || return
+    tar -C "$work/ouroboros" -xf "$work/toolchain.tar" || return
+    timeout --kill-after=5s "${BUILD_TIMEOUT}s" \
+        env EIGS_DIR="$EIGS_DIR" EIGS="$EIGS" bash "$work/ouroboros/aot/$(basename "$AOT_BUILD")" \
+        "$ROOT/minisat.eigs" "$work/minisat-aot" > "$work/build.out" 2> "$work/build.err" || return
+    [[ -x "$work/minisat-aot" ]] || { echo 'Build produced no executable' >&2; return 1; }
+}
+
+aot_build_failed() {
+    local rc=$1
+    if [[ "$AOT" == auto ]]; then
+        printf 'AOT: SKIPPED (build failed rc=%s; logs=%s/build.*; native/VM checks continue)\n' "$rc" "$work"
+    else
+        fail AOT build "rc=$rc; required AOT build failed; logs=$work/build.*"
+    fi
+}
+
 prepare_aot() {
+    # Reset even when called after a successful setup (selftest witnesses it).
+    # Failed/absent AOT must never retain the enabled arm or its executable.
+    aot_enabled=0
+    aot_cmd=()
     if [[ "$AOT" == off ]]; then
         echo 'AOT: SKIPPED (disabled explicitly)'
         return
@@ -157,7 +199,7 @@ prepare_aot() {
     fi
     EIGS_DIR=$(realpath "$EIGS_DIR")
     [[ "$EIGS" == "$(realpath "$EIGS_DIR/src/eigenscript")" ]] || fail AOT toolchain 'VM must be the same EIGS_DIR/src/eigenscript used to build AOT'
-    local version source_root
+    local version source_root rc
     version=$(git -C "$EIGS_DIR" describe --tags --exact-match 2>/dev/null) || fail AOT toolchain 'runtime checkout has no exact version tag'
     [[ "$version" == v0.43.0 ]] || fail AOT toolchain "expected v0.43.0, got $version"
     if [[ ${AOT_BINARY+x} ]]; then
@@ -171,15 +213,14 @@ prepare_aot() {
     # build.sh hardcodes a writable cache beside itself. Snapshot SOURCE only;
     # no toolchain checkout or runtime binary is modified/copied. Include the
     # whole source directories so future local include dependencies stay visible.
-    mkdir -p "$work/ouroboros"
-    tar -C "$source_root" --exclude='build' --exclude='*.o' --exclude='*.a' \
-        -cf "$work/toolchain.tar" eigs.json aot src || fail AOT build 'cannot snapshot source toolchain'
-    tar -C "$work/ouroboros" -xf "$work/toolchain.tar" || fail AOT build 'cannot unpack source toolchain'
     echo "AOT: BUILD (once, runtime=$version, cap=${BUILD_TIMEOUT}s)"
-    run_zero AOT build "$work/build.out" "$work/build.err" "$BUILD_TIMEOUT" \
-        env EIGS_DIR="$EIGS_DIR" EIGS="$EIGS" bash "$work/ouroboros/aot/$(basename "$AOT_BUILD")" \
-        "$ROOT/minisat.eigs" "$work/minisat-aot"
-    [[ -x "$work/minisat-aot" ]] || fail AOT build 'build returned without an executable'
+    if build_aot "$source_root" > "$work/build.setup.log" 2>&1; then
+        :
+    else
+        rc=$?
+        aot_build_failed "$rc"
+        return
+    fi
     aot_cmd=("$work/minisat-aot")
     aot_enabled=1
     echo 'AOT: ENABLED (EMS-VM is the byte-exact reference; only trailing ms stripped)'
@@ -203,6 +244,50 @@ prepare_cnf() {
     if ! cmp -s "$input" "$output"; then
         printf 'INPUT %s: normalized SATLIB trailer / final newline for every arm\n' "$name"
     fi
+}
+
+cnf_tokens() {
+    awk 'NF && $1 != "c" {for (i=1;i<=NF;i++) print $i}' "$1"
+}
+
+check_rung_fixture() {
+    local rung=$1 cnf=$2
+    [[ "$rung" == 3x3 ]] || return 0
+    cnf_tokens "$cnf" > "$work/3x3.tokens" || fail "$rung" rung-fixture 'cannot read emitted CNF'
+    cnf_tokens "$ROOT/tests/fixtures/tseitin_torus_3x3_odd.cnf" > "$work/3x3.fixture.tokens" || fail "$rung" rung-fixture 'cannot read banked fixture'
+    cmp -s "$work/3x3.tokens" "$work/3x3.fixture.tokens" || fail "$rung" rung-fixture 'emitted CNF differs from tests/fixtures/tseitin_torus_3x3_odd.cnf'
+    echo 'IDENTITY 3x3: PASS (banked repository fixture, ordered DIMACS tokens)'
+}
+
+check_rung_identity() {
+    local rung=$1 cnf=$2
+    if ! awk -v rows="${rung%x*}" -v cols="${rung#*x}" -f "$ROOT/benchmarks/torus_identity.awk" "$cnf" > "$work/identity.out" 2> "$work/identity.err"; then
+        fail "$rung" rung-identity "$(cat "$work/identity.err")"
+    fi
+    printf 'IDENTITY %s: PASS (header, every ordered literal and clause, odd charge)\n' "$rung"
+    check_rung_fixture "$rung" "$cnf"
+}
+
+emit_rung() {
+    local rung=$1
+    run_zero "$rung" emitter "$work/$rung.cnf" "$work/$rung.emitter.err" "$SOLVE_TIMEOUT" \
+        "${emitter_cmd[@]}" "${rung%x*}" "${rung#*x}"
+    check_rung_identity "$rung" "$work/$rung.cnf"
+}
+
+normalize_output() {
+    sed -E '/^c /s/ ms=[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$//' "$1" > "$2" || fail "$3" normalize 'output normalization failed'
+}
+
+check_regime() {
+    local rung=$1 output=$2 normalized="$work/regime-$1.stdout"
+    [[ "$rung" == 3x3 || "$rung" == 4x4 ]] || return 0
+    # Controls also pass the read-only banks as input: never write beside them.
+    normalize_output "$output" "$normalized" "$rung"
+    if ! cmp -s "$normalized" "$ROOT/benchmarks/oracle/regime-c-$rung.stdout"; then
+        fail "$rung" regime 'EMS-VM differs byte-for-byte from banked regime C (excluding ms)'
+    fi
+    printf 'PREFLIGHT %s: PASS (regime C, byte-exact EMS-VM output excluding ms)\n' "$rung"
 }
 
 parse_native() {
@@ -244,8 +329,8 @@ check_aot() {
     # File comparison preserves newlines, blank lines, and every other byte.
     # In particular, never strip the entire suffix beginning with an arbitrary
     # ms= token: that could hide a second output field or a planted comment.
-    sed -E '/^c /s/ ms=[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$//' "$vm" > "$vm.normalized" || fail "$name" normalize 'VM normalization failed'
-    sed -E '/^c /s/ ms=[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$//' "$aot" > "$aot.normalized" || fail "$name" normalize 'AOT normalization failed'
+    normalize_output "$vm" "$vm.normalized" "$name"
+    normalize_output "$aot" "$aot.normalized" "$name"
     if ! cmp -s "$vm.normalized" "$aot.normalized"; then
         diff -u "$vm.normalized" "$aot.normalized" >&2 || true
         fail "$name" aot-diff 'DIVERGENCE EMS-VM reference != EMS-AOT (bytes excluding trailing ms)'
@@ -253,7 +338,7 @@ check_aot() {
 }
 
 run_instance() {
-    local name=$1 input=$2 rung=${3:-} dir rc aot_status=SKIPPED ratio
+    local name=$1 input=$2 rung=${3:-} measure=${4:-1} dir rc aot_status=SKIPPED ratio
     dir=$(mktemp -d "$work/case.XXXXXX")
     prepare_cnf "$name" "$input" "$dir/input.cnf"
     printf '%s\n' "$name" > "$dir/name"
@@ -273,6 +358,7 @@ run_instance() {
     parse_vm "$name" "$dir/vm.out"
     vm_runs=$((vm_runs+1))
     check_verdict "$name"
+    [[ -z "$rung" ]] || check_regime "$rung" "$dir/vm.out"
     if [[ -n "$rung" && "$native_verdict" != UNSATISFIABLE ]]; then
         fail "$name" odd-torus "expected UNSATISFIABLE, oracle returned $native_verdict"
     fi
@@ -286,24 +372,109 @@ run_instance() {
     passed=$((passed+1))
     printf 'PASS %-53s %-13s native=VM AOT=%s\n' "$name" "$vm_verdict" "$aot_status"
     printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$native_verdict" "$native_conflicts" "$native_cpu" "$vm_conflicts" >> "$work/results.tsv"
-    if [[ -n "$rung" ]]; then
+    if [[ -n "$rung" && "$measure" == 1 ]]; then
         ratio=$(awk -v n="$native_conflicts" -v e="$vm_conflicts" 'BEGIN {if (e==0) print "n/a (EMS=0)"; else printf "%.3fx", n/e}')
         printf '%-8s %14s %14s %14s %18s\n' "$rung" "$vm_conflicts" "$native_conflicts" "$native_cpu" "$ratio" >> "$work/search-table"
     fi
 }
 
-finish_run() {
-    check_population
+check_coverage() {
     ((passed == selected && native_runs == selected && vm_runs == selected)) || fail instances coverage "selected=$selected passed=$passed native=$native_runs VM=$vm_runs"
     ((!aot_enabled || aot_runs == selected)) || fail instances coverage "selected=$selected AOT=$aot_runs"
+}
+
+finish_run() {
+    check_population
+    check_coverage
     printf 'SUMMARY PASS selected=%s passed=%s native=%s VM=%s AOT=%s\n' "$selected" "$passed" "$native_runs" "$vm_runs" "$aot_runs"
 }
 
+expect_control() {
+    local label=$1 expected_rc=$2 markers=$3 rc marker ok=1
+    shift 3
+    if ("$@") > "$work/control-$label.log" 2>&1; then rc=0; else rc=$?; fi
+    [[ "$rc" == "$expected_rc" ]] || ok=0
+    while IFS= read -r marker; do
+        grep -qF "$marker" "$work/control-$label.log" || ok=0
+    done <<< "$markers"
+    controls=$((controls+1))
+    if ((ok)); then
+        printf 'CONTROL %s: PASS (expected rc=%s)\n' "$label" "$rc"
+    else
+        printf 'CONTROL %s: MISS (rc=%s, expected rc=%s and named evidence)\n' "$label" "$rc" "$expected_rc"
+        cat "$work/control-$label.log"
+        control_missed=$((control_missed+1))
+    fi
+}
+
+coverage_control() {
+    # F3: simulate losing each completion record in turn, independently of
+    # process errors (which terminate before finish_run). Exercise the actual
+    # aggregate assertion, so deleting it is observed as a missed detection.
+    selected=1; passed=1; native_runs=1; vm_runs=1; aot_runs=1; aot_enabled=1
+    [[ "$1" == complete ]] || printf -v "$1" '%s' 0
+    finish_run
+}
+
+build_failure_control() {
+    AOT=$1
+    AOT_BUILD="$work/failed-toolchain/aot/build.sh"
+    # Inherit neither a cached binary nor a stale enabled arm. prepare_aot is
+    # responsible for clearing the latter; the control deliberately seeds it.
+    unset AOT_BINARY
+    aot_enabled=1; aot_cmd=(false)
+    # expect_control owns a subshell. Keep work in that subshell scope: a
+    # function-local work would disappear before EXIT and delete the parent
+    # harness directory through the restored outer value.
+    work=$(mktemp -d /tmp/ems-aot-failure-control.XXXXXX)
+    trap 'rm -rf -- "$work"' EXIT
+    selected=1; passed=0; native_runs=0; vm_runs=0; aot_runs=0
+    prepare_aot
+    run_instance build-failure-control "$ROOT/tests/fixtures/unit_unsat.cnf"
+    finish_run
+}
+
+selftest_controls() {
+    local rung counter expected_controls=13
+    expect_control identity-3x3 0 'IDENTITY 3x3: PASS (banked repository fixture' emit_rung 3x3
+    expect_control identity-4x4 0 'IDENTITY 4x4: PASS' emit_rung 4x4
+    # Same dimensions, wrong literal: a header-only check must fail this test.
+    awk 'NF && $1!="c" && $1!="p" && !changed {$1=-$1; changed=1} {print}' \
+        "$work/3x3.cnf" > "$work/wrong-clause.cnf"
+    expect_control identity-clauses 1 'FAIL 3x3 [rung-identity]:' check_rung_identity 3x3 "$work/wrong-clause.cnf"
+    # Directly exercise the independent fixture comparison; the structural
+    # identity guard must not absorb this plant and conceal an untested check.
+    expect_control fixture-reference 1 'FAIL 3x3 [rung-fixture]:' check_rung_fixture 3x3 "$work/wrong-clause.cnf"
+    for rung in 3x3 4x4; do
+        expect_control "regime-$rung" 0 "PREFLIGHT $rung: PASS" check_regime "$rung" "$ROOT/benchmarks/oracle/regime-c-$rung.stdout"
+        sed -E 's/ conflicts=[0-9]+/ conflicts=0/' "$ROOT/benchmarks/oracle/regime-c-$rung.stdout" > "$work/wrong-regime-$rung.stdout"
+        expect_control "regime-$rung-drift" 1 "FAIL $rung [regime]:" check_regime "$rung" "$work/wrong-regime-$rung.stdout"
+    done
+    expect_control coverage-complete 0 'SUMMARY PASS selected=1 passed=1 native=1 VM=1 AOT=1' coverage_control complete
+    for counter in passed native_runs vm_runs aot_runs; do
+        expect_control "coverage-$counter" 1 'FAIL instances [coverage]:' coverage_control "$counter"
+    done
+    if [[ -x "$EIGS_DIR/src/eigenscript" && "$(realpath "$EIGS_DIR/src/eigenscript")" == "$EIGS" ]] &&
+        [[ "$(git -C "$EIGS_DIR" describe --tags --exact-match 2>/dev/null || true)" == v0.43.0 ]]; then
+        expected_controls=15
+        mkdir -p "$work/failed-toolchain/aot" "$work/failed-toolchain/src"
+        printf '{}\n' > "$work/failed-toolchain/eigs.json"
+        printf '#!/usr/bin/env bash\nexit 7\n' > "$work/failed-toolchain/aot/build.sh"
+        expect_control auto-degrades 0 $'AOT: SKIPPED (build failed rc=7;\nSUMMARY PASS selected=1 passed=1 native=1 VM=1 AOT=0' build_failure_control auto
+        expect_control required-build-fails 1 'FAIL AOT [build]: rc=7;' build_failure_control on
+    else
+        echo 'CONTROL build-failure modes: SKIPPED (matching pinned runtime absent)'
+    fi
+    ((controls == expected_controls)) || control_missed=$((control_missed+1))
+    printf 'CONTROLS checked=%s expected=%s missed=%s\n' "$controls" "$expected_controls" "$control_missed"
+}
+
 selftest_run() {
-    local name reason rc caught=0 missed=0 expected=5
+    local name reason rc caught=0 missed=0 expected=6 controls=0 control_missed=0
     # Tiny real SAT/UNSAT controls prove the gates do not simply always fail.
     run_instance control-unsat tests/fixtures/unit_unsat.cnf
     run_instance control-sat tests/fixtures/simple_sat.cnf
+    selftest_controls
     # Deleting the negative unit makes this SAT; ONLY EMS receives this copy.
     # Corrupting the common CNF would correctly make both solvers agree on SAT.
     sed -e 's/^p cnf 1 2$/p cnf 1 1/' -e '/^-1 0$/d' tests/fixtures/unit_unsat.cnf > "$work/corrupt.cnf"
@@ -330,9 +501,16 @@ EOF
 #!/usr/bin/env bash
 exec sleep 10
 EOF
+    cat > "$work/resized-emitter.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+args=("$@")
+args[${#args[@]}-1]=3
+exec "$ORACLE_REAL_VM" "${args[@]}"
+EOF
     export ORACLE_REAL_AOT="${aot_cmd[0]:-}"
-    ((aot_enabled)) && expected=6
-    for name in corrupted-cnf wrong-ems-verdict perturbed-aot zero-instances solver-timeout empty-output; do
+    ((aot_enabled)) && expected=7
+    for name in corrupted-cnf wrong-ems-verdict perturbed-aot zero-instances solver-timeout empty-output resized-emitter; do
         if [[ "$name" == perturbed-aot ]] && ((!aot_enabled)); then
             echo 'SELFTEST perturbed-aot: SKIPPED (AOT disabled or absent)'
             continue
@@ -343,6 +521,7 @@ EOF
             zero-instances) reason=vacuity ;;
             solver-timeout) reason=vm ;;
             empty-output) reason=vm-output ;;
+            resized-emitter) reason=rung-identity ;;
         esac
         # Subshells use the SAME production runner and comparators. Match the
         # intended failure category as well as rc; an unrelated crash is MISS.
@@ -354,11 +533,15 @@ EOF
                 zero-instances) selected=0; passed=0; native_runs=0; vm_runs=0; aot_runs=0; finish_run; exit 0 ;;
                 solver-timeout) vm_cmd=(bash "$work/dead-vm.sh"); SOLVE_TIMEOUT=1 ;;
                 empty-output) vm_cmd=(true) ;;
+                resized-emitter)
+                    emitter_cmd=(bash "$work/resized-emitter.sh" "$ROOT/benchmarks/dump_tseitin_cnf.eigs")
+                    emit_rung 4x4; exit 0 ;;
             esac
             run_instance "$name" tests/fixtures/unit_unsat.cnf
         ) > "$work/selftest-$name.log" 2>&1; then rc=0; else rc=$?; fi
         local failure_name=$name
         [[ "$name" != zero-instances ]] || failure_name=instances
+        [[ "$name" != resized-emitter ]] || failure_name=4x4
         if [[ "$rc" == 1 ]] && grep -qF "FAIL $failure_name [$reason]:" "$work/selftest-$name.log"; then
             printf 'SELFTEST %s: RED (rc=%s, %s)\n' "$name" "$rc" "$reason"
             caught=$((caught+1))
@@ -368,27 +551,32 @@ EOF
             missed=$((missed+1))
         fi
     done
-    if ((missed != 0 || caught != expected)); then
-        printf 'SELFTEST BROKEN caught=%s expected=%s missed=%s (exit 2)\n' "$caught" "$expected" "$missed"
+    if ((missed != 0 || caught != expected || control_missed != 0)); then
+        printf 'SELFTEST BROKEN caught=%s expected=%s missed=%s control_missed=%s (exit 2)\n' "$caught" "$expected" "$missed" "$control_missed"
         exit 2
     fi
     printf 'SELFTEST ALL RED caught=%s expected=%s (intentional exit 1)\n' "$caught" "$expected"
     exit 1
 }
 
-printf 'Oracle: native MiniSat=%s; EMS-VM=%s; policy=CDCL current defaults\n' "$MINISAT" "$EIGS"
+printf 'Oracle: native MiniSat=%s; EMS-VM=%s; policy=CDCL current defaults (regime C)\n' "$MINISAT" "$EIGS"
 prepare_aot
 ((selftest)) && selftest_run
-printf 'Selection: files=%s rungs=%s per-solver-cap=%ss\n' "${#files[@]}" "${#rungs[@]}" "$SOLVE_TIMEOUT"
+printf 'Selection: files=%s requested-rungs=%s preflight-added=%s per-solver-cap=%ss\n' "${#files[@]}" "${#rungs[@]}" "$preflight_added" "$SOLVE_TIMEOUT"
 for rung in 3x3 4x4 4x5 4x6 5x5 5x6 6x6; do
+    if ((${#lane_rungs[@]})) && [[ ! ${seen[$rung]+yes} && ( "$rung" == 3x3 || "$rung" == 4x4 ) ]]; then
+        printf '%s: PREFLIGHT (required regime anchor; not selected for measurement)\n' "$rung"
+        continue
+    fi
     [[ ${seen[$rung]+yes} ]] || printf '%s: SKIPPED (budget; not selected in RUNGS)\n' "$rung"
 done
-for file in "${files[@]}"; do run_instance "$file" "$file"; done
-for rung in "${rungs[@]}"; do
-    run_zero "$rung" emitter "$work/$rung.cnf" "$work/$rung.emitter.err" "$SOLVE_TIMEOUT" \
-        "$EIGS" benchmarks/dump_tseitin_cnf.eigs "${rung%x*}" "${rung#*x}"
-    run_instance "tseitin-$rung-odd" "$work/$rung.cnf" "$rung"
+for rung in "${lane_rungs[@]}"; do
+    emit_rung "$rung"
+    measure=0
+    [[ ! ${seen[$rung]+yes} ]] || measure=1
+    run_instance "tseitin-$rung-odd" "$work/$rung.cnf" "$rung" "$measure"
 done
+for file in "${files[@]}"; do run_instance "$file" "$file"; done
 echo 'SEARCH GAP (measurement only; native conflicts / EMS conflicts, not a speed ratio)'
 printf '%-8s %14s %14s %14s %18s\n' rung EMS_conflicts native_conflicts native_CPU_s native/EMS
 if [[ -s "$work/search-table" ]]; then cat "$work/search-table"; else echo 'No ladder rungs selected; file-instance checks only.'; fi

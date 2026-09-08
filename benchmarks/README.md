@@ -73,6 +73,24 @@ search comparison; it does not gate the ratio or claim a runtime speedup.
 Native conflicts and CPU seconds are read from its report, and its stdout
 verdict must agree with its result file and exit status (SAT=10, UNSAT=20).
 
+Every emitted rung must also match the ordered DIMACS encoding of the named
+odd torus: header dimensions, all edge numbers, each clause and literal in
+order, and charge at vertex `(0,0)`. `torus_identity.awk` checks this separately
+from the EigenScript emitter. Ordering matters because it affects search.
+For 3x3, an additional comparison anchors the emitted token stream directly
+to `tests/fixtures/tseitin_torus_3x3_odd.cnf`; comments and whitespace are
+ignored, while clause/literal order remains significant. Another UNSAT
+formula of the same size cannot substitute for the named torus.
+
+Any run selecting ladder rungs first solves both 3x3 and 4x4 and requires
+their full EMS-VM stdout, excluding timing, to match the banked regime-C
+outputs in [`oracle/`](oracle/README.md). This implements CLAUDE.md's lane
+preflight rule. Each anchor is solved once; an anchor also selected for
+measurement reuses that solve. Extra anchors print `PREFLIGHT`, are included
+in completion counts as `preflight-added`, and do not enter the requested
+search-gap table. File-only runs need no ladder preflight, and an empty
+selection still fails before any preflight is added.
+
 The second oracle is **EMS-VM stdout for the AOT byte comparison**. With AOT
 enabled, the harness builds `minisat.eigs` once and compares each AOT stdout
 file byte for byte with VM stdout, stripping only a final numeric ` ms=`
@@ -102,10 +120,14 @@ The dev-box defaults are `/usr/bin/minisat`, the VM/runtime at
 `/home/jon/src/wt/es-v043`, and `ouroboros/aot/build.sh` beneath
 `/home/jon/src/InauguralSystems/EigenScriptEcosystem`. Override with
 `MINISAT_BIN`, `EIGS_DIR`, `EIGENSCRIPT_BIN`, and `AOT_BUILD` (see `--help`).
-`AOT=auto` enables the arm when the toolchains exist and prints an explicit
-skip if they are absent; `AOT=on` makes absence fail, and `AOT=off` explicitly
-disables it. An enabled arm requires the v0.43.0 checkout and its own VM
-binary. Source is staged and all build artifacts are created under `/tmp`,
+`AOT=auto` enables the arm when the toolchains exist and build successfully.
+Absence or a build failure (including a build timeout or missing executable)
+prints a named `AOT: SKIPPED` line and continues the native/VM oracle; the
+disabled arm contributes zero AOT passes. `AOT=on` makes both absence and
+build failure hard failures. `AOT=off` explicitly disables the arm. Invalid
+configuration, including a mismatched runtime/VM or invalid explicit
+`AOT_BINARY`, still fails in auto mode. An enabled arm requires the v0.43.0
+checkout and its own VM binary. Source is staged and all build artifacts are created under `/tmp`,
 so neither external checkout is written. `KEEP_WORK=1` retains raw reports,
 result files, normalized output, per-instance `results.tsv`, and build logs;
 the path is printed at exit. Run one harness at a time.
@@ -117,10 +139,12 @@ caller; the VM/runtime version checks and every per-instance byte comparison
 still run. It is useful with the binary retained by `KEEP_WORK=1`.
 
 `--selftest` first runs real SAT and UNSAT controls, then drives the same
-production runner with six faults (five when AOT is disabled): a clause
+production runner with seven faults (six when AOT is disabled): a clause
 deleted from **only EMS's copy** of an UNSAT CNF, a rewritten EMS verdict,
 an extra AOT output line, a zero-instance selection, a solver that times
-out, and a solver that exits successfully with no output. Corrupting the
+out, a solver that exits successfully with no output, and an emitter that
+replaces the requested column count with three. The last fault requests
+4x4, so a correct 3x3 output cannot mask it. Corrupting the
 shared CNF would make two correct solvers agree on its changed answer, so
 the first plant deliberately models input corruption between the two arms.
 Each plant must fail through its intended named check; an unrelated crash
@@ -129,5 +153,17 @@ demonstration. A missing detection prints `MISS` / `SELFTEST BROKEN` and
 exits **2**. Treat neither nonzero code alone as proof of working selftests:
 require the named RED lines and `SELFTEST ALL RED` summary.
 
+Supporting controls independently exercise the fixture comparison, a wrong
+clause with unchanged dimensions, both regime comparisons, and each missing
+completion count (passed/native/VM/AOT). They also plant a build script that
+exits 7: auto mode must finish a real native/VM solve with `AOT=0`, and on
+mode must fail. The auto control seeds a stale enabled arm so failure to
+clear it is observable. Build-failure controls skip explicitly if a matching
+pinned runtime is absent. Any missing control or detection makes the whole
+selftest report `MISS` / `SELFTEST BROKEN`, exit 2; the seven main plants
+remain separately counted. Normal runs never inject these faults.
+
 The initial [validation transcript](NATIVE_ORACLE_VALIDATION.md) records the
 clean run, planted faults, comparator mutations, and measured budget limits.
+The [round 2 transcript](NATIVE_ORACLE_ROUND2.md) records the wrong-rung
+regression going from a silent pass to a named failure and the new controls.
