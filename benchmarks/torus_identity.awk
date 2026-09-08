@@ -1,8 +1,9 @@
 # Ordered DIMACS identity for the torus named by rows/cols, independent of the
 # EigenScript emitter. Edge numbering is fixed by the checked-in 3x3 fixture:
 # horizontal row-major edges, then vertical row-major edges; charge at (0,0).
-# Preserve clause/literal order because that order affects search counters.
-# The shell also compares 3x3 directly to the existing fixture (not this model).
+# Pin exact ordered tokens. Swapping 3x3 vertex blocks 1 and 2 was measured
+# to leave normalized VM output identical; the regime bank cannot catch it.
+# The shell also compares 3x3 and 4x4 to captured fixtures (not this model).
 function reject(message) {
     print message > "/dev/stderr"
     bad = 1
