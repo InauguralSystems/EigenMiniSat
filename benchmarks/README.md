@@ -50,3 +50,84 @@ rows. Negative overhead marks a native-builder win over repeated concat, and
 the summary reports that as `text_builder_native_win=1`. This keeps
 string-assembly pressure visible after the main generated-DIMACS path moves to
 EigenScript's root-backed builder API.
+
+## Native MiniSat differential oracle
+
+```bash
+benchmarks/run_native_oracle.sh
+benchmarks/run_native_oracle.sh --selftest
+# Larger rungs are opt-in; every selected solve must finish within its cap.
+SOLVE_TIMEOUT=3600 benchmarks/run_native_oracle.sh --rungs '3x3 4x4 5x5'
+SOLVE_TIMEOUT=7200 benchmarks/run_native_oracle.sh --rungs '5x6 6x6'
+# File-only run, without the optional AOT toolchain:
+benchmarks/run_native_oracle.sh --aot off --rungs ''
+# Deliberately empty selection: must fail before building or solving.
+mkdir -p /tmp/ems-oracle-empty
+benchmarks/run_native_oracle.sh --rungs '' --instances /tmp/ems-oracle-empty
+```
+
+Native MiniSat supplies the **ground-truth SAT/UNSAT answer**. Each instance
+must agree with EMS under `--cdcl` and current default policies (regime C in
+`TSEITIN_LADDER.md`). The table reports native conflicts / EMS conflicts as a
+search comparison; it does not gate the ratio or claim a runtime speedup.
+Native conflicts and CPU seconds are read from its report, and its stdout
+verdict must agree with its result file and exit status (SAT=10, UNSAT=20).
+
+The second oracle is **EMS-VM stdout for the AOT byte comparison**. With AOT
+enabled, the harness builds `minisat.eigs` once and compares each AOT stdout
+file byte for byte with VM stdout, stripping only a final numeric ` ms=`
+field on comment lines. All other bytes, including final newlines, remain
+significant. Stderr is retained for diagnostics. This checks answers and CLI
+output; it does not replace SAT model checking or DRAT proof verification.
+
+Default coverage is every `.cnf` recursively beneath `tests/corpus` and
+`tests/fixtures`, plus odd-torus 3x3 and 4x4. Larger standard ladder rungs
+print `SKIPPED (budget)` and contribute no passes. `RUNGS` or `--rungs`
+replaces the rung list; `INSTANCE_DIR` or `--instances` replaces both file
+directories. Explicit empty selections fail, as do missing inputs, malformed
+solver reports, emitter errors, solver errors, and timeouts. The default
+per-command cap is 120 seconds; an attempted rung timing out is **FAIL**,
+never a budget skip. The default excludes 5x5 because native MiniSat's short
+solve time is not a budget estimate for the EMS VM. A cold AOT build can also
+take longer than the solves; its separate default cap is 600 seconds.
+
+Native MiniSat rejects the SATLIB `%` / `0` trailers present in this repo.
+The harness announces their removal and feeds the same temporary formula
+to every arm. It accepts only a standalone `%`, an optional standalone `0`,
+and blank trailing lines; other trailing data fails. It leaves clause order
+and literals intact. Original fixtures are unchanged; this entry point
+does not test EMS's handling of the original trailers.
+
+The dev-box defaults are `/usr/bin/minisat`, the VM/runtime at
+`/home/jon/src/wt/es-v043`, and `ouroboros/aot/build.sh` beneath
+`/home/jon/src/InauguralSystems/EigenScriptEcosystem`. Override with
+`MINISAT_BIN`, `EIGS_DIR`, `EIGENSCRIPT_BIN`, and `AOT_BUILD` (see `--help`).
+`AOT=auto` enables the arm when the toolchains exist and prints an explicit
+skip if they are absent; `AOT=on` makes absence fail, and `AOT=off` explicitly
+disables it. An enabled arm requires the v0.43.0 checkout and its own VM
+binary. Source is staged and all build artifacts are created under `/tmp`,
+so neither external checkout is written. `KEEP_WORK=1` retains raw reports,
+result files, normalized output, per-instance `results.tsv`, and build logs;
+the path is printed at exit. Run one harness at a time.
+
+For repeated gate-development/selftest runs, `AOT_BINARY=/tmp/.../minisat-aot`
+explicitly reuses a previously built binary and announces that choice. The
+default always builds afresh. This override leaves binary provenance to the
+caller; the VM/runtime version checks and every per-instance byte comparison
+still run. It is useful with the binary retained by `KEEP_WORK=1`.
+
+`--selftest` first runs real SAT and UNSAT controls, then drives the same
+production runner with six faults (five when AOT is disabled): a clause
+deleted from **only EMS's copy** of an UNSAT CNF, a rewritten EMS verdict,
+an extra AOT output line, a zero-instance selection, a solver that times
+out, and a solver that exits successfully with no output. Corrupting the
+shared CNF would make two correct solvers agree on its changed answer, so
+the first plant deliberately models input corruption between the two arms.
+Each plant must fail through its intended named check; an unrelated crash
+counts as `MISS`. `SELFTEST ALL RED` exits **1 intentionally**, as a red
+demonstration. A missing detection prints `MISS` / `SELFTEST BROKEN` and
+exits **2**. Treat neither nonzero code alone as proof of working selftests:
+require the named RED lines and `SELFTEST ALL RED` summary.
+
+The initial [validation transcript](NATIVE_ORACLE_VALIDATION.md) records the
+clean run, planted faults, comparator mutations, and measured budget limits.
