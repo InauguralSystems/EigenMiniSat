@@ -11,7 +11,7 @@ cd "$ROOT"
 # Context paths are recorded separately; they are never inferred from the message.
 fail() {
     if [[ -n ${ORACLE_FAILURE_LOG:-} ]]; then
-        printf '%s\0' "${BASH_LINENO[0]}" "${FUNCNAME[1]:-main}" "$1" "$2" "$3" "${work:-}" "${dir:-}" >> "$ORACLE_FAILURE_LOG"
+        printf '%s\0' "${BASH_SOURCE[1]}" "${BASH_LINENO[0]}" "${FUNCNAME[1]:-main}" "$1" "$2" "$3" "${work:-}" "${dir:-}" >> "$ORACLE_FAILURE_LOG"
     fi
     printf 'FAIL %s [%s]: %s\n' "$1" "$2" "$3" >&2
     exit 1

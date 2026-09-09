@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Post-condition for shared DIMACS preparation (stdlib only, no solver oracle).
 
-Only comments/whitespace and the documented SATLIB tail may disappear.
+Only comments, blank lines, within-line whitespace and the SATLIB tail may disappear.
+Token grouping on each remaining data line is preserved.
 Unused declared variables, empty clauses, and clauses spanning lines are legal.
 """
 import re
@@ -11,9 +12,10 @@ from pathlib import Path
 
 
 def formula(path, trailer):
-    tokens = []
+    records = []
     tail = zero = False
-    for line in Path(path).read_bytes().splitlines():
+    # Match EMS's LF-delimited records; CR remains within-line whitespace.
+    for line in Path(path).read_bytes().split(b'\n'):
         fields = line.split()
         if tail:
             if not fields:
@@ -25,9 +27,12 @@ def formula(path, trailer):
         if trailer and fields == [b'%']:
             tail = True
         elif fields and fields[0] != b'c':
-            tokens.extend(fields)
+            records.append(tuple(fields))
+    tokens = [token for record in records for token in record]
     if len(tokens) < 4 or tokens[:2] != [b'p', b'cnf']:
         raise ValueError('missing DIMACS header')
+    if len(records[0]) != 4:
+        raise ValueError('DIMACS header must occupy its own four-token line')
     if any(not re.fullmatch(rb'[0-9]+', t) for t in tokens[2:4]):
         raise ValueError('invalid DIMACS header counts')
     variables, declared = map(int, tokens[2:4])
@@ -45,7 +50,7 @@ def formula(path, trailer):
         raise ValueError('unterminated clause')
     if clauses != declared:
         raise ValueError(f'clause count declared={declared} actual={clauses}')
-    return tokens
+    return records
 
 
 def compare(source, prepared):
@@ -58,7 +63,7 @@ def compare(source, prepared):
             original = value
         elif original != value:
             # Deliberately fixed evidence: no filenames guessed from a failing parser.
-            raise ValueError('ordered DIMACS tokens changed during shared preparation')
+            raise ValueError('ordered DIMACS token lines changed during shared preparation')
 
 
 def main():

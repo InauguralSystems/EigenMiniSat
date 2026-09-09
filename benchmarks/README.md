@@ -126,14 +126,18 @@ and blank trailing lines; other trailing data fails. It leaves clause order
 and literals intact. Before any solver runs, `cnf_preservation.py` independently
 parses the source (allowing that trailer) and prepared file (allowing no trailer).
 It validates the header, literal bounds, terminated clauses and actual clause
-count, then requires equal ordered header/literal tokens. This is stronger than
-clause-multiset preservation; unused declared variables and empty clauses are
-legal. The post-condition requires Python 3's standard library.
+count, requires a four-token header line, and compares ordered token tuples
+per data line. It ignores comments, blank lines and within-line whitespace,
+but preserves LF-delimited data-line boundaries. Unused declared variables
+and empty clauses are legal. The post-condition requires Python 3's standard library.
 
 Emission and input preparation precede all solver arms: they are **differential
 blind spots**. Agreement can hold after a shared wrong-instance or normalization
-bug. The named torus identity checks and the formula-preservation post-condition
-cover these stages independently of solver agreement. Output normalization is
+bug. The torus check verifies the named encoding; the preparation post-condition
+guarantees that header and literal tokens retain their data-line grouping,
+modulo the documented trailer, comment and whitespace handling. It therefore
+rejects moving a literal onto the header line, which the two parsers treat
+differently. Output normalization is
 also shared by the VM/AOT byte comparison; its deliberately narrow timing-field
 strip defines which bytes that comparison observes. The regime banks check
 normalized VM output at both preflights, and the AOT byte plant checks that an
@@ -165,16 +169,21 @@ still run. It is useful with the binary retained by `KEEP_WORK=1`.
 `--selftest` starts separate executions of **this invocation's harness file**
 through its normal CLI. `native_oracle_selftest.sh` injects faults at production
 boundaries; it never invokes a comparator. `oracle_selftest.py` derives every
-production `fail` call from the actual shell source, masking comments, literal strings
-and heredocs while retaining command substitutions. There is no hand-maintained list of required sites or total count.
-Each derived function/ordinal must have an enrolled case, and every case's site
+production `fail` call from the entry script and its recursively followed
+`source`/`.` graph, masking comments, literal strings and heredocs while retaining
+command substitutions. Source paths may be literal or use `$ROOT`; unresolved
+dynamic source paths fail enrollment. There is no hand-maintained list of
+required sites or total count.
+Each derived file/function/ordinal must have an enrolled case, and every case's site
 must still exist. Adding an uncovered gate breaks even a partial selftest
 before solving; the `enrollment` plant adds such a gate in a temporary script
 and requires exactly that rejection. A reverse-membership plant removes an
-enrolled failure site and requires the missing-site diagnostic.
+enrolled failure site and requires the missing-site diagnostic. The
+`enrollment-sourced` plant adds a gate two source edges away from the entry
+script; the existing unknown-plant gate in the sourced helper is enrolled too.
 
-The failure reporter records the source site and separate temporary-path
-context. A negative case requires its intended site, exit status, and the
+The failure reporter records the source filename and site, and separate
+temporary-path context. A negative case requires its intended site, exit status, and the
 **entire expected diagnostic: subject, class and evidence**. It also compares
 the printed diagnostic with that expectation; a wrong instance name, wrong
 class, different evidence, or an unrelated failure is a `MISS`. Expectations

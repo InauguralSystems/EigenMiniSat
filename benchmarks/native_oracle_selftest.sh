@@ -36,6 +36,12 @@ plant_fault() {
             printf '#!/usr/bin/env bash\nexit 7\n' > "$work/normalizer.sh"
             normalizer_cmd=(bash "$work/normalizer.sh") ;;
         input:normalizer-empty) normalizer_cmd=(true) ;;
+        normalized:header-line-merge)
+            awk '$1=="p" {hdr=$0; next}
+                hdr && NF && $1!="c" {print hdr" "$1; $1=""; print; hdr=""; next}
+                {print}' "$output" > "$dir/header-merged.cnf"
+            mv "$dir/header-merged.cnf" "$output"
+            ;;
         normalized:normalization-corruption)
             # Header-consistent corruption after the real awk. All three arms
             # would receive this SAT formula if the post-condition were removed.

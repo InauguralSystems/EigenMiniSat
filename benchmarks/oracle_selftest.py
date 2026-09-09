@@ -13,12 +13,13 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
 
 
-def failure_sites(source):
+def shell_code(source):
     masked = []
     quote = None
     heredoc = None
@@ -73,10 +74,14 @@ def failure_sites(source):
         masked.append(code)
     if quote or heredoc or substitutions:
         raise ValueError('unclosed quote/heredoc in failure-site scanner')
+    return masked
+
+
+def failure_sites(source):
     function = 'main'
     counts = collections.Counter()
     sites = {}
-    for number, code in enumerate(masked, 1):
+    for number, code in enumerate(shell_code(source), 1):
         definition = re.match(r'^([a-zA-Z_][a-zA-Z_0-9]*)\(\)\s*\{', code)
         if definition:
             function = definition[1]
@@ -88,6 +93,51 @@ def failure_sites(source):
             sites[number] = f'{function}:{counts[function]}'
         if code == '}':
             function = 'main'
+    return sites
+
+
+def production_sites(harness):
+    """Follow source/. edges recursively, including conditional source commands.
+
+    The CLI runs from ROOT. Source operands may be literal paths or use ROOT;
+    an unresolved dynamic operand fails enrollment instead of hiding its file.
+    File-qualified locations prevent collisions between sourced functions.
+    """
+    harness = harness.resolve()
+    root = harness.parent.parent
+    visited = set()
+    sites = {}
+
+    def visit(path):
+        path = path.resolve()
+        if path in visited:
+            return
+        visited.add(path)
+        try:
+            source = path.read_text()
+        except OSError as error:
+            raise ValueError(f'cannot read sourced file {path}: {error.strerror}') from error
+        if path == harness:
+            prefix = ''
+        else:
+            prefix = str(path.relative_to(root) if path.is_relative_to(root) else path)+'::'
+        sites.update({(str(path), line): prefix+site for line,site in failure_sites(source).items()})
+        original = source.splitlines()
+        for number, code in enumerate(shell_code(source), 1):
+            for call in re.finditer(r'(?<![\w$])(?:source|\.)(?=\s)', code):
+                # Read the unmasked operand so quotes and ROOT survive. Stop at
+                # shell punctuation, including a semicolon with no preceding gap.
+                lexer = shlex.shlex(original[number-1][call.end():], posix=True,
+                                    punctuation_chars=';&|<>()')
+                lexer.whitespace_split = True
+                operand = next(lexer, '')
+                operand = re.sub(r'\$(?:ROOT\b|\{ROOT\})', lambda _: str(root), operand)
+                if not operand or '$' in operand or '`' in operand or operand in (';', '&', '|', '<', '>', '(', ')'):
+                    raise ValueError(f'unresolved source operand at {path}:{number}')
+                target = Path(operand)
+                visit(target if target.is_absolute() else root/target)
+
+    visit(harness)
     if not sites:
         raise ValueError('zero production failure sites')
     return sites
@@ -113,6 +163,8 @@ def cases():
     def add(name, site, subject, tag, evidence, **kw):
         result.append(Case(name, site, subject, tag, evidence, **kw))
     N = 'tseitin-3x3-odd'
+    add('unknown-plant','benchmarks/native_oracle_selftest.sh::plant_fault:1','options','configuration',
+        'unknown plant: bogus-plant-name',args=('--plant','bogus-plant-name'))
     add('execution-error', 'execution_failed:1', 'harness', 'execution', 'unexpected command failure rc=7')
     add('missing-argument', 'main:1', 'options', 'configuration', '--instances needs a value', args=('--instances',))
     add('unknown-option', 'main:2', 'options', 'configuration', 'unknown option: --unknown', args=('--unknown',))
@@ -146,7 +198,8 @@ def cases():
     add('trailer-junk','prepare_cnf:5',N,'input-trailer','unsupported data after SATLIB trailer')
     add('normalizer-empty','prepare_cnf:6',N,'input','CNF contains no formula')
     for name, evidence in (
-        ('normalization-corruption','ordered DIMACS tokens changed during shared preparation'),
+        ('normalization-corruption','ordered DIMACS token lines changed during shared preparation'),
+        ('header-line-merge','prepared: DIMACS header must occupy its own four-token line'),
         ('header-count','source: clause count declared=73 actual=72'),
         ('variable-bound','source: literal exceeds declared variable bound'),
         ('unterminated-clause','source: unterminated clause'),
@@ -184,12 +237,12 @@ def cases():
         evidence = 'selected=4 passed={passed} native={native} VM={vm}'.format(**{x:3 if x==label else 4 for x in ('passed','native','vm')})
         add('coverage-'+label,'check_coverage:1','instances','coverage',evidence)
     add('coverage-aot','check_coverage:2','instances','coverage','selected=4 AOT=3',aot=True)
-    result.extend([Case('clean',control=True),Case('satlib-trailers',control=True),Case('auto-degrades',control=True,pinned=True),Case('enrollment')])
+    result.extend([Case('clean',control=True),Case('satlib-trailers',control=True),Case('auto-degrades',control=True,pinned=True),Case('enrollment'),Case('enrollment-sourced')])
     return result
 
 
-def enrollment(source, inventory):
-    sites = failure_sites(source)
+def enrollment(harness, inventory):
+    sites = production_sites(harness)
     required = set(sites.values())
     enrolled = {c.site for c in inventory if c.site}
     errors = []
@@ -212,10 +265,10 @@ def diagnostic(case, context):
 
 def check_failure(case, rc, output, event_path, sites, root):
     fields = event_path.read_bytes().split(b'\0') if event_path.exists() else []
-    if len(fields) != 8 or fields[-1] != b'':
-        return False, 'expected exactly one seven-field production failure witness'
+    if len(fields) != 9 or fields[-1] != b'':
+        return False, 'expected exactly one eight-field production failure witness'
     try:
-        line, function, subject, tag, evidence, work, directory = [v.decode() for v in fields[:-1]]
+        source, line, function, subject, tag, evidence, work, directory = [v.decode() for v in fields[:-1]]
         line = int(line)
     except (ValueError, UnicodeError):
         return False, 'malformed production failure witness'
@@ -223,14 +276,17 @@ def check_failure(case, rc, output, event_path, sites, root):
     context = dict(ROOT=str(root),WORK=work,CASE=directory)
     expected = diagnostic(case,context)
     observed = f'FAIL {subject} [{tag}]: {evidence}'
-    actual_site = sites.get(line)
+    source = str(Path(source).resolve())
+    actual_site = sites.get((source, line))
+    if function == 'source':
+        function = 'main'
     if function == 'execution_failed':
         # Bash ERR traps report the triggering command's BASH_LINENO even
         # inside handler functions. The observed FUNCNAME identifies the sole
         # handler failure site; no other reporter is exempt from line matching.
-        candidates = [v for v in sites.values() if v.startswith(function+':')]
+        candidates = [v for (file,_),v in sites.items() if file == source and v.rsplit('::',1)[-1].startswith(function+':')]
         actual_site = candidates[0] if len(candidates)==1 else None
-    elif actual_site and not actual_site.startswith(function+':'):
+    elif actual_site and not actual_site.rsplit('::',1)[-1].startswith(function+':'):
         actual_site = None
     human = [v for v in output.splitlines() if v.startswith('FAIL ')]
     ok = rc == 1 and actual_site == case.site and observed == expected and human == [expected]
@@ -275,12 +331,12 @@ def run(harness, work, mode, binary, selection):
     root = harness.parent.parent
     inventory = cases()
     try:
-        sites = enrollment(harness.read_text(),inventory)
+        sites = enrollment(harness,inventory)
     except ValueError as error:
         print(f'FAIL harness [enrollment]: {error}',flush=True)
         print('SELFTEST enrollment: MISS (exit 2)',flush=True)
         return 2
-    print(f'ENROLLMENT derived={len(sites)} enrolled={len({c.site for c in inventory if c.site})} (actual production source)',flush=True)
+    print(f'ENROLLMENT derived={len(sites)} enrolled={len({c.site for c in inventory if c.site})} (production source graph)',flush=True)
     if selection:
         inventory = [c for c in inventory if c.name==selection]
         if not inventory:
@@ -313,7 +369,7 @@ def run(harness, work, mode, binary, selection):
             args+=['--rungs','','--instances',str(empty)]
         args.extend(case.args)
         env=dict(os.environ,AOT_BINARY=binary,KEEP_WORK='0',ORACLE_FAILURE_LOG=str(event))
-        if case.name=='enrollment':
+        if case.name in ('enrollment','enrollment-sourced'):
             # A real new failure call, unreachable in this run, must still be
             # discovered. No helper invocation or hand-maintained expected count.
             uncovered = 'FAIL harness [enrollment]: uncovered production sites: uncovered_gate:1'
@@ -324,9 +380,17 @@ def run(harness, work, mode, binary, selection):
             # Reverse membership gets a separate plant: remove one registered
             # reporter call. It cannot be absorbed by the uncovered-site check.
             original=harness.read_text().splitlines(keepends=True)
-            first=min(sites)
+            first=min(line for file,line in sites if file == str(harness.resolve()))
             original[first-1]=re.sub(r'\bfail(?=\s)', ':', original[first-1], count=1)
-            shapes.append((''.join(original),'FAIL harness [enrollment]: cases reference absent production sites: '+sites[first]))
+            shapes.append((''.join(original),'FAIL harness [enrollment]: cases reference absent production sites: '+sites[(str(harness.resolve()),first)]))
+            if case.name == 'enrollment-sourced':
+                # A new gate two source edges away from the entry point.
+                inner=work/'source-inner.sh'
+                outer=work/'source-outer.sh'
+                inner.write_text("sourced_gate() {\n    fail sourced-subject sourced-class 'unenrolled evidence'\n}\n")
+                outer.write_text('. '+shlex.quote(str(inner))+'\n')
+                shapes=[(harness.read_text()+'\nsource '+shlex.quote(str(outer))+'\n',
+                         'FAIL harness [enrollment]: uncovered production sites: '+str(inner)+'::sourced_gate:1')]
             outputs = []
             failures = []
             ok = True
@@ -364,7 +428,7 @@ def run(harness, work, mode, binary, selection):
             else:
                 caught+=1; witnessed.add(case.site)
                 print(f'SELFTEST {case.name}: RED (production CLI rc={rc}; exact subject/class/evidence)',flush=True)
-                if case.name in ('normalization-corruption','enrollment'):
+                if case.name in ('normalization-corruption','header-line-merge','enrollment','enrollment-sourced'):
                     for line in dict.fromkeys(l for l in output.splitlines() if l.startswith('FAIL ')):
                         print(line,flush=True)
         else:
@@ -390,7 +454,7 @@ if __name__=='__main__':
     if sys.argv[1:] == ['--list']:
         print('\n'.join(c.name for c in cases()))
     elif sys.argv[1:] == ['--sites']:
-        for line,site in failure_sites(Path(__file__).with_name('run_native_oracle.sh').read_text()).items():
-            print(f'{site}\t{line}')
+        for (file,line),site in production_sites(Path(__file__).with_name('run_native_oracle.sh')).items():
+            print(f'{site}\t{file}:{line}')
     else:
         sys.exit(run(Path(sys.argv[1]),Path(sys.argv[2]),int(sys.argv[3]),sys.argv[4],sys.argv[5]))
