@@ -56,15 +56,17 @@ FAIL 3x3 [rung-identity]: token 41: expected -2; got -3
 Artifacts: /tmp/ems-native-oracle.DVzbUt
 ```
 
-## Independent 4x4 input anchor
+## Captured 4x4 input anchor
 
 `oracle/tseitin_torus_4x4_odd.cnf` captures the unchanged emitter's output
 above, with only its extra trailing blank line removed. It was not generated
 by `torus_identity.awk`. Its normalized VM output matched the already
 committed 4x4 regime bank before it was added. Normal production emission
 compares ordered tokens directly with this capture as well as checking the
-model; the existing 3x3 fixture remains the other independent input anchor.
-The planted reference corruption leaves the emitted input and model alone:
+model; the existing 3x3 fixture remains the other captured input anchor.
+Round-4 scope correction: this emitter capture cannot establish the emitter's
+initial correctness. Its extra coverage is bank corruption and model drift or
+weakening; see the round-4 single-token sweep. The planted reference corruption leaves the emitted input and model alone:
 
 `AOT_BINARY=/tmp/ems_aot KEEP_WORK=1 benchmarks/run_native_oracle.sh
 --plant fixture-4x4` (one command):
@@ -367,7 +369,7 @@ BOUNDARIES checked=13 unexpected=0
 ```
 
 The boundary sweep also disables only the identity model and runs the resized
-emitter: the independently captured 4x4 fixture still rejects it through
+emitter: the banked 4x4 fixture still rejects it through
 `[rung-fixture]`. This witnesses that the new anchor does not depend on the
 model identifying its own error.
 

@@ -7,8 +7,31 @@ HARNESS=$(realpath "${BASH_SOURCE[0]}")
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT"
 
-fail() { printf 'FAIL %s [%s]: %s\n' "$1" "$2" "$3" >&2; exit 1; }
-trap 'rc=$?; printf "FAIL harness [execution]: line=%s rc=%s\n" "$LINENO" "$rc" >&2; exit 1' ERR
+# Selftests witness the actual failure site and compare its complete diagnostic.
+# Context paths are recorded separately; they are never inferred from the message.
+fail() {
+    if [[ -n ${ORACLE_FAILURE_LOG:-} ]]; then
+        printf '%s\0' "${BASH_LINENO[0]}" "${FUNCNAME[1]:-main}" "$1" "$2" "$3" "${work:-}" "${dir:-}" >> "$ORACLE_FAILURE_LOG"
+    fi
+    printf 'FAIL %s [%s]: %s\n' "$1" "$2" "$3" >&2
+    exit 1
+}
+execution_failed() {
+    fail harness execution "unexpected command failure rc=$1"
+}
+trap 'execution_failed "$?"' ERR
+
+work=$(mktemp -d /tmp/ems-native-oracle.XXXXXX)
+cleanup() {
+    if [[ ${KEEP_WORK:-0} == 1 ]]; then
+        printf 'Artifacts: %s\n' "$work"
+    else
+        rm -rf -- "$work"
+    fi
+}
+trap cleanup EXIT
+if [[ -n ${ORACLE_FAILURE_LOG:-} ]]; then printf '%s\n' "$work" > "$ORACLE_FAILURE_LOG.context"; fi
+
 
 usage() {
     cat <<'EOF'
@@ -90,26 +113,20 @@ else
 fi
 MINISAT=${MINISAT_BIN:-/usr/bin/minisat}
 AOT_BUILD=${AOT_BUILD:-/home/jon/src/InauguralSystems/EigenScriptEcosystem/ouroboros/aot/build.sh}
-for tool in timeout awk sed cmp diff find sort tar realpath grep; do
+[[ -z "$plant" ]] || plant_fault setup
+for tool in timeout awk sed cmp diff find sort tar realpath grep python3; do
     command -v "$tool" >/dev/null || fail setup toolchain "missing $tool"
 done
 EIGS=$(command -v "$EIGS") || fail setup toolchain 'EMS-VM binary missing (set EIGENSCRIPT_BIN)'
 MINISAT=$(command -v "$MINISAT") || fail setup toolchain 'native MiniSat binary missing (set MINISAT_BIN)'
 EIGS=$(realpath "$EIGS")
 MINISAT=$(realpath "$MINISAT")
+[[ -z "$plant" ]] || plant_fault resolved
 [[ -x "$EIGS" && -x "$MINISAT" ]] || fail setup toolchain 'solver is not executable'
 vm_cmd=("$EIGS" "$ROOT/minisat.eigs")
 emitter_cmd=("$EIGS" "$ROOT/benchmarks/dump_tseitin_cnf.eigs")
 aot_cmd=()
-work=$(mktemp -d /tmp/ems-native-oracle.XXXXXX)
-cleanup() {
-    if [[ ${KEEP_WORK:-0} == 1 ]]; then
-        printf 'Artifacts: %s\n' "$work"
-    else
-        rm -rf -- "$work"
-    fi
-}
-trap cleanup EXIT
+normalizer_cmd=(awk)
 
 # Validate and enumerate BEFORE building or solving. Discovery errors and empty
 # explicitly selected directories are not hidden by process substitutions.
@@ -131,6 +148,7 @@ if ((instances_set)); then
 else
     dirs=("tests/corpus" "tests/fixtures")
 fi
+[[ -z "$plant" ]] || plant_fault enumeration
 find "${dirs[@]}" -type f -name '*.cnf' -print0 > "$work/discovered" || fail instances enumeration 'find failed'
 sort -z "$work/discovered" > "$work/sorted" || fail instances enumeration 'sort failed'
 mapfile -d '' -t files < "$work/sorted"
@@ -248,11 +266,12 @@ prepare_aot() {
 prepare_cnf() {
     local name=$1 input=$2 output=$3 input_fd rc
     [[ -f "$input" && -r "$input" ]] || fail "$name" input-open 'CNF is not a readable regular file'
+    [[ -z "$plant" ]] || plant_fault open
     if ! exec {input_fd}< "$input"; then
         fail "$name" input-open 'cannot open CNF for reading'
     fi
     [[ -s "$input" ]] || fail "$name" input 'CNF is empty'
-    if awk '
+    if "${normalizer_cmd[@]}" '
         /^[[:space:]]*%[[:space:]]*$/ && !tail {tail=1; next}
         tail && /^[[:space:]]*$/ {next}
         tail && /^[[:space:]]*0[[:space:]]*$/ && !zero {zero=1; next}
@@ -268,9 +287,19 @@ prepare_cnf() {
         fail "$name" input-trailer 'unsupported data after SATLIB trailer'
     fi
     [[ -s "$output" ]] || fail "$name" input 'CNF contains no formula'
+    [[ -z "$plant" ]] || plant_fault normalized
+    check_prepared_cnf "$name" "$input" "$output"
     if ! cmp -s "$input" "$output"; then
         printf 'INPUT %s: normalized SATLIB trailer / final newline for every arm\n' "$name"
     fi
+}
+
+# This post-condition has an independent parser, not the normalization awk.
+# Ordered token equality is stronger than formula/multiset preservation.
+check_prepared_cnf() {
+    local evidence
+    evidence=$(python3 "$ROOT/benchmarks/cnf_preservation.py" "$2" "$3") ||
+        fail "$1" input-preservation "$evidence"
 }
 
 cnf_tokens() {
@@ -367,6 +396,7 @@ check_aot() {
 run_instance() {
     local name=$1 input=$2 rung=${3:-} measure=${4:-1} dir rc aot_status=SKIPPED ratio
     dir=$(mktemp -d "$work/case.XXXXXX")
+    [[ -z "$plant" ]] || plant_fault input
     prepare_cnf "$name" "$input" "$dir/input.cnf"
     printf '%s\n' "$name" > "$dir/name"
     echo "RUN $name"
@@ -379,13 +409,16 @@ run_instance() {
         10|20) ;;
         *) cat "$dir/native.err" >&2; fail "$name" native "rc=$rc (expected SAT=10/UNSAT=20; timeout is FAILURE)" ;;
     esac
+    [[ -z "$plant" ]] || plant_fault native-report
     parse_native "$name" "$dir/native.out" "$dir/native.result" "$rc"
     native_runs=$((native_runs+1))
     run_zero "$name" vm "$dir/vm.out" "$dir/vm.err" "$SOLVE_TIMEOUT" "${vm_cmd[@]}" --cdcl "$dir/input.cnf"
+    [[ -z "$plant" ]] || plant_fault vm-report
     parse_vm "$name" "$dir/vm.out"
     vm_runs=$((vm_runs+1))
     check_verdict "$name"
     [[ -z "$rung" ]] || check_regime "$rung" "$dir/vm.out"
+    [[ -z "$plant" ]] || plant_fault oracle-answer
     if [[ -n "$rung" && "$native_verdict" != UNSATISFIABLE ]]; then
         fail "$name" odd-torus "expected UNSATISFIABLE, oracle returned $native_verdict"
     fi

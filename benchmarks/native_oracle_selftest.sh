@@ -3,18 +3,67 @@
 # injections change inputs, command outputs, or accounting state, then the
 # ordinary discovery/build/emission/solve/finalization path must detect them.
 
-oracle_cases=(clean corrupted-cnf wrong-ems-verdict perturbed-aot zero-instances
-    solver-timeout empty-output resized-emitter identity-clauses vertex-order
-    fixture-3x3 fixture-4x4 regime-3x3 regime-4x4 vacuity-discovery
-    vacuity-completion coverage-passed coverage-native coverage-vm coverage-aot
-    unreadable-input unopenable-input auto-degrades required-build-fails)
+mapfile -t oracle_cases < <(python3 "$ROOT/benchmarks/oracle_selftest.py" --list)
 
 plant_fault() {
     local stage=$1 known=0 item target
     for item in "${oracle_cases[@]}"; do [[ "$plant" != "$item" ]] || known=1; done
     ((known)) || fail options configuration "unknown plant: $plant"
     printf 'PLANT %s: %s (explicit fault injection)\n' "$plant" "$stage"
+    if [[ "$stage" == input ]]; then
+        case "$plant" in
+            unreadable-input|unopenable-input|open-race|empty-input|trailer-junk|header-count|variable-bound|unterminated-clause|missing-header|invalid-header|invalid-literal)
+                cp "$input" "$dir/source.cnf"
+                input="$dir/source.cnf"
+                ;;
+        esac
+    fi
+    case "$stage:$plant" in
+        setup:missing-tool)
+            command() { [[ "$*" != '-v awk' ]] && builtin command "$@"; } ;;
+        setup:missing-vm) EIGS=/nonexistent/oracle-vm ;;
+        setup:missing-native) MINISAT=/nonexistent/oracle-native ;;
+        resolved:not-executable) MINISAT="$work/not-executable"; : > "$MINISAT" ;;
+        enumeration:find-error) find() { return 7; } ;;
+        enumeration:sort-error) sort() { return 7; } ;;
+        enumeration:execution-error) mapfile() { return 7; } ;;
+        input:unreadable-input) chmod 000 "$input" ;;
+        input:unopenable-input) rm "$input" ;;
+        open:open-race) rm "$input" ;;
+        input:empty-input) : > "$input" ;;
+        input:trailer-junk) printf '\n%%\nJUNK\n' >> "$input" ;;
+        input:normalizer-error)
+            printf '#!/usr/bin/env bash\nexit 7\n' > "$work/normalizer.sh"
+            normalizer_cmd=(bash "$work/normalizer.sh") ;;
+        input:normalizer-empty) normalizer_cmd=(true) ;;
+        normalized:normalization-corruption)
+            # Header-consistent corruption after the real awk. All three arms
+            # would receive this SAT formula if the post-condition were removed.
+            printf 'p cnf 18 1\n1 0\n' > "$output" ;;
+        input:header-count) sed -i 's/p cnf 18 72/p cnf 18 73/' "$input" ;;
+        input:variable-bound) sed -i 's/p cnf 18 72/p cnf 17 72/' "$input" ;;
+        input:unterminated-clause) printf '1\n' >> "$input" ;;
+        input:missing-header) sed -i '/^p /d' "$input" ;;
+        input:invalid-header) sed -i 's/p cnf 18 72/p cnf X 72/' "$input" ;;
+        input:invalid-literal) printf 'X 0\n' >> "$input" ;;
+        native-report:native-empty-report) : > "$dir/native.out" ;;
+        native-report:native-empty-result) : > "$dir/native.result" ;;
+        native-report:native-unterminated-result) printf UNSAT > "$dir/native.result" ;;
+        native-report:native-inconsistent-result) printf 'SAT\n' > "$dir/native.result" ;;
+        oracle-answer:odd-torus-answer) native_verdict=SATISFIABLE ;;
+    esac
     if [[ "$stage" == discovery ]]; then
+        case "$plant" in
+            absent-aot) AOT=on; AOT_BUILD="$work/absent" ;;
+            mismatched-vm|version-missing|version-wrong|invalid-aot-binary)
+                # Metadata guards need presence, not the external build script.
+                AOT_BUILD="$work/present-build.sh"; : > "$AOT_BUILD"
+                [[ "$plant" != mismatched-vm ]] || EIGS="$work/different-vm"
+                [[ "$plant" != version-missing ]] || git() { return 1; }
+                [[ "$plant" != version-wrong ]] || git() { echo v0.42.0; }
+                [[ "$plant" != invalid-aot-binary ]] || AOT_BINARY="$work/missing-aot"
+                ;;
+        esac
         case "$plant" in
             vacuity-discovery) selected=0 ;;
             auto-degrades|required-build-fails)
@@ -32,8 +81,16 @@ plant_fault() {
         return
     fi
 
+    [[ "$stage" == run ]] || return 0
+
     export ORACLE_VM="$EIGS" ORACLE_AOT="${aot_cmd[0]:-}" ORACLE_FAULT="$plant"
     case "$plant" in
+        emitted-read-error) cnf_tokens() { return 7; } ;;
+        fixture-read-error) rung_fixtures[3x3]="$work/missing-fixture.cnf" ;;
+        output-normalize-error) sed() { return 7; } ;;
+        native-error)
+            printf '#!/usr/bin/env bash\nexit 3\n' > "$work/native-error.sh"
+            chmod +x "$work/native-error.sh"; MINISAT="$work/native-error.sh" ;;
         fixture-3x3|fixture-4x4)
             target=${plant#fixture-}
             # Corrupt the reference, not the emitted input: the model check
@@ -113,116 +170,14 @@ EOF
         coverage-native) native_runs=-1 ;;
         coverage-vm) vm_runs=-1 ;;
         coverage-aot) aot_runs=-1 ;;
-        unreadable-input|unopenable-input)
-            # Replace only this process's input list, never chmod a real fixture.
-            cp "$ROOT/tests/fixtures/unit_unsat.cnf" "$work/unreadable.cnf"
-            files=("$work/unreadable.cnf")
-            selected=$((${#lane_rungs[@]}+1))
-            if [[ "$plant" == unreadable-input ]]; then
-                chmod 000 "$work/unreadable.cnf"
-            else
-                rm "$work/unreadable.cnf"
-            fi
-            ;;
+
     esac
 }
 
 selftest_run() {
-    local name rc expected_rc markers marker ok count=0 caught=0 missed=0 controls=0
-    local expected=24 mode=off pinned=0
-    local -a cases=("${oracle_cases[@]}") child_args
-    local real_aot=${aot_cmd[0]:-}
-    ((aot_enabled)) && mode=on
-    if [[ -x "$EIGS_DIR/src/eigenscript" && "$(realpath "$EIGS_DIR/src/eigenscript")" == "$EIGS" ]] &&
-        [[ "$(git -C "$EIGS_DIR" describe --tags --exact-match 2>/dev/null || true)" == v0.43.0 ]]; then
-        pinned=1
-    fi
-    if [[ -n "$selftest_case" ]]; then
-        local known=0
-        for name in "${cases[@]}"; do [[ "$name" != "$selftest_case" ]] || known=1; done
-        ((known)) || fail options configuration "unknown selftest case: $selftest_case"
-        cases=("$selftest_case"); expected=1
-        printf 'SELFTEST selection=%s (partial; not the full suite)\n' "$selftest_case"
-    fi
-    mkdir -p "$work/probe-inputs" "$work/empty"
-    cp "$ROOT/tests/fixtures/unit_unsat.cnf" "$work/probe-inputs/unit.cnf"
-    cp "$ROOT/tests/fixtures/simple_sat.cnf" "$work/probe-inputs/sat.cnf"
-    for name in "${cases[@]}"; do
-        if [[ "$name" == perturbed-aot || "$name" == coverage-aot ]] && ((!aot_enabled)); then
-            echo "SELFTEST $name: SKIPPED (AOT not enabled)"
-            expected=$((expected-1)); continue
-        fi
-        if [[ "$name" == auto-degrades || "$name" == required-build-fails ]] && ((!pinned)); then
-            echo "SELFTEST $name: SKIPPED (matching pinned runtime absent)"
-            expected=$((expected-1)); continue
-        fi
-        expected_rc=1
-        child_args=(--rungs '3x3 4x4' --instances "$work/probe-inputs" --aot "$mode" --plant "$name")
-        case "$name" in
-            clean)
-                expected_rc=0
-                markers=$'IDENTITY 3x3: PASS (banked repository fixture\nIDENTITY 4x4: PASS (banked repository fixture\nPREFLIGHT 3x3: PASS\nPREFLIGHT 4x4: PASS\nSUMMARY PASS selected=4 passed=4 native=4 VM=4 AOT='
-                markers+=$((aot_enabled*4))
-                ;;
-            corrupted-cnf|wrong-ems-verdict) markers='FAIL tseitin-3x3-odd [verdict]:' ;;
-            perturbed-aot) markers='FAIL tseitin-3x3-odd [aot-diff]:' ;;
-            zero-instances)
-                child_args=(--rungs '' --instances "$work/empty" --aot "$mode" --plant "$name")
-                markers='FAIL instances-discovery [vacuity]:'
-                ;;
-            solver-timeout) markers='FAIL tseitin-3x3-odd [vm]: rc=124' ;;
-            empty-output) markers='FAIL tseitin-3x3-odd [vm-output]:' ;;
-            resized-emitter) markers='FAIL 4x4 [rung-identity]:' ;;
-            identity-clauses|vertex-order) markers='FAIL 3x3 [rung-identity]:' ;;
-            fixture-*) markers="FAIL ${name#fixture-} [rung-fixture]:" ;;
-            regime-*) markers="FAIL ${name#regime-} [regime]:" ;;
-            vacuity-discovery) markers='FAIL instances-discovery [vacuity]:' ;;
-            vacuity-completion) markers='FAIL instances-completion [vacuity]:' ;;
-            coverage-*) markers='FAIL instances [coverage]:' ;;
-            unreadable-input|unopenable-input) markers='[input-open]:' ;;
-            auto-degrades)
-                expected_rc=0
-                markers=$'AOT: SKIPPED (build failed rc=7;\nSUMMARY PASS selected=2 passed=2 native=2 VM=2 AOT=0'
-                # Build policy has no dependence on ladder selection. Its own
-                # control is file-only; comparator plants above use real rungs.
-                child_args=(--rungs '' --instances "$work/probe-inputs" --plant "$name")
-                ;;
-            required-build-fails) markers='FAIL AOT [build]: rc=7;' ;;
-        esac
-        # HARNESS is this invocation's actual path, including a critic's mutant
-        # copy. The child does not call helper functions or use a saved script.
-        # A child gets a fresh shell: errexit is not suppressed by this if.
-        if KEEP_WORK=0 AOT_BINARY="$real_aot" bash "$HARNESS" "${child_args[@]}" --timeout "$SOLVE_TIMEOUT" \
-            > "$work/selftest-$name.log" 2>&1; then rc=0; else rc=$?; fi
-        ok=1
-        [[ "$rc" == "$expected_rc" ]] || ok=0
-        while IFS= read -r marker; do
-            grep -qF "$marker" "$work/selftest-$name.log" || ok=0
-        done <<< "$markers"
-        count=$((count+1))
-        if ((ok)); then
-            if ((expected_rc == 0)); then
-                controls=$((controls+1))
-                printf 'CONTROL %s: PASS (production CLI rc=0)\n' "$name"
-            else
-                caught=$((caught+1))
-                printf 'SELFTEST %s: RED (production CLI rc=%s)\n' "$name" "$rc"
-            fi
-        else
-            missed=$((missed+1))
-            printf 'SELFTEST %s: MISS (production CLI rc=%s, expected rc=%s and named evidence)\n' "$name" "$rc" "$expected_rc"
-            cat "$work/selftest-$name.log"
-        fi
-    done
-    # The fixed full-suite floor detects removal from the case inventory too.
-    if ((count == 0 || count != expected || missed != 0)); then
-        printf 'SELFTEST BROKEN checked=%s expected=%s caught=%s controls=%s missed=%s (exit 2)\n' "$count" "$expected" "$caught" "$controls" "$missed"
-        exit 2
-    fi
-    if ((caught == 0)); then
-        printf 'SELFTEST CONTROL PASS checked=%s controls=%s (no negative case selected; exit 1)\n' "$count" "$controls"
+    if ORACLE_SOLVE_TIMEOUT="$SOLVE_TIMEOUT" ORACLE_VM_REF="$EIGS" python3 "$ROOT/benchmarks/oracle_selftest.py" "$HARNESS" "$work" "$aot_enabled" "${aot_cmd[0]:-}" "$selftest_case"; then
+        exit 0
     else
-        printf 'SELFTEST ALL RED checked=%s expected=%s caught=%s controls=%s (intentional exit 1)\n' "$count" "$expected" "$caught" "$controls"
+        exit "$?"
     fi
-    exit 1
 }

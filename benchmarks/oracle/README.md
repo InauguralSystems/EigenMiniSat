@@ -44,3 +44,10 @@ The ordering pin and regime bank cover different observations. Swapping
 3x3 vertex blocks 1 and 2 left normalized VM output identical in the round-3
 measurement. The ordered identity check rejected it. A matching regime bank
 alone therefore does not establish that the input's order is unchanged.
+
+The 4x4 bank is a capture of the emitter being checked, not evidence of its
+initial correctness. Its extra coverage is bank-corruption and model-drift
+or model-weakening detection. In the single-token sweep the identity model
+rejected 1,160/1,288 mutations; its 128 acceptances were exactly `0` to `-0`
+clause terminators. The bank added no semantically meaningful single-token
+rejections in that experiment. See the round-4 transcript for the probe.
