@@ -6,6 +6,7 @@ real CLI. Formula preparation and VM/AOT correctness remain run_native_oracle.sh
 separately tested responsibility. These tests are not performance measurements.
 """
 import json
+import csv
 import os
 from pathlib import Path
 import shutil
@@ -379,6 +380,19 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(row["aot"]["max_wall_s"], 9)
         self.assertEqual(row["native"]["median_conflicts_per_wall_second_descriptive"], 4)
         self.assertEqual(row["aot_over_native_wall_ratio_policy_confounded"], 1)
+
+    def test_tsv_retains_validation_on_every_exported_row(self):
+        row = runner.summarize(self.cases, self.samples)[0]
+        rows = [dict(row, case=mode, validation=mode) for mode in
+                ("vm-differential", "vm-differential+certificate", "certificate")]
+        with tempfile.TemporaryDirectory(prefix="ems-summary-tsv-") as directory:
+            path = Path(directory) / "summary.tsv"
+            runner.write_summary_tsv(path, rows, runner.ARMS)
+            with path.open() as stream:
+                exported = list(csv.DictReader(stream, delimiter="\t"))
+        self.assertEqual(len(exported), len(rows) * len(runner.ARMS))
+        self.assertEqual({(row["case"], row["validation"], row["arm"]) for row in exported},
+                         {(row["case"], row["validation"], arm) for row in rows for arm in runner.ARMS})
 
     def test_missing_sample_cannot_complete(self):
         with self.assertRaisesRegex(runner.Failure, "incomplete/duplicate sample population"):

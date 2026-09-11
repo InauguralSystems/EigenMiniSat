@@ -15,7 +15,7 @@ jobs:
       - name: Verify native timing runner and timeout cleanup
         env:
           PYTHONDONTWRITEBYTECODE: '1'
-        run: python3 benchmarks/test_compare_native.py
+        run: python3 -m unittest discover -s benchmarks -p 'test_*.py' -v
 
       - name: Build EigenScript
         run: |
