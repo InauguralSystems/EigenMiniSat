@@ -38,8 +38,54 @@ Larger tori are explicit additions and require both budgets, for example:
 --extra-rung 4x5 --timeout 600 --budget-seconds 7200
 ```
 
-An added rung also requires its VM correctness preflight to finish. Native
+In the default `--validation vm-differential` mode, an added rung also requires its VM correctness preflight to finish. Native
 MiniSat's speed is not an estimate of the time that VM preflight needs.
+
+## Certificate validation for larger rungs
+
+Use `--validation certificate` to verify larger-rung answers using DRAT/model
+certificates while retaining the **mandatory 3x3 and 4x4 VM regime anchors**.
+Add these options to the baseline command, with a fresh output directory:
+
+```bash
+--validation certificate --drat-trim /path/to/drat-trim \
+--aot-generated-source /path/to/exact-generated-ems.c \
+--extra-rung 4x5 --timeout 7200 --budget-seconds 21600
+```
+
+The supplied generated C is copied and hashed; its build relationship to the
+binary is still declared by the caller. Solver, emitter and checker processes
+each have a maximum two-hour cap, and the total budget can end them sooner.
+Certificate mode adds `tests/fixtures/simple_sat.cnf` as a required SAT control
+alongside pigeonhole and the two anchors. It never runs a larger-rung VM solve
+and never reports VM parity for that rung. The default oracle remains strict.
+
+Every baseline and optional candidate executable runs once with `--cdcl --model
+--proof FILE`. UNSAT requires a nonempty proof and **drat-trim exit 0**. SAT
+requires one complete assignment that satisfies every input clause; native SAT
+result models are checked too. Native MiniSat independently agrees on every
+verdict. The runner removes only the exact requested proof-report line, a
+validated SAT model line, and the existing trailing numeric timing field before
+comparing all remaining bytes. Certificate output must also match the VM
+reference on the anchors and controls. Every timed EMS invocation has proof and
+model output disabled and must match its certificate reference exactly.
+
+Each extra rung gets a proof-off pilot for every arm. Five-run timing starts
+only after every pilot finishes within **600 seconds**. `--pilot-only` stops
+after certificates and pilots, records `status: pilot-complete`, and emits no
+performance summary; its performance status remains incomplete. Timeouts and
+failed checks exit nonzero with retained evidence, never completed timings.
+
+`certificates/` retains each arm's proof, output and checker process records;
+`certificate-inputs/` retains emission and identity evidence. Input preparation
+uses the same `normalize_cnf.awk`, `cnf_preservation.py` and `torus_identity.awk`
+as the strict oracle. Certificate files, solver/checker executables, and
+prepared inputs are hashed before use and checked around each pilot/sample and
+at completion. Missing or changed evidence fails. Evidence labels are
+`vm-differential+certificate` for anchors/controls and `certificate` for extra
+rungs, including in every summary row and sample record. Certificates verify
+answers on these inputs; the compiler differential/sanitizer gates remain
+required for general semantic correctness.
 
 ## Correctness and input ownership
 
@@ -48,8 +94,8 @@ the supplied prebuilt binary, the selected tori, and a directory containing only
 the pigeonhole fixture. That harness owns emission, CNF normalization, formula
 preservation, torus identity checks, regime anchors, native verdict checks and
 VM/AOT byte comparisons. The timing runner retains its artifact directory and
-uses its already prepared `input.cnf` files directly. There is no second CNF
-normalizer or formula checker in the timing runner.
+uses its already prepared `input.cnf` files directly. The optional certificate
+path shares the same normalizer and independent formula/identity checkers.
 
 Both anchors must match regime C: 3x3 has 592 conflicts / 1,681 resolutions;
 4x4 has 9,986 / 33,873. EMS runs `--cdcl` with current defaults and no overrides.
@@ -102,8 +148,10 @@ Supply all of the following additional options:
 The source argument is the exact modified generated C source, copied into the
 result bundle and hashed. The candidate gets one unmeasured validated warmup per
 input, then five samples interleaved with baseline AOT and native MiniSat. Its
-stdout and counters must match the baseline preflight's VM reference on every
-run. The JSON summary includes `baseline_over_candidate_wall_ratio_same_policy`.
+stdout and counters must match the selected validation reference on every run:
+the VM reference in default mode and on the anchors/controls, or the checked
+certificate reference on extra rungs in certificate mode. The JSON summary
+includes `baseline_over_candidate_wall_ratio_same_policy`.
 An experiment labelled timing-only remains a timing experiment: matching these
 inputs does not certify its semantics on other programs or instances.
 
@@ -137,7 +185,7 @@ EMS policy and require identical preflight output on every measured run.
 ## Focused tests
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 benchmarks/test_compare_native.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks -p 'test_*.py' -v
 ```
 
 These lightweight tests launch synthetic child processes through the production
@@ -148,5 +196,9 @@ timeout regressions include GNU timeout's separate process group and the real,
 unchanged oracle CLI with a synthetic sleeping emitter. Cancellation regressions
 send SIGINT/SIGTERM/SIGHUP through that CLI and inject signals during process
 creation and cleanup. They do not launch real
-solvers or builds and do not replace the existing oracle selftests. CI runs this
-focused suite before building EigenScript.
+solvers or builds and do not replace the existing oracle selftests. CI runs these
+focused suites before building EigenScript. Certificate controls additionally
+plant rejected/missing/corrupt proofs, forged VERIFIED text, proof-off output
+drift, bad SAT models, absent anchors, missing arm certificates, checker timeout,
+and artifact deletion/mutation. These synthetic checkers test orchestration;
+real DRAT verification remains a separate acceptance check.

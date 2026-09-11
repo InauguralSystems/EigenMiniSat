@@ -271,14 +271,7 @@ prepare_cnf() {
         fail "$name" input-open 'cannot open CNF for reading'
     fi
     [[ -s "$input" ]] || fail "$name" input 'CNF is empty'
-    if "${normalizer_cmd[@]}" '
-        /^[[:space:]]*%[[:space:]]*$/ && !tail {tail=1; next}
-        tail && /^[[:space:]]*$/ {next}
-        tail && /^[[:space:]]*0[[:space:]]*$/ && !zero {zero=1; next}
-        tail {bad=1; exit 65}
-        {print}
-        END {if (bad) exit 65}
-    ' <&"$input_fd" > "$output"; then
+    if "${normalizer_cmd[@]}" -f "$ROOT/benchmarks/normalize_cnf.awk" <&"$input_fd" > "$output"; then
         exec {input_fd}<&-
     else
         rc=$?

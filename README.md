@@ -159,6 +159,9 @@ match and a check written that way passes no matter what the solver emitted.
 EMS AOT executable with native MiniSat on validated identical CNFs: five external
 process wall samples, median/range, policy labels and binary/source provenance.
 An optional second AOT executable joins the same schedule for measured A/B work.
+Its explicit certificate-validation mode keeps the 3x3/4x4 VM anchors and uses
+DRAT proofs or checked SAT models for larger rungs, with separate evidence labels
+and bounded proof-off pilots before timing.
 
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
