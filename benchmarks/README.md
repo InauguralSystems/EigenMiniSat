@@ -1,4 +1,9 @@
-# Benchmark Trend Runner
+# Benchmarks
+
+For five-sample **external process wall-time** comparisons of prebuilt EMS AOT
+and native MiniSat, including an optional interleaved AOT candidate, use
+[`compare_native.py`](NATIVE_TIMING.md). It first runs the existing correctness
+oracle below, then times its prepared inputs with per-sample validation.
 
 `run_trends.sh` records selected EigenMiniSat pressure outputs without running
 the entire smoke suite by hand. Logs are written to `benchmarks/runs/`, which

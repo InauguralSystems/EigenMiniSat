@@ -1,0 +1,131 @@
+# Session accounting must agree with the clause metadata after EVERY resumed
+# step. This scan is deliberately independent of count_active_learnts and of
+# the cumulative counters used by cdcl_step's reduction precheck.
+load_file of "lib/int_vector.eigs"
+load_file of "lib/dimacs.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+
+define scan_live_learnts(state) as:
+    local live is 0
+    local index is 0
+    loop while index < (len of state.clause_learnt):
+        if state.clause_deleted[index] == 0 and state.clause_learnt[index] != 0:
+            live += 1
+        index += 1
+    return live
+
+define check_live_session(label, session) as:
+    local live is scan_live_learnts of session.state
+    assert of [session.stats.active_learnts == live, f"{label}: reported active count differs from metadata"]
+    assert of [session.stats.learnts - session.stats.learnt_deleted == live, f"{label}: cumulative accounting differs from metadata"]
+    return live
+
+define check_active_policy(label, formula, opts, expected_status, require_deletion, require_compaction) as:
+    local oneshot is solve_cnf_cdcl_with_options of [formula.nvars, formula.clauses, opts]
+    local session is cdcl_begin of [formula.nvars, formula.clauses, opts]
+    local steps is 0
+    local peak is 0
+    local after_delete is 0
+    local after_compact is 0
+    local equality_seen is 0
+    local crossing_seen is 0
+    check_live_session of [label, session]
+    # A zero budget leaves both the state and the initial accounting intact.
+    local initial_status is session.status
+    assert of [(cdcl_step of [session, 0]) == initial_status, f"{label}: zero budget changed status"]
+    assert of [session.stats.learnts == 0, f"{label}: zero budget learnt a clause"]
+    loop while session.status == "RUNNING":
+        assert of [steps < 20000, f"{label}: bounded fixture did not finish"]
+        local was_deleted is session.stats.learnt_deleted
+        local was_compacted is session.stats.compact_runs
+        local old_live is scan_live_learnts of session.state
+        local old_learnts is session.stats.learnts
+        local old_reductions is session.stats.reduce_runs
+        local old_limit is session.state.learnt_limit
+        cdcl_step of [session, 1]
+        steps += 1
+        local live is check_live_session of [label, session]
+        # One budget-1 step can add at most one learnt clause. Derive the
+        # pre-reduction population from the PRIOR arrays plus that addition,
+        # independently of the cumulative difference used by the precheck.
+        # Comparing two solve APIs alone cannot detect a schedule bug shared
+        # by both: delaying the trigger by one passed that comparison.
+        local added is session.stats.learnts - old_learnts
+        assert of [added == 0 or added == 1, f"{label}: one step added multiple learnt clauses"]
+        local before_reduction is old_live + added
+        local expected_reductions is 0
+        if added == 1:
+            if before_reduction > old_limit:
+                expected_reductions is 1
+                crossing_seen += 1
+            elif before_reduction == old_limit:
+                equality_seen += 1
+        assert of [session.stats.reduce_runs - old_reductions == expected_reductions, f"{label}: reduction trigger differs from metadata"]
+        if live > peak:
+            peak is live
+        assert of [session.stats.peak_learnts == peak, f"{label}: peak count differs from per-step metadata"]
+        if session.stats.learnts > old_learnts:
+            if was_deleted > 0:
+                after_delete += 1
+            if was_compacted > 0:
+                after_compact += 1
+
+    assert of [session.status == expected_status, f"{label}: wrong verdict"]
+    local stepped is cdcl_result of [session.status, session.model, session.stats, session.state]
+    # Compare the entire public result, including every counter, model and the
+    # byte-exact DRAT text. Key iteration automatically includes added fields.
+    assert of [(len of stepped) == (len of oneshot), f"{label}: result fields differ"]
+    for field in (keys of oneshot):
+        assert of [stepped[field] == oneshot[field], f"{label}: stepped/one-shot mismatch in {field}"]
+    if expected_status == "SAT":
+        assert of [model_satisfies of [formula.nvars, formula.clauses, session.model], f"{label}: invalid SAT model"]
+    if require_deletion != 0:
+        assert of [session.stats.learnt_deleted > 0, f"{label}: fixture never deleted a learnt clause"]
+        assert of [after_delete > 0, f"{label}: fixture never learnt after deletion"]
+        assert of [equality_seen > 0, f"{label}: fixture missed the exact learnt-limit boundary"]
+        assert of [crossing_seen > 0, f"{label}: fixture never crossed the learnt-limit boundary"]
+    if require_compaction != 0:
+        assert of [session.stats.compact_runs > 0, f"{label}: fixture never compacted"]
+        assert of [after_compact > 0, f"{label}: fixture never learnt after compaction"]
+    if session.state.compact_policy == "lazy":
+        assert of [session.stats.compact_runs == 0, f"{label}: lazy policy compacted"]
+    # Finished calls must not change accounting, result fields or proof text.
+    assert of [(cdcl_step of [session, 3]) == expected_status, f"{label}: finished call changed status"]
+    local repeated is cdcl_result of [session.status, session.model, session.stats, session.state]
+    assert of [repeated == stepped, f"{label}: finished call changed result"]
+    print of f"active {label}: steps={steps} deleted={session.stats.learnt_deleted} compactions={session.stats.compact_runs} learnt_after_delete={after_delete} learnt_after_compact={after_compact} exact_limit={equality_seen} crossings={crossing_seen} active={session.stats.active_learnts} peak={peak} result_and_proof=identical"
+    return null
+
+unobserved:
+    active_php is pigeonhole_case of [5, 4]
+    # Shipped geometric sizing plus eager compaction reaches deletion on this
+    # formula; the explicit small schedule below also reaches an exact limit.
+    for compact_mode in ["eager", "deferred", "lazy"]:
+        active_opts is {
+            "compact_policy": compact_mode,
+            "compact_min_deleted": 1,
+            "compact_waste_percent": 0,
+            "learnt_limit_initial": 4,
+            "learnt_limit_growth": 1,
+            "learnt_limit_increment": 2,
+            "restart_policy": "luby",
+            "proof": 1
+        }
+        check_active_policy of [compact_mode, active_php, active_opts, "UNSAT", 1, compact_mode != "lazy"]
+    check_active_policy of ["defaults", active_php, {"proof": 1}, "UNSAT", 0, 0]
+    active_sat is parse_dimacs_file of "tests/fixtures/simple_sat.cnf"
+    check_active_policy of ["sat", active_sat, {"proof": 1}, "SAT", 0, 0]
+    active_unit is parse_dimacs_file of "tests/fixtures/unit_unsat.cnf"
+    check_active_policy of ["initial-unsat", active_unit, {"proof": 1}, "UNSAT", 0, 0]
+
+    # Public helper control: no historical learnt/deletion counters are needed
+    # on its early-return path, even with a previously deleted learnt clause.
+    manual_state is {"clause_learnt": [0, 1, 1, 1], "clause_deleted": [0, 0, 1, 0], "learnt_limit": 2}
+    manual_stats is {"active_learnts": -1}
+    assert of [(reduce_learnt_db of [null, manual_state, manual_stats]) == 0, "manual reduction should stop at limit"]
+    assert of [manual_stats.active_learnts == 2, "manual reduction must derive its active count"]
+    # The existing test_solver.eigs reduce_state also exercises the public
+    # helper's actual deletion and compaction with no stats.learnts field.
+
+print of "=== Active learnt accounting: ok ==="
