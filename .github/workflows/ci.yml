@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      - name: Verify native timing runner and timeout cleanup
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/test_compare_native.py
+
       - name: Build EigenScript
         run: |
           git clone --branch v0.43.0 --depth 1 https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript

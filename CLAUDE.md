@@ -32,7 +32,7 @@ Minimum is **v0.11.8** — the earliest release that runs the CDCL suite
 green. The floor is set by a v0.11.x VM fix, not by stdlib integer
 vectors (those shipped in v0.11.2, but that release still crashes the
 CDCL path).
-CI builds and tests against EigenScript **v0.41.0** (pinned in
+CI builds and tests against EigenScript **v0.43.0** (pinned in
 `.github/workflows/ci.yml`): the correctness suite is green — all
 `test_solver.eigs` assertions and the full `run_smoke.sh` pass. The
 `Inline tiny accessors in CDCL hot path` commit captures the hoist
@@ -227,15 +227,17 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   re-measurement** — threshold was 5x5 >= x20 the 4x4 bank, measured x10.51.
   The old "expansion-step multipliers grow" line was measuring the DB/heuristic
   policy, not the formula family; do not cite it.
-- **The ladder is runtime-bound, not compute-bound.** Native MiniSat 2.2.1 on
+- **Historical VM comparison (pre-AOT baseline).** Native MiniSat 2.2.1 on
   the byte-identical CNFs (`benchmarks/dump_tseitin_cnf.eigs` emits them) closes
   the *entire* ladder on the devbox in under four minutes: 4x4 = 0.25 s,
-  4x5 = 1.66 s, 5x5 = 8.30 s, 5x6 = 31.64 s, 6x6 = 230.61 s. We are ~1,163x
+  4x5 = 1.66 s, 5x5 = 8.30 s, 5x6 = 31.64 s, 6x6 = 230.61 s. EMS's VM was ~1,163x
   slower at 4x4, of which **88% is EigenScript observer entropy computed on
-  every assignment** (EigenScript#915, measured ceiling 8.50x). Our *search* is
-  genuinely better — 25x fewer conflicts than MiniSat at 5x5 — so this is a
-  throughput statement, not a search one. Rung reachability here is a fact about
-  runtime speed, not proof complexity. MiniSat is also usable as a second
+  every assignment** (EigenScript#915, measured ceiling 8.50x). EMS used 25x fewer
+  conflicts than MiniSat at 5x5 in that comparison. These wall times and the 1,163x gap
+  describe that historical VM run. The current production AOT comparison is
+  recorded in `benchmarks/NATIVE_AOT_2026-09-10.md`: 4x4 is 10.144 s versus
+  native 0.266 s (five-run medians, regime C for EMS, native defaults for MiniSat).
+  Rung reachability here depends on runtime speed as well as search. MiniSat is also usable as a second
   external UNSAT oracle alongside drat-trim.
 - **Do not read `resolutions` / `peak_learnts` as a size-vs-space finding.**
   That ratio climbs by construction: `resolutions` is cumulative and unbounded
@@ -244,14 +246,22 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   schedule was `4 + 2 * reduce_runs`). It measures the DB policy, not the
   formula family. A real size-vs-space result needs proof space for a *fixed*
   refutation, not a policy-capped high-water mark.
-- **`count_active_learnts` is O(total clauses) and runs every conflict** (via
-  `reduce_learnt_db`), but it is NOT the bottleneck: replacing it with an
-  incrementally maintained counter bought only **4.4%** at 4x4 (429.2s ->
-  410.4s, counters byte-identical). Do not "fix" it — the incremental version
-  adds a state invariant that only `build_cdcl_state` maintains, and the
-  hand-built `reduce_state` in `tests/test_solver.eigs` breaks immediately
-  ("cannot compare none and num"). `count_active_learnts` derives from the
-  arrays and needs no invariant; that robustness is worth 4%.
+- **Keep public reduction independent of historical counters.** An earlier
+  per-state active-count cache bought **4.4%** at 4x4 in the then-current VM
+  regime (429.2s -> 410.4s), but broke the hand-built `reduce_state` in
+  `tests/test_solver.eigs`. The 2026-09-10 regime-C 4x4 production AOT profile
+  puts the repeated scan at 36% inclusive, so `cdcl_step` checks its existing
+  cumulative `stats.learnts - stats.learnt_deleted` before calling the reducer. This
+  identity applies to sessions created by `cdcl_begin`: each learnt addition
+  and deletion updates those counters, and compaction only removes clauses
+  already counted as deleted. `reduce_learnt_db` and `count_active_learnts`
+  still derive from the arrays for public callers and hand-built states.
+  `tests/test_active_learnts.eigs` independently scans after every budget-1
+  step and requires deletion, compaction and subsequent learnt additions;
+  it also derives the exact reduction trigger from the prior arrays, new
+  learnt count and prior limit, checking equality and strict crossing.
+  Full result fields and proof text must match the one-shot API, but that
+  comparison alone cannot catch a schedule error shared by both APIs.
 - **Long-run caps need margin, not point estimates.** 4x5 closed at 6,285s
   against a 5,400s cap — missed by under 15 minutes and banked nothing but a
   bound. A case that nearly closes banks exactly as little as one that never

@@ -154,6 +154,12 @@ leaves the checker with a superset of our clauses, which can only make a RUP
 check succeed, never fail. Gate on `drat-trim`'s exit code — it prefixes its
 `s VERIFIED` line with a carriage return, so line-anchored greps silently never
 match and a check written that way passes no matter what the solver emitted.
+
+[`benchmarks/compare_native.py`](benchmarks/NATIVE_TIMING.md) compares a prebuilt
+EMS AOT executable with native MiniSat on validated identical CNFs: five external
+process wall samples, median/range, policy labels and binary/source provenance.
+An optional second AOT executable joins the same schedule for measured A/B work.
+
 `benchmarks/run_trends.sh` records selected pressure outputs to ignored
 timestamped logs under `benchmarks/runs/`. The default `quick` profile runs
 solver tests, metadata compaction, copy pressure, scan parser comparison, and

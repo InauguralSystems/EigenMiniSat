@@ -1984,11 +1984,21 @@ define cdcl_step(session, budget) as:
 
             if analysis.assert_lit != 0:
                 enqueue_cdcl of [asg, state, analysis.assert_lit, learned_ci, len of state.trail_lim, stats, 1]
-            local removed_learnts is reduce_learnt_db of [session.store, state, stats]
-            # reduce_learnt_db refreshes stats.active_learnts on every call
-            # (including its early return), so this is the live clause-space
-            # figure at each conflict -- the peak is what bounds memory, not
-            # the end-of-solve count cdcl_result reports.
+            # A session starts with no learnt clauses. Its only addition path
+            # increments learnts above, and reduction increments learnt_deleted
+            # once per deletion. Compaction removes clauses already counted as
+            # deleted, so it does not change this cumulative difference.
+            local active_learnts is stats.learnts - stats.learnt_deleted
+            local removed_learnts is 0
+            if active_learnts > state.learnt_limit:
+                # Keep the public reducer array-derived: callers can also use
+                # it with hand-built states and incomplete historical stats.
+                removed_learnts is reduce_learnt_db of [session.store, state, stats]
+            else:
+                stats.active_learnts is active_learnts
+            # Both branches refresh the post-reduction clause-space figure at
+            # each conflict, preserving the peak seen by one-shot and stepped
+            # solves without scanning the whole database below its limit.
             if stats.active_learnts > stats.peak_learnts:
                 stats.peak_learnts is stats.active_learnts
             if removed_learnts > 0:
