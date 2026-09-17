@@ -2,3 +2,4 @@
 *.tmp
 benchmark-output/
 
+__pycache__/
