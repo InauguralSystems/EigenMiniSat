@@ -5,6 +5,37 @@ and native MiniSat, including an optional interleaved AOT candidate, use
 [`compare_native.py`](NATIVE_TIMING.md). It first runs the existing correctness
 oracle below, then times its prepared inputs with per-sample validation.
 
+[`props_per_second.sh`](props_per_second.sh) reports EigenMiniSat's throughput
+as **propagations per second** against native MiniSat on the same CNF — the
+solver equivalent of an emulator's MHz, and the bar `compare_native.py` stops
+short of. Wall-time-to-solve is policy-confounded: two solvers that pick
+different decision literals do different amounts of work, so a wall ratio
+measures the search's luck as much as the runtime's speed. A propagation is the
+same unit of work whoever performs it.
+
+```bash
+bash benchmarks/props_per_second.sh                       # the 4x4 torus oracle CNF
+bash benchmarks/props_per_second.sh path/to/other.cnf
+```
+
+On `tseitin_torus_4x4_odd.cnf` (2026-09-17, idle ASUS X540NA, EMS under the VM):
+
+| arm | propagations | seconds | props/sec |
+| --- | ---: | ---: | ---: |
+| EigenMiniSat | 44,166 | 19.55 | 2,259 |
+| native MiniSat | 546,950 | 0.2295 | 2,383,256 |
+
+EigenMiniSat is **0.095% of native — 1,053x slower per propagation**, while the
+wall ratio for the same pair is only **85x**. They differ because native needed
+**12.4x more propagations** to close the instance: our propagation loop is three
+orders of magnitude off, and our CDCL policy is the strong part. Only the rate
+separates those.
+
+The propagation *count* is a bonus determinism fingerprint — 44,166 on this
+instance held byte-identical across release and sanitizer builds. The script
+refuses to run against a sanitizer binary, which is ~5x slower and which
+`--version` does not distinguish.
+
 `run_trends.sh` records selected EigenMiniSat pressure outputs without running
 the entire smoke suite by hand. Logs are written to `benchmarks/runs/`, which
 is ignored by git.
