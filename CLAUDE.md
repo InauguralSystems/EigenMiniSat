@@ -191,42 +191,26 @@ The solver doubles as a proof-complexity instrument, because a CDCL refutation
   self-validating in the way a planted fault validates a checker.
 - Measured on this box: pigeonhole resolutions 39 -> 210 -> 1276 -> 12397 for
   n = 3..6 (x5.4, x6.1, x9.7, multiplier rising).
-- **Tseitin closed measurements — ALWAYS CITE THE REGIME.** Three exist, and
-  position in a document is not a label; reading a figure by which section it
-  sits in is how ALL-OLD counters got proposed as an AOT acceptance gate
-  (ouroboros#86). `benchmarks/TSEITIN_LADDER.md` is the record of record.
-  - **CURRENT (new defaults, EigenMiniSat 6754b29)**: 3x3 = 1,681, 4x4 = 33,873,
-    4x5 = 47,961, **5x5 = 355,962**. 4x6 not re-measured. Conflicts: 592 /
-    9,986 / 12,787 / 87,981.
-  - **ALL-OLD** (post-clause_locked, pre-#84/#85/#86): 3x3 = 1,850,
-    4x4 = 96,733, 4x5 = 489,112, 4x6 = 3,798,224, 5x5 = 13,292,633.
-  - **pre-clause_locked**: 3x3 = 1,974, 4x4 = 95,516, 4x5 = 551,098.
-
-  Every lane preflights 3x3 + 4x4 byte-identically against its own regime, which
-  checks cross-host portability *and* proves which policy the lane ran; lane
-  summaries carry an explicit `policy` field. Cross-host wall times are color
-  only. 5x5 went 76.6 h -> 4.02 h (**19.05x**) while resolutions fell 37.34x —
-  the two are not interchangeable, because the instance-sized DB costs 1.97x
-  more per conflict. Use 19x for throughput arguments, 37x only for proof size.
-- **RETRACTED 2026-07-30, then the control RAN (2026-08-05) and the axis
-  survives.** An earlier version of this file claimed an "8.4x steeper"
-  expansion axis from steps with unequal variable increments — that
-  comparison stays retracted; do not cite it. The size-matched control it
-  demanded — **4x6 (48 vars, min=4) vs 5x5 (50 vars, min=5)** — has now
-  closed: 5x5 cost **x3.50** the resolutions of 4x6 at matched size
-  (x1.87/var over the 2-var step, vs the flat axis's x1.29/var on 4x5→4x6).
-  Raising min(r,c) is the expensive way to add variables at this scale.
-  Two-case comparison, upper-bound instrument — the ladder doc carries the full
-  scope discipline.
-- **Re-measured 2026-08-11 (#94): the separation survives, the multiplier growth
-  does not.** With both sides under one policy for the first time, the axis
-  separation holds and is marginally wider (per-var, anchored at 4x4: expansion
-  1.140/var vs flat 1.044/var = 1.091x, against ALL-OLD's 1.073x). But the
-  expansion multiplier **shrinks** under the new defaults (x20.2 → x10.5) where
-  it grew under ALL-OLD (x52.3 → x137.4), and **Prediction 1 fails on
-  re-measurement** — threshold was 5x5 >= x20 the 4x4 bank, measured x10.51.
-  The old "expansion-step multipliers grow" line was measuring the DB/heuristic
-  policy, not the formula family; do not cite it.
+- **Tseitin closed measurements — ALWAYS CITE THE REGIME.** Three regimes
+  exist (CURRENT defaults, ALL-OLD, pre-clause_locked) and their counters
+  differ by more than an order of magnitude at the same size. Position in a
+  document is not a label; reading a figure by which section it sits in is
+  how ALL-OLD counters got proposed as an AOT acceptance gate (ouroboros#86).
+  Every number lives in `benchmarks/TSEITIN_LADDER.md`, the record of record.
+  Every lane preflights 3x3 + 4x4 byte-identically against its own regime,
+  which checks cross-host portability *and* proves which policy the lane
+  ran; lane summaries carry an explicit `policy` field. Cross-host wall
+  times are color only. Wall-time and resolution ratios are not
+  interchangeable (the instance-sized DB costs more per conflict): use the
+  wall ratio for throughput arguments, the resolution ratio only for proof
+  size.
+- **Expansion vs flat axis: cite only the size-matched, single-policy
+  comparison in the ladder doc** (4x6 vs 5x5 — raising min(r,c) is the
+  expensive way to add variables at this scale). Two earlier claims are
+  retracted; do not cite them: the "8.4x steeper" axis (unequal variable
+  increments), and "expansion-step multipliers grow" (it measured the
+  DB/heuristic policy, not the formula family; under one policy the
+  multiplier shrinks and Prediction 1 fails).
 - **Historical VM comparison (pre-AOT baseline).** Native MiniSat 2.2.1 on
   the byte-identical CNFs (`benchmarks/dump_tseitin_cnf.eigs` emits them) closes
   the *entire* ladder on the devbox in under four minutes: 4x4 = 0.25 s,
@@ -277,14 +261,12 @@ instrument validates that a family behaves as theory predicts and falsifies
 
 CDCL working with watched literals, learnt-clause activity and
 locked-clause protection, lazy + eager reduction, geometric and Luby
-restarts, saved-phase polarity, MiniSat-style activity heap.
-LBD-based clause management (Glucose-style) landed via PR #43.
-Latest commits are the budgeted, resumable CDCL sessions
-(`cdcl_begin`/`cdcl_step`) with `lib/solver.eigs` made composition-free
-(the one-shot solve is re-derived from them), landed via PR #56. The
-benchmark surface is mature — most current work is data-driven
-decisions out of `docs/EIGENSCRIPT_FEEDBACK.md`. Verified green on
-EigenScript v0.37.0 (correctness suite only; not an `n=5` perf claim).
+restarts, saved-phase polarity, MiniSat-style activity heap,
+LBD-based (Glucose-style) clause management, and budgeted, resumable
+CDCL sessions (`cdcl_begin`/`cdcl_step`) from which the one-shot solve
+is re-derived (`lib/solver.eigs` is composition-free). The benchmark
+surface is mature — most current work is data-driven decisions out of
+`docs/EIGENSCRIPT_FEEDBACK.md`.
 
 ## Gotchas
 
@@ -312,13 +294,14 @@ silently. Add to that: ask whether the thing you hit is a **law** of the
 language or an **earlier decision**. The tell is writing, or thinking,
 *"X must be true because the runtime does Y."*
 
-Bought 2026-08-28 (ouroboros#127 / DMG). The AOT compiles a program's main
-file but emits `load_file` as a runtime call, so loaded modules are
-interpreted by the linked VM. A real bug in that seam was found, minimised,
+Bought 2026-08-28 (ouroboros#127 / DMG). The AOT then compiled a program's
+main file but emitted `load_file` as a runtime call, so loaded modules were
+interpreted by the linked VM (since fixed, ouroboros#129 — the reasoning is
+the lesson, not the state). A real bug in that seam was found, minimised,
 fixed and verified — and reported as "unlocking the AOT multiplier for
 DMG". Measured on being challenged: DMG is 3,288 lines, 818 compiled and
 2,470 interpreted, including the 128-function opcode dispatch. Every
-emulated instruction runs interpreted, so the fix makes it *run* and cannot
+emulated instruction ran interpreted, so the fix made it *run* and could not
 make it *faster*. A whole investigation cycle had treated that design as
 terrain, and the capability to do it the other way already existed upstream
 for another purpose.
