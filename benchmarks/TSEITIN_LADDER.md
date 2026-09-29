@@ -676,3 +676,28 @@ assignment** (EigenScript#915; measured ceiling 8.50x). This does not weaken any
 result above — our search is genuinely *better*, needing 25x fewer conflicts
 than MiniSat at 5x5 — but it does relocate the constraint. Rung reachability
 here is a statement about runtime throughput, not about proof complexity.
+
+## 6x6 added — regime C (lane finished 2026-09-16, banked 2026-09-29)
+
+Pre-registered in [#100](https://github.com/InauguralSystems/EigenMiniSat/issues/100) on 2026-08-11, before any 6x6 data
+existed. Outcome and arithmetic are in [its outcome comment](https://github.com/InauguralSystems/EigenMiniSat/issues/100#issuecomment-5900775409).
+
+| case | vars | clauses | resolutions | conflicts | peak_learnts | max_level | restarts | status |
+|---|---|---|---|---|---|---|---|---|
+| 6x6 | 72 | 288 | **7,214,821** | **2,461,909** | 383,208 | 45 | 19 | UNSAT |
+
+Regime C (EigenScript v0.39.0, EigenMiniSat 6816837, `unobserved:` harness). Preflight byte-identical: 3x3 =
+1,681/592, 4x4 = 33,873/9,986. n=1. Lane `ems-tseitin-6x6-newpolicy` on hf-space-cpu-basic. The wall time is
+932,774 s (10.80 d), per-host color and not comparable across hosts. The raw log and summary are in
+`InauguralSystems/eigenminisat-results` under `tseitin-repolicy/tseitin-torus-6x6-odd/`.
+
+Against the registered predictions:
+- **P1 fails the shrink hypothesis.** 5x5→6x6 = **x20.27**, above the x10.51 boundary. The expansion steps read
+  x20.15, x10.51, x20.27, so the x10.51 step was the outlier, not the start of a trend.
+- **P2: the separation holds at min=6.** Per var, the step is **1.147** over +22 vars, above 1.08 and clearly out
+  of the 1.044–1.056 flat band.
+- **P3 breaks the trend.** The conflict gap vs native MiniSat (49,373,234 at 6x6) is **20.05x**, after 8.4x, 25x
+  and 45x. Below 25x, so the growth does not continue at this rung.
+
+Pre-committed follow-up: the 4x9 size-matched control (72 vars at min=4 against 6x6's 72 vars at min=6). It is
+filed as its own pre-registered issue, [#117](https://github.com/InauguralSystems/EigenMiniSat/issues/117).
