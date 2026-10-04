@@ -214,7 +214,7 @@ class ProcessTests(unittest.TestCase):
         if cls.alive(pid):
             os.kill(pid, signal.SIGKILL)
 
-    def preflight_fixture(self, budget=3):
+    def preflight_fixture(self, budget=3, ready_delay=0.05):
         # The real CLI and unchanged oracle must reach their real GNU timeout
         # invocation. Only the executable it starts is synthetic; no solve/build.
         runtime = self.root / "runtime"
@@ -226,8 +226,8 @@ class ProcessTests(unittest.TestCase):
         # Delaying the staged write keeps that window exercised every run.
         vm.write_text("#!/usr/bin/env python3\nimport os,time\nfrom pathlib import Path\npidfile=Path("
                       + repr(str(pidfile)) + ")\npending=pidfile.with_suffix('.pending')\n"
-                      "with pending.open('w') as stream:\n    time.sleep(0.05)\n    stream.write(str(os.getpid()))\n"
-                      "pending.replace(pidfile)\ntime.sleep(10)\n")
+                      f"with pending.open('w') as stream:\n    time.sleep({ready_delay!r})\n    stream.write(str(os.getpid()))\n"
+                      "pending.replace(pidfile)\ntime.sleep(120)\n")
         vm.chmod(0o700)
         (runtime / "src/vm.c").write_text("/* synthetic runtime; never compiled */\n")
         compiler = self.root / "compiler"
@@ -244,7 +244,7 @@ class ProcessTests(unittest.TestCase):
                    "--aot-source-dir", str(compiler), "--runtime-dir", str(runtime),
                    "--minisat-binary", shutil.which("true"), "--output", str(output),
                    "--build-command", "synthetic timeout test; no build or solver executes",
-                   "--timeout", "20", "--budget-seconds", str(budget)]
+                   "--timeout", str(max(20, budget)), "--budget-seconds", str(budget)]
         return command, output, pidfile
 
     def test_real_preflight_total_budget_kills_emitter(self):
@@ -264,20 +264,24 @@ class ProcessTests(unittest.TestCase):
             if pidfile.exists():
                 self.kill_if_alive(int(pidfile.read_text()))
 
-    def interrupt_preflight(self, sig):
-        command, output, pidfile = self.preflight_fixture(budget=30)
+    def interrupt_preflight(self, sig, ready_delay=0.05):
+        # Leave cleanup headroom within the CLI budget. Readiness is the
+        # atomic PID publication, not an assertion about host speed.
+        budget = 60
+        cleanup_grace = 15
+        command, output, pidfile = self.preflight_fixture(budget=budget, ready_delay=ready_delay)
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                    start_new_session=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
         session = None
         try:
-            deadline = time.monotonic() + 8
+            deadline = time.monotonic() + budget - cleanup_grace
             while not pidfile.exists() and process.poll() is None and time.monotonic() < deadline:
                 time.sleep(0.01)
             self.assertTrue(pidfile.is_file(), "test must reach the actual oracle emitter before cancellation")
             session = os.getsid(int(pidfile.read_text()))
             self.assertGreaterEqual(len(runner.session_members(session)), 3, "test must include bash, timeout and emitter")
             process.send_signal(sig)
-            stdout, stderr = process.communicate(timeout=8)
+            stdout, stderr = process.communicate(timeout=cleanup_grace)
             self.assertEqual(runner.session_members(session), [], "signal cancellation left the preflight session alive")
             self.assertEqual(process.returncode, 1, stdout + stderr)
             self.assertIn(f"process interrupted by {sig.name}", stderr)
@@ -295,7 +299,7 @@ class ProcessTests(unittest.TestCase):
                 # recorded its child's session. Always close captured pipes.
                 process.terminate()
             try:
-                process.communicate(timeout=8)
+                process.communicate(timeout=cleanup_grace)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.communicate()
@@ -304,7 +308,9 @@ class ProcessTests(unittest.TestCase):
         self.interrupt_preflight(signal.SIGTERM)
 
     def test_real_preflight_sighup_cleans_session(self):
-        self.interrupt_preflight(signal.SIGHUP)
+        # Deterministic scheduler-delay control: the old independent 8-second
+        # readiness deadline expired before the emitter was available (#116).
+        self.interrupt_preflight(signal.SIGHUP, ready_delay=9)
 
     def test_real_preflight_sigint_cleans_session(self):
         self.interrupt_preflight(signal.SIGINT)
