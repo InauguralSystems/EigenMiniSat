@@ -449,7 +449,7 @@ define parse_corpus_manifest_line(raw_line, line_no) as:
 
 define load_corpus_manifest(manifest_path) as:
     selected_manifest is corpus_manifest_path of manifest_path
-    assert of [(file_exists of selected_manifest) == 1, f"missing corpus manifest {selected_manifest}"]
+    assert of [(file_exists of selected_manifest), f"missing corpus manifest {selected_manifest}"]
 
     text is read_text of selected_manifest
     lines is split of [text, "\n"]
@@ -754,7 +754,7 @@ define run_copy_benchmarks(size) as:
                 "restart_growth": copy_policy.restart_growth,
                 "phase_policy": copy_policy.phase_policy
             }
-            if (has_key of [copy_policy, "compact_policy"]) != 0:
+            if (has_key of [copy_policy, "compact_policy"]):
                 copy_options.compact_policy is copy_policy.compact_policy
 
             copy_t0 is monotonic_ns of null
@@ -1467,9 +1467,9 @@ define run_file_benchmarks(size) as:
         wrote is write_text of [path, text]
         wt1 is monotonic_ns of null
         wms is (wt1 - wt0) / 1000000
-        if wrote != 1:
+        if not wrote:
             rm of path
-        assert of [wrote == 1, "write_text failed for file benchmark"]
+        assert of [wrote, "write_text failed for file benchmark"]
 
         pt0 is monotonic_ns of null
         local parsed is parse_dimacs_file of path
@@ -1480,7 +1480,7 @@ define run_file_benchmarks(size) as:
         assert of [(len of parsed.clauses) == (len of c.clauses), "file benchmark parsed clause mismatch"]
 
         removed is rm of path
-        assert of [removed == 1, "rm failed for file benchmark"]
+        assert of [removed, "rm failed for file benchmark"]
 
         print of f"file fixture {c.name}: text_len={len of text} wrote={wrote} removed={removed} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ok={parsed.ok} errors={parsed.error_count} write_ms={wms} parse_file_ms={pms}"
 
@@ -1496,7 +1496,7 @@ define run_corpus_benchmarks(manifest_path) as:
     cases is external_corpus_cases of selected_manifest
     print of f"corpus manifest path={selected_manifest} cases={len of cases}"
     for c in cases:
-        assert of [(file_exists of c.path) == 1, f"missing corpus file {c.path}"]
+        assert of [(file_exists of c.path), f"missing corpus file {c.path}"]
 
         pt0 is monotonic_ns of null
         text is read_text of c.path

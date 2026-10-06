@@ -80,12 +80,12 @@ define check_active_policy(label, formula, opts, expected_status, require_deleti
         assert of [stepped[field] == oneshot[field], f"{label}: stepped/one-shot mismatch in {field}"]
     if expected_status == "SAT":
         assert of [model_satisfies of [formula.nvars, formula.clauses, session.model], f"{label}: invalid SAT model"]
-    if require_deletion != 0:
+    if require_deletion:
         assert of [session.stats.learnt_deleted > 0, f"{label}: fixture never deleted a learnt clause"]
         assert of [after_delete > 0, f"{label}: fixture never learnt after deletion"]
         assert of [equality_seen > 0, f"{label}: fixture missed the exact learnt-limit boundary"]
         assert of [crossing_seen > 0, f"{label}: fixture never crossed the learnt-limit boundary"]
-    if require_compaction != 0:
+    if require_compaction:
         assert of [session.stats.compact_runs > 0, f"{label}: fixture never compacted"]
         assert of [after_compact > 0, f"{label}: fixture never learnt after compaction"]
     if session.state.compact_policy == "lazy":

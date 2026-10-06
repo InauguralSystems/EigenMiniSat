@@ -647,7 +647,7 @@ grid_cdcl is solve_cnf_cdcl of [grid_parsed.nvars, grid_parsed.clauses]
 assert_eq of ["grid parsed cdcl UNSAT", grid_cdcl.status, "UNSAT"]
 grid_path is mktemp of null
 assert_true of ["grid mktemp path", (len of grid_path) > 0]
-assert_eq of ["grid write DIMACS file", write_text of [grid_path, grid_text], 1]
+assert_true of ["grid write DIMACS file", write_text of [grid_path, grid_text]]
 grid_file_parsed is parse_dimacs_file of grid_path
 grid_file_scan_parsed is parse_dimacs_file_scan of grid_path
 grid_file_token_parsed is parse_dimacs_file_tokens of grid_path
@@ -658,7 +658,7 @@ assert_dimacs_same of ["grid file ints parser", grid_file_parsed, grid_file_ints
 assert_eq of ["grid file DIMACS vars", grid_file_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid file DIMACS clauses", len of grid_file_parsed.clauses, len of grid_case.clauses]
 assert_eq of ["grid file DIMACS diagnostics", grid_file_parsed.ok, 1]
-assert_eq of ["grid rm DIMACS file", rm of grid_path, 1]
+assert_true of ["grid rm DIMACS file", rm of grid_path]
 
 wide_case is wide_clause_case of [18, 6, 7]
 wide_text is case_to_dimacs_text of wide_case
@@ -807,7 +807,7 @@ corpus_cases is external_corpus_cases of null
 assert_true of ["external corpus nonempty", (len of corpus_cases) > 0]
 assert_true of ["external corpus expanded", (len of corpus_cases) >= 11]
 for corpus in corpus_cases:
-    assert_true of [f"corpus file exists {corpus.name}", (file_exists of corpus.path) == 1]
+    assert_true of [f"corpus file exists {corpus.name}", (file_exists of corpus.path)]
     assert_true of [f"corpus family {corpus.name}", (len of corpus.family) > 0]
     corpus_parsed is parse_dimacs_file of corpus.path
     corpus_scan_parsed is parse_dimacs_file_scan of corpus.path
@@ -864,7 +864,7 @@ assert_eq of ["random 3sat-30 SAT", rand_sat_result.status, "SAT"]
 assert of [model_satisfies of [rand_sat.nvars, rand_sat.clauses, rand_sat_result.model], "random 3sat-30 model"]
 rand_unsat is gen_random_3sat of [30, 128, 100]
 rand_unsat_result is solve_cnf_cdcl of [rand_unsat.nvars, rand_unsat.clauses]
-assert_eq of ["random 3sat-30 seed100 result", rand_unsat_result.status == "SAT" or rand_unsat_result.status == "UNSAT", 1]
+assert_true of ["random 3sat-30 seed100 result", rand_unsat_result.status == "SAT" or rand_unsat_result.status == "UNSAT"]
 if rand_unsat_result.status == "SAT":
     assert of [model_satisfies of [rand_unsat.nvars, rand_unsat.clauses, rand_unsat_result.model], "random 3sat-30 seed100 model"]
 assert_true of ["random 3sat minimize ran", rand_sat_result.minimize_checks >= 0]

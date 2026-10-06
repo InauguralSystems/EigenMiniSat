@@ -878,11 +878,11 @@ define detach_watch_bucket(state, wi, ci, stats) as:
     return removed
 
 define detach_clause_watches(store, state, ci, stats) as:
-    if (has_key of [state, "watches"]) == 0:
+    if not (has_key of [state, "watches"]):
         return 0
-    if (has_key of [state, "watch_a"]) == 0:
+    if not (has_key of [state, "watch_a"]):
         return 0
-    if (has_key of [state, "watch_b"]) == 0:
+    if not (has_key of [state, "watch_b"]):
         return 0
     if ci < 0:
         return 0
@@ -1189,49 +1189,49 @@ define cdcl_merge_options(opts) as:
     merged_opts is cdcl_default_options of null
     if opts == null:
         return merged_opts
-    if (has_key of [opts, "var_rescale_limit"]) != 0:
+    if (has_key of [opts, "var_rescale_limit"]):
         merged_opts.var_rescale_limit is opts.var_rescale_limit
         if merged_opts.var_rescale_limit < 0:
             merged_opts.var_rescale_limit is 0
-    if (has_key of [opts, "clause_rescale_limit"]) != 0:
+    if (has_key of [opts, "clause_rescale_limit"]):
         merged_opts.clause_rescale_limit is opts.clause_rescale_limit
         if merged_opts.clause_rescale_limit < 0:
             merged_opts.clause_rescale_limit is 0
-    if (has_key of [opts, "clause_sort_key"]) != 0:
+    if (has_key of [opts, "clause_sort_key"]):
         merged_opts.clause_sort_key is opts.clause_sort_key
         if merged_opts.clause_sort_key != "packed":
             merged_opts.clause_sort_key is "lbd_major"
-    if (has_key of [opts, "learnt_limit_initial"]) != 0:
+    if (has_key of [opts, "learnt_limit_initial"]):
         merged_opts.learnt_limit_initial is opts.learnt_limit_initial
-    if (has_key of [opts, "learnt_limit_factor"]) != 0:
+    if (has_key of [opts, "learnt_limit_factor"]):
         merged_opts.learnt_limit_factor is opts.learnt_limit_factor
         if merged_opts.learnt_limit_factor <= 0:
             merged_opts.learnt_limit_factor is 1 / 3
-    if (has_key of [opts, "learnt_limit_min"]) != 0:
+    if (has_key of [opts, "learnt_limit_min"]):
         merged_opts.learnt_limit_min is floor of opts.learnt_limit_min
         if merged_opts.learnt_limit_min < 1:
             merged_opts.learnt_limit_min is 1
-    if (has_key of [opts, "learnt_limit_growth"]) != 0:
+    if (has_key of [opts, "learnt_limit_growth"]):
         merged_opts.learnt_limit_growth is opts.learnt_limit_growth
         if merged_opts.learnt_limit_growth < 1:
             merged_opts.learnt_limit_growth is 1
-    if (has_key of [opts, "learnt_limit_increment"]) != 0:
+    if (has_key of [opts, "learnt_limit_increment"]):
         merged_opts.learnt_limit_increment is opts.learnt_limit_increment
         if merged_opts.learnt_limit_increment < 0:
             merged_opts.learnt_limit_increment is 0
-    if (has_key of [opts, "restart_policy"]) != 0:
+    if (has_key of [opts, "restart_policy"]):
         merged_opts.restart_policy is opts.restart_policy
         if merged_opts.restart_policy != "luby":
             merged_opts.restart_policy is "geometric"
-    if (has_key of [opts, "restart_first"]) != 0:
+    if (has_key of [opts, "restart_first"]):
         merged_opts.restart_first is floor of opts.restart_first
         if merged_opts.restart_first < 1:
             merged_opts.restart_first is 1
-    if (has_key of [opts, "restart_growth"]) != 0:
+    if (has_key of [opts, "restart_growth"]):
         merged_opts.restart_growth is opts.restart_growth
         if merged_opts.restart_growth < 1:
             merged_opts.restart_growth is 1
-    if (has_key of [opts, "phase_policy"]) != 0:
+    if (has_key of [opts, "phase_policy"]):
         merged_opts.phase_policy is opts.phase_policy
         if merged_opts.phase_policy == "negative":
             merged_opts.phase_initial is -1
@@ -1246,7 +1246,7 @@ define cdcl_merge_options(opts) as:
             merged_opts.phase_policy is "saved"
             merged_opts.phase_initial is 1
             merged_opts.phase_saving is 1
-    if (has_key of [opts, "compact_policy"]) != 0:
+    if (has_key of [opts, "compact_policy"]):
         merged_opts.compact_policy is opts.compact_policy
         if merged_opts.compact_policy == "eager":
             merged_opts.compact_min_deleted is 1
@@ -1255,17 +1255,17 @@ define cdcl_merge_options(opts) as:
             merged_opts.compact_policy is "lazy"
         else:
             merged_opts.compact_policy is "deferred"
-    if (has_key of [opts, "compact_min_deleted"]) != 0:
+    if (has_key of [opts, "compact_min_deleted"]):
         merged_opts.compact_min_deleted is floor of opts.compact_min_deleted
         if merged_opts.compact_min_deleted < 1:
             merged_opts.compact_min_deleted is 1
-    if (has_key of [opts, "compact_waste_percent"]) != 0:
+    if (has_key of [opts, "compact_waste_percent"]):
         merged_opts.compact_waste_percent is floor of opts.compact_waste_percent
         if merged_opts.compact_waste_percent < 0:
             merged_opts.compact_waste_percent is 0
         if merged_opts.compact_waste_percent > 100:
             merged_opts.compact_waste_percent is 100
-    if (has_key of [opts, "proof"]) != 0:
+    if (has_key of [opts, "proof"]):
         merged_opts.proof is 0
         if opts.proof != 0:
             merged_opts.proof is 1

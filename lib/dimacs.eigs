@@ -60,7 +60,7 @@ define _is_int_token(tok) as:
         i is 1
     loop while i < (len of tok):
         ch is substr of [tok, i, 1]
-        if (contains of ["0123456789", ch]) == 0:
+        if not (contains of ["0123456789", ch]):
             return 0
         i += 1
     return 1
