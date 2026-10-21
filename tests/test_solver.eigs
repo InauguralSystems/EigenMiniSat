@@ -658,7 +658,7 @@ assert_dimacs_same of ["grid file ints parser", grid_file_parsed, grid_file_ints
 assert_eq of ["grid file DIMACS vars", grid_file_parsed.nvars, grid_case.nvars]
 assert_eq of ["grid file DIMACS clauses", len of grid_file_parsed.clauses, len of grid_case.clauses]
 assert_eq of ["grid file DIMACS diagnostics", grid_file_parsed.ok, 1]
-assert_true of ["grid rm DIMACS file", rm of grid_path]
+assert_true of ["grid rm DIMACS file", remove_file of grid_path]
 
 wide_case is wide_clause_case of [18, 6, 7]
 wide_text is case_to_dimacs_text of wide_case
