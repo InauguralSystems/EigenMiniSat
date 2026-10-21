@@ -1468,7 +1468,8 @@ define run_file_benchmarks(size) as:
         wt1 is monotonic_ns of null
         wms is (wt1 - wt0) / 1000000
         if not wrote:
-            rm of path
+            if file_exists of path:
+                remove_file of path
         assert of [wrote, "write_text failed for file benchmark"]
 
         pt0 is monotonic_ns of null
@@ -1479,7 +1480,7 @@ define run_file_benchmarks(size) as:
         assert of [parsed.nvars == c.nvars, "file benchmark parsed var mismatch"]
         assert of [(len of parsed.clauses) == (len of c.clauses), "file benchmark parsed clause mismatch"]
 
-        removed is rm of path
+        removed is remove_file of path
         assert of [removed, "rm failed for file benchmark"]
 
         print of f"file fixture {c.name}: text_len={len of text} wrote={wrote} removed={removed} vars={parsed.nvars} clauses={len of parsed.clauses} declared_vars={parsed.declared_vars} declared_clauses={parsed.declared_clauses} ok={parsed.ok} errors={parsed.error_count} write_ms={wms} parse_file_ms={pms}"
