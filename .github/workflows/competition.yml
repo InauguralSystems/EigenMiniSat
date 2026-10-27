@@ -54,6 +54,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Re-derive the sample from the frozen frame
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/competition_select.py --check
+
       - name: Build EigenScript at the pin in ci.yml
         run: |
           pin=$(grep -oE 'git clone --branch v[0-9]+[.][0-9]+[.][0-9]+ --depth 1 https://github.com/InauguralSystems/EigenScript.git' .github/workflows/ci.yml | awk '{print $4}')
@@ -87,11 +92,6 @@ jobs:
           git clone https://github.com/marijnheule/drat-trim.git /tmp/drat-trim
           git -C /tmp/drat-trim checkout --detach 2e3b2dc0ecf938addbd779d42877b6ed69d9a985
           cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c
-
-      - name: Re-derive the sample from the frozen frame
-        env:
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: python3 benchmarks/competition_select.py --check
 
       - name: Run the competition baseline
         env:
