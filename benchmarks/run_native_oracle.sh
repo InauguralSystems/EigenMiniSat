@@ -325,7 +325,7 @@ emit_rung() {
 }
 
 normalize_output() {
-    sed -E '/^c /s/ ms=[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$//' "$1" > "$2" || fail "$3" normalize 'output normalization failed'
+    sed -E -f "$ROOT/benchmarks/normalize_regime_c.sed" "$1" > "$2" || fail "$3" normalize 'output normalization failed'
 }
 
 check_regime() {
