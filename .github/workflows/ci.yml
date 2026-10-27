@@ -40,3 +40,9 @@ jobs:
       # Running it here keeps the mode from rotting.
       - name: Proof-shape benchmark
         run: eigenscript minisat.eigs --proof-bench --size 1
+
+      # The CLI's CDCL path on a conflict-heavy checked-in fixture, byte for
+      # byte against the regime-C bank. EigenScript#1995 crashed this path
+      # while every step above stayed green.
+      - name: Regime-C CDCL oracle (3x3 fixture, CLI)
+        run: tests/run_regime_c_check.sh
