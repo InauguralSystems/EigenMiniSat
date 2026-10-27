@@ -17,6 +17,10 @@ the run (exit 1), whatever the timings. An unverified UNSAT answer is never
 solved; when another arm's certificate or GBD's record confirms it, it counts in
 a separate cross-checked score, a declared departure. An unverified UNSAT that
 nothing confirms or refutes cannot be judged, and counts in neither score.
+
+Before anything is scored, every arm must solve the 3x3 odd torus with a
+completed certificate (the positive control), so a broken binary, a broken
+drat-trim or wrong flags stop the run instead of reading as that arm's score.
 """
 import argparse
 import csv
@@ -52,6 +56,9 @@ LADDER = ("3x3", "4x4", "4x5", "4x6", "5x5", "5x6", "6x6")
 ANCHORS = {"3x3": ROOT / "tests/fixtures/tseitin_torus_3x3_odd.cnf",
            "4x4": ROOT / "benchmarks/oracle/tseitin_torus_4x4_odd.cnf"}
 OVERHEAD = 30  # seconds per instance allowed in the arithmetic for parsing and model checks
+CONTROL = ANCHORS["3x3"]  # the positive control every arm must solve before any scored run
+CONTROL_LIMIT = 10  # seconds per run and per DRAT check in the positive control
+AA_MIN_SOLVE_S = 1.0  # A/A relative wall differences use only pairs whose two runs both took this long
 FIELDS = ("order", "instance", "kind", "stratum", "family", "expected", "arm", "verdict", "certificate",
           "solved", "wall_s", "par2_s", "solved_crosschecked", "par2_crosschecked_s", "timed_out", "returncode", "note")
 VERDICT = {"SATISFIABLE": "SAT", "UNSATISFIABLE": "UNSAT"}
@@ -61,9 +68,10 @@ VERIFIED = ("model-verified", "drat-verified", "empty-clause")
 # every arm to solve them, and the 3x3 rung, with a completed certificate.
 SMOKE = {
     "69f6dd335626a9b71bfc6f2332f52b9d": "application/scheduling, SAT: MiniSat 0.01 s, EMS 0.79 s (Celeron N3350, "
-                                        "2026-10-27); Kissat and CaDiCaL are checked by the smoke itself",
+                                        "2026-10-27); in CI (run 40568851522) every arm 0.004-0.11 s, model-verified",
     "0928111a3d5d5ce05dffb83cb5982eba": "other/cover, UNSAT: MiniSat 0.03 s, EMS 0.16 s with a drat-verified "
-                                        "refutation (same host and date)",
+                                        "refutation (same host and date); in CI (same run) every proof-writing arm "
+                                        "drat-verified within 0.04 s",
 }
 require = base.require
 Failure = base.Failure
@@ -397,14 +405,20 @@ def noise_floor(rows):
     pairs = [(item["kissat"], item["kissat-aa"]) for item in runs.values() if {"kissat", "kissat-aa"} <= item.keys()]
     both = [(a["wall_s"], b["wall_s"]) for a, b in pairs if a["solved"] and b["solved"]]
     relative = [abs(x - y) / ((x + y) / 2) for x, y in both if x + y > 0]
+    # The stated rule: a relative difference between millisecond solves measures process
+    # launch jitter, so the resolution uses only pairs whose two runs both took >= 1 s.
+    slow = [abs(x - y) / ((x + y) / 2) for x, y in both if min(x, y) >= AA_MIN_SOLVE_S]
     deltas = [abs(a["par2_s"] - b["par2_s"]) for a, b in pairs]
     return {"pairs": len(pairs), "both_solved": len(both),
             "solved_status_disagreements": sum(a["solved"] != b["solved"] for a, b in pairs),
             "par2_abs_diff_total_s": round(sum(deltas), 3),
             "par2_abs_diff_median_s": round(statistics.median(deltas), 6) if deltas else None,
             "median_abs_diff_s": round(statistics.median(abs(x - y) for x, y in both), 6) if both else None,
-            "median_rel_diff": round(statistics.median(relative), 6) if relative else None,
-            "max_rel_diff": round(max(relative), 6) if relative else None,
+            "rel_diff_min_solve_s": AA_MIN_SOLVE_S, "pairs_at_least_min_solve": len(slow),
+            "median_rel_diff": round(statistics.median(slow), 6) if slow else None,
+            "max_rel_diff": round(max(slow), 6) if slow else None,
+            "median_rel_diff_all_pairs": round(statistics.median(relative), 6) if relative else None,
+            "max_rel_diff_all_pairs": round(max(relative), 6) if relative else None,
             "par2_signed_diff_total_s_diagnostic": round(sum(a["par2_s"] - b["par2_s"] for a, b in pairs), 3)}
 
 
@@ -428,7 +442,11 @@ def markdown(summary, rows, meta):
     out = [f"# SAT Competition baseline (EigenMiniSat #131)", "",
            f"Time limit {limit:g} s per run (PAR-2 penalty {2 * limit:g} s), DRAT checks capped at "
            f"{meta['proof_limit_s']:g} s, {meta['memory_mb']} MiB address space per process. "
-           f"Order seed {meta['order_seed']}; manifest seed {meta['manifest_seed']}. Arms: {', '.join(arms)}.", ""]
+           f"Order seed {meta['order_seed']}; manifest seed {meta['manifest_seed']}. Arms: {', '.join(arms)}.", "",
+           "Reading rule (pre-registered, amendment 1 on #131): any comparison involving MiniSat reads the "
+           "cross-checked columns for BOTH arms, because MiniSat writes no proofs and its verified figures hold only "
+           "its SAT answers. Comparisons among Kissat, CaDiCaL and EMS read the verified columns.", "",
+           f"Positive control before any scored run: {meta['positive_control']}.", ""]
     if meta["subset"]:
         out[0:0] = [f"**SUBSET RUN: {meta['subset']}.**", ""]
     def table(title, data):
@@ -448,12 +466,15 @@ def markdown(summary, rows, meta):
         out.append("")
     table("Competition sample", summary["competition"])
     for label, noun in (("strata", "stratum"), ("families", "family")):
-        out.extend([f"## Solved / PAR-2 total (s) per {noun}, verified answers only", "",
-                    f"| {noun} | n | " + " | ".join(arms) + " |",
-                    "|---|---:|" + "---:|" * len(arms)])
+        out.extend([f"## Solved / PAR-2 total (s) per {noun}, verified and cross-checked", "",
+                    "Each arm has a verified column and a cross-checked column. Any comparison involving MiniSat "
+                    "reads the cross-checked columns for both arms.", "",
+                    f"| {noun} | n | " + " | ".join(f"{arm} verified | {arm} cross-checked" for arm in arms) + " |",
+                    "|---|---:|" + "---:|" * (2 * len(arms))])
         for name, data in summary[label].items():
             out.append(f"| {name} | {data[arms[0]]['n']} | " + " | ".join(
-                f"{data[arm]['solved']} / {data[arm]['par2_total_s']:.2f}" for arm in arms) + " |")
+                f"{data[arm]['solved']} / {data[arm]['par2_total_s']:.2f} | "
+                f"{data[arm]['solved_crosschecked']} / {data[arm]['par2_crosschecked_total_s']:.2f}" for arm in arms) + " |")
         out.append("")
     table("Tseitin ladder (odd torus, same metric)", summary["ladder"])
     ladder = [r for r in rows if r["kind"] == "ladder"]
@@ -467,16 +488,19 @@ def markdown(summary, rows, meta):
         out.append("")
     aa = summary["aa"]
     if aa:
-        share = lambda value: "n/a (no pair both runs solved)" if value is None else f"{value:.1%}"
+        share = lambda value: "n/a (no such pair)" if value is None else f"{value:.1%}"
         out.extend(["## A/A noise floor (Kissat twice, same binary and options; competition instances only)", "",
                     f"Resolution: sum of |delta PAR-2| over the {aa['pairs']} competition pairs = "
                     f"{aa['par2_abs_diff_total_s']:.6f} s (median |delta PAR-2| {aa['par2_abs_diff_median_s']} s); "
-                    f"relative wall difference over the {aa['both_solved']} pairs both runs solved: median "
-                    f"{share(aa['median_rel_diff'])}, max {share(aa['max_rel_diff'])}. Two arms are not resolved by "
-                    f"this run when their PAR-2 totals differ by |D| < {aa['par2_abs_diff_total_s']:.6f} s, or their wall "
-                    f"times by less than the max relative A/A difference.", "",
-                    f"Median |dt| over those pairs {aa['median_abs_diff_s']} s. Solved-status disagreements: "
-                    f"{aa['solved_status_disagreements']}.", "",
+                    f"relative wall difference over the {aa['pairs_at_least_min_solve']} pairs whose two runs both "
+                    f"solved in at least {aa['rel_diff_min_solve_s']:g} s (the stated rule: faster solves measure "
+                    f"process-launch jitter): median {share(aa['median_rel_diff'])}, max {share(aa['max_rel_diff'])}. "
+                    f"Two arms are not resolved by this run when their PAR-2 totals differ by |D| < "
+                    f"{aa['par2_abs_diff_total_s']:.6f} s, or their wall times by less than that max.", "",
+                    f"All {aa['both_solved']} pairs both runs solved, millisecond solves included (launch jitter, not "
+                    f"a resolution): median {share(aa['median_rel_diff_all_pairs'])}, max "
+                    f"{share(aa['max_rel_diff_all_pairs'])}; median |dt| {aa['median_abs_diff_s']} s. "
+                    f"Solved-status disagreements: {aa['solved_status_disagreements']}.", "",
                     f"Diagnostic only, not a resolution: the signed sum of (kissat - kissat-aa) PAR-2 = "
                     f"{aa['par2_signed_diff_total_s_diagnostic']:.6f} s; opposite deltas cancel in it.", ""])
     if summary.get("smoke_failures") is not None:
@@ -572,10 +596,11 @@ def smoke_instances(frame):
 
 
 def smoke_failures(rows):
-    """A smoke passes only if every arm solves every smoke instance and the 3x3 rung with a
-    completed certificate: a verified model, a verified refutation, or for MiniSat, which
-    writes no proof, an UNSAT that the others' refutations confirm. A total EMS or
-    drat-trim failure therefore turns the smoke red."""
+    """The completed-certificate rule of the positive control and the smoke: a verified
+    model, a verified refutation, or for MiniSat, which writes no proof, an UNSAT that the
+    others' refutations confirm. The positive control stops a run on a total failure of
+    any arm; the smoke's own check catches an arm that passes the control but misses a
+    smoke instance."""
     failures = []
     for r in rows:
         want = ("model-verified" if r["expected"] == "sat" else "no-proof+agrees" if r["arm"] == "minisat"
@@ -583,6 +608,31 @@ def smoke_failures(rows):
         if r["verdict"] != r["expected"].upper() or r["certificate"] != want:
             failures.append(f"{r['instance']} {r['arm']}: {r['verdict']} {r['certificate'] or '-'} (needs {want})")
     return failures
+
+
+def positive_control(arms, ctx, output):
+    """Before any scored run, every arm must solve the 3x3 odd torus (UNSAT by construction)
+    with a completed certificate, by smoke_failures' rule: a drat-verified refutation from
+    each proof-writing arm, which exercises drat-trim, and from MiniSat an UNSAT those
+    refutations confirm. A failure stops the run; it is never scored."""
+    for directory in ("proofs", "runs"):
+        (ctx.work / directory).mkdir(parents=True)
+    formula = ctx.work / "formula.cnf"
+    strip_comments(CONTROL, formula)
+    try:
+        cnf_preservation.compare(CONTROL, formula)
+    except ValueError as error:
+        raise Failure(f"positive control: {error}") from error
+    case = {"id": "tseitin-3x3-odd", "kind": "control", "stratum": "control", "family": "tseitin-torus-odd",
+            "expected": "unsat", "cnf": formula, **seal(formula)}
+    rows = [row(case, outcome, ctx.limit) for outcome in run_instance(case, arms, ctx)]
+    with (output / "control.csv").open("w", newline="") as stream:
+        writer = csv.DictWriter(stream, FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    failures = smoke_failures(rows)
+    require(not failures, "positive control failed before any scored run (see control.csv): " + "; ".join(failures))
+    return f"every arm solved tseitin-3x3-odd with a completed certificate within {ctx.limit:g} s (control.csv)"
 
 
 def main(argv=None):
@@ -623,8 +673,14 @@ def main(argv=None):
         base.write_json(output / "run.json", meta)
         print(f"Competition baseline: {len(instances)} GBD instances, ladder {' '.join(args.ladder) or 'none'}, "
               f"arms {','.join(args.arms)}, limit {args.limit:g}s, DRAT cap {args.proof_limit:g}s", flush=True)
+        limited = lambda command: [prlimit, f"--as={args.memory_mb << 20}", "--", *map(str, command)]
         if "ems" in args.arms:
             preflight(args.tools["eigenscript"], work, environment, deadline, 600)
+        meta["positive_control"] = positive_control(args.arms, SimpleNamespace(
+            work=work / "control", tools=args.tools, limit=CONTROL_LIMIT, proof_limit=CONTROL_LIMIT,
+            environment=environment, deadline=deadline, order=0, limited=limited), output)
+        print(f"POSITIVE CONTROL: {meta['positive_control']}", flush=True)
+        base.write_json(output / "run.json", meta)
         cases = []
         for instance in instances:
             print(f"PREPARE {instance['hash']} ({instance['stratum']}/{instance['family']})", flush=True)
@@ -637,14 +693,14 @@ def main(argv=None):
         remaining = deadline - time.monotonic()
         meta["arithmetic"] = {"instances": len(cases), "runs_per_instance": len(args.arms), "drat_checks_per_instance": proof_arms,
                               "worst_case_s": worst, "formula": "instances * (runs * limit + drat checks * proof limit + overhead)",
-                              "overhead_per_instance_s": OVERHEAD, "remaining_after_preparation_s": round(remaining, 1)}
+                              "overhead_per_instance_s": OVERHEAD, "remaining_after_preparation_s": round(remaining, 1),
+                              "positive_control_worst_case_s": worst_case(1, args.arms, CONTROL_LIMIT, CONTROL_LIMIT)}
         base.write_json(output / "run.json", meta)
         print(f"ARITHMETIC {len(cases)} x ({len(args.arms)} x {args.limit:g} + {proof_arms} x {args.proof_limit:g} + {OVERHEAD}) "
               f"= {worst:.0f}s worst case; {remaining:.0f}s of budget remain", flush=True)
         require(worst <= remaining, "the worst case does not fit the remaining budget; shrink the sample or the limits")
         ctx = SimpleNamespace(work=work, tools=args.tools, limit=args.limit, proof_limit=args.proof_limit,
-                              environment=environment, deadline=deadline, order=0,
-                              limited=lambda command: [prlimit, f"--as={args.memory_mb << 20}", "--", *map(str, command)])
+                              environment=environment, deadline=deadline, order=0, limited=limited)
         plan = schedule(cases, args.arms, seed)
         (output / "order.tsv").write_text("".join(f"{case['id']}\t{','.join(arms)}\n" for case, arms in plan))
         rows = []

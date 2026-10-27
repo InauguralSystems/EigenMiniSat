@@ -28,9 +28,17 @@
   tseitin; `lights-out` to parity; `mutilated-chessboard`, `perfect-matching`
   and `subset-cardinality` to pigeonhole). The A/A resolution, from competition
   pairs only, is the sum of |PAR-2 difference| plus the relative wall
-  difference. The "Competition baseline" workflow runs it on workflow_dispatch;
-  a pull request touching what it reads runs a smoke whose positive controls
-  every arm must solve with a completed certificate.
+  difference. The A/A relative wall difference counts only pairs whose two runs
+  both took at least 1 s; the all-pairs figure is printed too, labelled as launch
+  jitter. Before anything is scored, every arm must solve the 3x3 odd torus with
+  a completed certificate (the positive control). A total failure of any arm or
+  of drat-trim therefore stops the run instead of reading as that arm's score.
+  Every summary table, per stratum and per family too, shows the verified and
+  the cross-checked figures side by side, and any comparison involving MiniSat
+  reads the cross-checked ones for both arms. MiniSat is pinned to Ubuntu's
+  `1:2.2.1-8build1` package. The "Competition baseline" workflow runs it on
+  workflow_dispatch; a pull request touching what it reads runs a smoke whose
+  instances every arm must solve with a completed certificate.
 
 ### CDCL Solver
 - **The learnt DB is sized against the instance (#86).** `learnt_limit` started

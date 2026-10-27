@@ -160,17 +160,21 @@ def build_frame(meta, base, sources):
         strata[stratum] = {"excluded": excluded.get(stratum, {}),
                            "families": dict(sorted(families[stratum].items())),
                            "pool": dict(sorted(pool.items()))}
-    frame = {"schema": 1, "issue": "InauguralSystems/EigenMiniSat#131", "seed": SEED, "per_stratum": PER_STRATUM,
-             "max_bytes": MAX_BYTES, "first_main_year": FIRST_MAIN_YEAR,
-             "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
-                             "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
-             "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "structure": STRUCTURE,
-             "gbd": sources,
-             "design_history": DESIGN_HISTORY,
+    frame = {**design(), "gbd": sources, "design_history": DESIGN_HISTORY,
              "population": {"gbd_rows_with_a_track": len(rows), "outside_population": outside},
              "strata": strata}
     validate_frame(frame)
     return frame
+
+
+def design():
+    """The frame's design fields, from this file's constants. build_frame writes them, and
+    the tests tie the committed frame to them, so a constant edited without a rebuild fails."""
+    return {"schema": 1, "issue": "InauguralSystems/EigenMiniSat#131", "seed": SEED, "per_stratum": PER_STRATUM,
+            "max_bytes": MAX_BYTES, "first_main_year": FIRST_MAIN_YEAR,
+            "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
+                            "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
+            "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "structure": STRUCTURE}
 
 
 def validate_frame(frame):

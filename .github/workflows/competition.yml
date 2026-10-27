@@ -6,17 +6,19 @@ name: Competition baseline
 # departures from the competition.
 #
 # workflow_dispatch runs the full measurement. Its worst case is
-#   31 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 17,670 s = 294.5 min
+#   31 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 17,670 s
+# plus the positive control every arm must pass before anything is scored,
+#   1 control x (5 runs x 10 s + 4 DRAT checks x 10 s + 30 s) = 120 s, so 17,790 s = 296.5 min
 # plus an estimated 10 min of builds, inside the 355-minute cap below (GitHub's job
 # limit is 360). The harness itself refuses to start if the worst case does not
 # fit what remains of its 19,800 s budget after the downloads.
 #
 # A pull request that touches what the harness reads runs a labelled smoke
-# through the same builds and solvers: two positive controls every arm solved
-# (a SAT and an UNSAT instance) and the 3x3 rung, 10 s each. The smoke fails
-# unless every arm solves all three with a completed certificate. The path list
-# is exactly the files the harness reads; test_competition.py derives that set
-# and fails if it differs.
+# through the same builds, solvers and positive control: two instances every arm
+# solved (a SAT and an UNSAT instance) and the 3x3 rung, 10 s each. The smoke
+# fails unless every arm solves all three with a completed certificate. The path
+# list is exactly the files the harness reads; test_competition.py derives that
+# set and fails if it differs.
 on:
   workflow_dispatch:
   pull_request:
@@ -74,11 +76,18 @@ jobs:
           make -C /tmp/eigenscript build
           /tmp/eigenscript/src/eigenscript --version
 
-      - name: Install MiniSat 2.2 (Ubuntu package)
+      - name: Install MiniSat 2.2.1 (Ubuntu package, pinned)
+        env:
+          MINISAT_VERSION: 1:2.2.1-8build1
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q minisat
-          dpkg-query -W minisat
+          sudo apt-get install -y -q "minisat=$MINISAT_VERSION"
+          installed=$(dpkg-query -W -f='${Version}' minisat)
+          if [ "$installed" != "$MINISAT_VERSION" ]; then
+            echo "::error::minisat $installed is installed; the measurement is pinned to $MINISAT_VERSION"
+            exit 1
+          fi
+          echo "minisat $installed (pinned)"
 
       - name: Build Kissat rel-4.0.4 (latest release)
         run: |

@@ -191,7 +191,8 @@ that changes it stops the run.
 - Kissat 4.0.4 and CaDiCaL 3.0.1, the latest releases, built from pinned
   commits;
 - MiniSat 2.2.1, from Ubuntu 24.04's `1:2.2.1-8build1` package; EigenMiniSat
-  follows its design;
+  follows its design. The workflow installs exactly that version and fails on
+  any other;
 - EigenMiniSat `--cdcl` with its regime C defaults, on the VM built at the
   EigenScript pin read from `ci.yml`;
 - Kissat a second time, as the A/A arm.
@@ -202,6 +203,15 @@ permutations of the seed, written to `order.tsv`. Before any timed run, EMS
 must reproduce the regime-C banks for 3x3 and 4x4 byte for byte. The AOT arm is
 not run yet (#135): the repo's AOT build path (`run_native_oracle.sh`) requires
 EigenScript v0.43.0, not the v0.47.0 pin.
+
+**Positive control.** Before any scored run, in the full run and in the smoke,
+every arm runs on the 3x3 odd torus (`tests/fixtures/tseitin_torus_3x3_odd.cnf`,
+UNSAT by construction), with 10 s per run and per check. Every proof-writing arm
+must return a drat-verified refutation, which also exercises drat-trim, and
+MiniSat must return an UNSAT those refutations confirm. If any arm, or
+drat-trim, fails completely, the run stops here with `FAIL`, `failure.json` and
+`control.csv`, before anything is scored. A broken binary, wrong flags or a
+broken checker therefore never read as an arm's score.
 
 **Metric.** Per arm, per stratum and per family: the solved count and PAR-2
 (total and mean) at 60 s of wall-clock time per run. The time runs from process
@@ -270,25 +280,38 @@ can refute is therefore not detected, but it can never be scored.
   `results.csv`). The competition would not count it, so this score is
   published beside the verified one, never instead of it. An unverified UNSAT
   that nothing confirms (`+unchecked`) counts in neither score.
+- MiniSat writes no proof, so its timed runs include no proof logging. Kissat,
+  CaDiCaL and EMS write their DRAT proofs inside the timed window, as the
+  competition requires. Every comparison with MiniSat (P2, P5) carries this
+  asymmetry in MiniSat's favour: its wall times leave out work the other arms
+  pay for.
 
 **Arithmetic.** worst case = instances × (runs × limit + DRAT checks × check
-cap + 30 s overhead) = 31 × (5 × 60 + 4 × 60 + 30) = 17,670 s (294.5 min), for
-24 GBD instances plus 7 ladder rungs. The builds are estimated at 10 minutes,
-and the job cap is 355 minutes of GitHub's 360. The harness recomputes the worst
-case after the downloads and refuses to start if it does not fit what remains
-of its 19,800 s budget. It never shortens a run to make it fit. A test pins
-these numbers to the code's constants.
+cap + 30 s overhead) = 31 × (5 × 60 + 4 × 60 + 30) = 17,670 s, for 24 GBD
+instances plus 7 ladder rungs. The positive control before it adds at most
+1 × (5 × 10 + 4 × 10 + 30) = 120 s, so 17,790 s (296.5 min) in all. The builds
+are estimated at 10 minutes, and the job cap is 355 minutes of GitHub's 360.
+The harness recomputes the worst case after the downloads and refuses to start
+if it does not fit what remains of its 19,800 s budget. It never shortens a run
+to make it fit. A test pins these numbers to the code's constants.
 
-**Reading the table.** The A/A pair (Kissat against itself, competition
-instances only) gives this device's resolution in two forms:
+**Reading the table.** Every table has a verified and a cross-checked column
+for each arm: the competition sample, each stratum, each family and the ladder.
+Any comparison involving MiniSat reads the cross-checked columns for both arms;
+`summary.md` states this rule at the top.
+
+The A/A pair (Kissat against itself, competition instances only) gives this
+device's resolution in two forms:
 - the sum over instances of |PAR-2 difference|, with its median;
-- the relative wall-time difference over the pairs both runs solved, as a
-  median and a maximum.
+- the relative wall-time difference, as a median and a maximum. By a stated
+  rule, it uses only pairs in which both runs solved in at least 1 s. A
+  difference between millisecond solves measures process-launch jitter
+  (3.4 ms against 3.6 ms is already 5.5%). The figure over all solved pairs is
+  printed too, labelled as jitter, never as the resolution.
 
 Two arms are not resolved by one run when their PAR-2 totals differ by |D| less
-than that sum, or their wall times by less than the maximum relative A/A
-difference. The signed sum is printed only as a diagnostic, since opposite
-differences cancel in it.
+than that sum, or their wall times by less than that maximum. The signed sum is
+printed only as a diagnostic, since opposite differences cancel in it.
 
 **Outputs.** These go to `$RUNNER_TEMP/competition`, uploaded as the
 `competition-baseline` artifact:
@@ -299,6 +322,7 @@ differences cancel in it.
 - `run.json`: seeds, limits, frame and manifest SHA-256, tool paths with SHA-256
   and versions (`unknown: <why>` when a tool reports none), host, arithmetic;
 - `order.tsv`: the run order;
+- `control.csv`: the positive control's rows (never scored);
 - `work/runs/`: each run's stdout and stderr.
 
 **The pull-request smoke.** The workflow's pull request path filter lists
@@ -306,11 +330,11 @@ exactly the files the harness reads. `test_competition.py` derives that set
 (files opened or handed to a child, local imports, the EigenScript files
 loaded, the files the workflow steps name) and fails if the list differs.
 
-A pull request that touches one of those files runs the smoke. Its instances
-are positive controls, picked from the frozen frame because MiniSat and EMS
-solved them well inside the 10 s smoke limit on the development host (`SMOKE`
-in `competition_run.py` records the measured times). Kissat and CaDiCaL are not
-built locally, so the smoke itself is their first measurement on them:
+A pull request that touches one of those files runs the smoke, after the same
+positive control. Its instances were picked from the frozen frame because
+MiniSat and EMS solved them well inside the 10 s smoke limit on the development
+host. In CI (run 40568851522) every arm solved them in under 0.11 s. `SMOKE` in
+`competition_run.py` records the measured times. The instances:
 - a SAT scheduling instance;
 - an UNSAT cover instance;
 - the 3x3 rung.
@@ -321,7 +345,8 @@ The smoke fails unless:
   instances;
 - MiniSat returns an UNSAT that those refutations confirm.
 
-So a total EMS or drat-trim failure turns it red.
+The positive control stops a total failure first. The smoke's own check catches
+an arm that passes the control but misses a smoke instance.
 
 **The tests.** `test_competition.py` drives the harness with stub solvers that
 speak each arm's output contract, and a drat-trim stub that refuses any
@@ -339,16 +364,23 @@ tests. Each of its plants turns a named check red:
 - Input: a commented formula; a formula an arm rewrites; a preparation that
   changes more than comments, at both preparation sites.
 - Runs and scoring: a checker timeout; the PAR-2 charge for a timeout; a
-  process left behind.
+  process left behind; a formula changed during a proof check.
+- Positive control: a total failure of each of Kissat, CaDiCaL, MiniSat, EMS
+  and drat-trim stops the run before scoring.
+- Readout: every stratum and family row shows each arm's verified and
+  cross-checked figures, as `summary.json` holds them.
 - A/A: the magnitude in both directions, its cancellation and label-swap cases,
-  competition pairs only, and its rendered text.
+  competition pairs only, the 1 s rule, and its rendered text.
 - Budget: a budget too small for the sample; a run that would need shortening;
   the documented arithmetic.
-- Sample: a download whose hash differs; a malformed or relabelled manifest;
-  the frame's accounting and its archived-database check; a missing run.
+- Sample: a download whose hash differs; a malformed or relabelled manifest,
+  or one edited outside its instances; the frame's accounting; its design
+  fields against the code's constants; its archived-database check, for a
+  family moved out and for the seed, population and size cap edited together
+  with the manifest; a missing run.
 - Run order and the workflow: regime-C drift; the seeded schedule; the smoke
   positive control and its failures; the strata rules; the family-spreading
-  draw; the workflow's path list.
+  draw; the workflow's path list; the MiniSat version pin.
 
 ## Native MiniSat differential oracle
 
