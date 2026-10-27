@@ -55,7 +55,16 @@ OVERHEAD = 30  # seconds per instance allowed in the arithmetic for parsing and 
 FIELDS = ("order", "instance", "kind", "stratum", "family", "expected", "arm", "verdict", "certificate",
           "solved", "wall_s", "par2_s", "solved_crosschecked", "par2_crosschecked_s", "timed_out", "returncode", "note")
 VERDICT = {"SATISFIABLE": "SAT", "UNSATISFIABLE": "UNSAT"}
-VERIFIED = ("model-verified", "drat-verified")
+VERIFIED = ("model-verified", "drat-verified", "empty-clause")
+# Smoke positive controls: frozen-frame instances that every arm solved well inside
+# the 10 s smoke limit, picked by measured solves (never by size). A smoke requires
+# every arm to solve them, and the 3x3 rung, with a completed certificate.
+SMOKE = {
+    "69f6dd335626a9b71bfc6f2332f52b9d": "application/scheduling, SAT: MiniSat 0.01 s, EMS 0.79 s (Celeron N3350, "
+                                        "2026-10-27); Kissat and CaDiCaL are checked by the smoke itself",
+    "0928111a3d5d5ce05dffb83cb5982eba": "other/cover, UNSAT: MiniSat 0.03 s, EMS 0.16 s with a drat-verified "
+                                        "refutation (same host and date)",
+}
 require = base.require
 Failure = base.Failure
 
@@ -112,7 +121,10 @@ def download(digest, target, attempts=3):
 
 
 def prepare_gbd(instance, directory, cache):
-    """Download by GBD hash, re-derive that hash, then the repo's normalizer and its post-condition."""
+    """Download by GBD hash, re-derive that hash, strip comments, check that only comments went.
+
+    No SATLIB-trailer normalizer runs here: gbd_hash rejects a "%" line, as gbdc does,
+    so normalize_cnf.awk would copy any file that reaches it unchanged."""
     digest = instance["hash"]
     directory.mkdir(parents=True)
     packed = (cache or directory) / f"{digest}.cnf.xz"
@@ -124,23 +136,21 @@ def prepare_gbd(instance, directory, cache):
             shutil.copyfileobj(stream, out, 1 << 20)
     except (lzma.LZMAError, EOFError) as error:
         raise Failure(f"{digest}: {packed} is not a complete .xz file: {error}") from error
-    with source.open("rb") as stream:
-        actual = gbd_hash(stream)
+    try:
+        with source.open("rb") as stream:
+            actual = gbd_hash(stream)
+    except ValueError as error:
+        raise Failure(f"{digest}: the downloaded instance is not hashable DIMACS: {error}") from error
     require(actual == digest, f"{digest}: the downloaded instance hashes to {actual}")
-    normalized = directory / "normalized.cnf"
-    with source.open("rb") as stream, normalized.open("wb") as out:
-        rc = subprocess.run(["awk", "-f", str(ROOT / "benchmarks/normalize_cnf.awk")], stdin=stream, stdout=out).returncode
-    require(rc == 0, f"{digest}: normalize_cnf.awk rc={rc} (65: data after a SATLIB trailer)")
     prepared = directory / "input.cnf"
-    strip_comments(normalized, prepared)
+    strip_comments(source, prepared)
     try:
         cnf_preservation.compare(source, prepared)
     except ValueError as error:
         raise Failure(f"{digest}: {error}") from error
     source.unlink()
-    normalized.unlink()
     return {"id": digest, "kind": "competition", "stratum": instance["stratum"], "family": instance["family"],
-            "expected": instance["gbd_result"], "cnf": prepared}
+            "expected": instance["gbd_result"], "cnf": prepared, **seal(prepared)}
 
 
 def prepare_rung(rung, work, vm, environment, deadline, cap):
@@ -153,7 +163,27 @@ def prepare_rung(rung, work, vm, environment, deadline, cap):
     except ValueError as error:
         raise Failure(f"tseitin-{rung}-odd: {error}") from error
     return {"id": case["name"], "kind": "ladder", "stratum": "ladder", "family": "tseitin-torus-odd",
-            "expected": "unsat", "cnf": formula}
+            "expected": "unsat", "cnf": formula, **seal(formula)}
+
+
+def seal(path):
+    """The formula every arm reads: read-only (0444), hashed so every run can be checked
+    against it, and flagged when it holds an empty clause (trivially UNSAT; the pinned
+    drat-trim then prints "s VERIFIED" with exit 1)."""
+    os.chmod(path, 0o444)
+    empty, length, header = False, 0, False
+    with Path(path).open("rb") as stream:
+        for line in stream:
+            fields = line.split()
+            if not header:
+                header = fields[:1] == [b"p"]
+                continue
+            for token in fields:
+                if int(token):
+                    length += 1
+                else:
+                    empty, length = empty or length == 0, 0
+    return {"sha256": base.sha256(path), "empty_clause": empty}
 
 
 def strip_comments(source, target):
@@ -200,11 +230,16 @@ def interpret(arm, record, directory, proof, result):
     tail = (directory / "stderr").read_bytes()[-200:].decode(errors="replace").strip().replace("\n", " | ")
     if arm == "minisat":
         if rc not in (10, 20):
+            answered = {line.rstrip(b"\r") for line in data.split(b"\n")} & {b"SATISFIABLE", b"UNSATISFIABLE"}
+            status = result.read_bytes().split(b"\n", 1)[0].strip() if result.is_file() else b""
+            require(not answered and status not in (b"SAT", b"UNSAT"), f"minisat: an answer with exit {rc}")
             return {"verdict": "UNKNOWN" if rc == 0 else "ERROR", "note": f"rc={rc} {tail}".strip()}
         verdict = VERDICT[base.native_report(data, result, rc)[0]]
         return with_model(verdict, lambda: result.read_bytes(), "native")
     if arm == "ems":
         if rc != 0:
+            answered = re.search(rb"^s (UN)?SATISFIABLE\r?$", data, re.M)
+            require(answered is None, f"ems: an answer line with exit {rc}")
             return {"verdict": "ERROR", "note": f"rc={rc} {tail}".strip()}
         verdict = VERDICT[base.ems_report(data)[0]]
         if verdict == "UNSAT":
@@ -268,6 +303,7 @@ def run_instance(case, arms, ctx):
         print(f"RUN {ctx.order} {case['id']} {arm}", flush=True)
         record = base.run_process(ctx.limited(solver_command(arm, ctx.tools, case["cnf"], proof, result)),
                                   ctx.work / "runs" / name, ctx.limit, ctx.environment, allow_timeout=True)
+        require(base.sha256(case["cnf"]) == case["sha256"], f"{case['id']}: the formula changed during run {name}")
         outcome = interpret(arm, record, ctx.work / "runs" / name, proof, result)
         outcome.update(arm=arm, order=ctx.order, record=record, certificate="", note=outcome.get("note", ""))
         if record["leftover"]:
@@ -285,12 +321,15 @@ def run_instance(case, arms, ctx):
             else:
                 outcome.update(certificate="model-invalid", note=outcome.pop("model_error"))
         elif outcome["verdict"] == "UNSAT":
-            if arm not in PROOF_ARMS:
+            if case["empty_clause"]:
+                outcome["certificate"] = "empty-clause"
+            elif arm not in PROOF_ARMS:
                 outcome["certificate"] = "no-proof"
             else:
                 require(proof.is_file(), f"{arm}: UNSAT on {case['id']} without the requested proof file")
                 outcome["certificate"], note = check_proof(arm, case["cnf"], proof, ctx.work / "runs" / (name + "-drat"), ctx)
                 outcome["note"] = f"proof {proof.stat().st_size} bytes {note}".strip()
+                require(base.sha256(case["cnf"]) == case["sha256"], f"{case['id']}: the formula changed during {name}'s check")
         for path in (proof, result):
             path.unlink(missing_ok=True)
         outcomes.append(outcome)
@@ -299,7 +338,7 @@ def run_instance(case, arms, ctx):
 
 def judge(case, outcomes):
     """Certified evidence decides the truth; GBD's recorded result must not contradict it."""
-    certified = {o["verdict"] for o in outcomes if o["certificate"] in ("model-verified", "drat-verified")}
+    certified = {o["verdict"] for o in outcomes if o["certificate"] in VERIFIED}
     require(len(certified) <= 1, f"{case['id']}: both a verified model and a verified refutation")
     recorded = {"sat": "SAT", "unsat": "UNSAT"}.get(case["expected"])
     require(not (certified and recorded and certified != {recorded}),
@@ -309,7 +348,7 @@ def judge(case, outcomes):
         answered = outcome["verdict"] in ("SAT", "UNSAT")
         outcome["wrong"] = answered and (outcome["certificate"] in ("model-invalid", "drat-rejected")
                                          or (truth is not None and outcome["verdict"] != truth))
-        if answered and not outcome["wrong"] and outcome["certificate"] not in ("model-verified", "drat-verified"):
+        if answered and not outcome["wrong"] and outcome["certificate"] not in VERIFIED:
             outcome["certificate"] += "+agrees" if truth else "+unchecked"
         outcome["solved"] = outcome["certificate"] in VERIFIED and not outcome["wrong"]
         outcome["solved_crosschecked"] = outcome["solved"] or (not outcome["wrong"]
@@ -380,7 +419,7 @@ def summarize(rows, arms, cases, limit):
             "competition": block(competition, arms),
             "ladder": block([r for r in rows if r["kind"] == "ladder"], arms),
             "strata": groups("stratum"), "families": groups("family"),
-            "aa": noise_floor(rows) if {"kissat", "kissat-aa"} <= set(arms) else None,
+            "aa": noise_floor(competition) if {"kissat", "kissat-aa"} <= set(arms) else None,
             "wrong": [r for r in rows if r["verdict"].startswith("WRONG-")]}
 
 
@@ -428,15 +467,22 @@ def markdown(summary, rows, meta):
         out.append("")
     aa = summary["aa"]
     if aa:
-        out.extend(["## A/A noise floor (Kissat twice, same binary and options)", "",
-                    f"Resolution: sum of |delta PAR-2| over the {aa['pairs']} pairs = {aa['par2_abs_diff_total_s']:.3f} s "
-                    f"(median |delta PAR-2| {aa['par2_abs_diff_median_s']} s). Two arms whose PAR-2 totals differ by "
-                    f"|D| < {aa['par2_abs_diff_total_s']:.3f} s are not resolved by this run.", "",
-                    f"Wall time over the {aa['both_solved']} pairs both runs solved: median |dt| {aa['median_abs_diff_s']} s, "
-                    f"median relative |dt| {aa['median_rel_diff']}, max relative |dt| {aa['max_rel_diff']}. "
-                    f"Solved-status disagreements: {aa['solved_status_disagreements']}.", "",
+        share = lambda value: "n/a (no pair both runs solved)" if value is None else f"{value:.1%}"
+        out.extend(["## A/A noise floor (Kissat twice, same binary and options; competition instances only)", "",
+                    f"Resolution: sum of |delta PAR-2| over the {aa['pairs']} competition pairs = "
+                    f"{aa['par2_abs_diff_total_s']:.6f} s (median |delta PAR-2| {aa['par2_abs_diff_median_s']} s); "
+                    f"relative wall difference over the {aa['both_solved']} pairs both runs solved: median "
+                    f"{share(aa['median_rel_diff'])}, max {share(aa['max_rel_diff'])}. Two arms are not resolved by "
+                    f"this run when their PAR-2 totals differ by |D| < {aa['par2_abs_diff_total_s']:.6f} s, or their wall "
+                    f"times by less than the max relative A/A difference.", "",
+                    f"Median |dt| over those pairs {aa['median_abs_diff_s']} s. Solved-status disagreements: "
+                    f"{aa['solved_status_disagreements']}.", "",
                     f"Diagnostic only, not a resolution: the signed sum of (kissat - kissat-aa) PAR-2 = "
-                    f"{aa['par2_signed_diff_total_s_diagnostic']:.3f} s; opposite deltas cancel in it.", ""])
+                    f"{aa['par2_signed_diff_total_s_diagnostic']:.6f} s; opposite deltas cancel in it.", ""])
+    if summary.get("smoke_failures") is not None:
+        out.extend(["## Smoke positive control", ""] +
+                   ([f"- FAILED: {line}" for line in summary["smoke_failures"]] or
+                    ["Every arm solved every smoke instance with a completed certificate."]) + [""])
     if summary["wrong"]:
         out.extend(["## WRONG ANSWERS (the run fails)", ""] +
                     [f"- {r['instance']} {r['arm']}: {r['verdict']} {r['certificate']} {r['note']}" for r in summary["wrong"]] + [""])
@@ -444,11 +490,18 @@ def markdown(summary, rows, meta):
 
 
 def version(path, flag="--version"):
+    """The first line the tool prints for its version flag, or "unknown: <why>"; never empty."""
     try:
         result = subprocess.run([str(path), flag], capture_output=True, timeout=30)
-        return result.stdout.decode(errors="replace").strip().splitlines()[0] if result.stdout.strip() else ""
-    except (OSError, subprocess.SubprocessError):
-        return ""
+    except (OSError, subprocess.SubprocessError) as error:
+        return f"unknown: {flag} failed: {error}"
+    lines = result.stdout.decode(errors="replace").strip().splitlines()
+    return lines[0] if lines else f"unknown: {flag} printed nothing (exit {result.returncode})"
+
+
+def worst_case(instances, arms, limit, proof_limit):
+    """The job's sizing claim: every run and every DRAT check at its cap, plus the allowance."""
+    return instances * (len(arms) * limit + sum(arm in PROOF_ARMS for arm in arms) * proof_limit + OVERHEAD)
 
 
 def arguments(argv):
@@ -465,14 +518,14 @@ def arguments(argv):
     parser.add_argument("--order-seed", type=int, help="run-order seed (default: the manifest seed)")
     parser.add_argument("--cache", type=Path, help="directory reused for downloaded .cnf.xz files")
     parser.add_argument("--smoke", action="store_true",
-                        help="SMOKE ONLY: the manifest's smallest SAT and smallest UNSAT instance (labelled a subset)")
+                        help="SMOKE ONLY: the SMOKE positive controls and the 3x3 rung; every arm must solve them")
     for tool in ("kissat", "cadical", "minisat", "eigenscript", "drat-trim"):
         parser.add_argument("--" + tool, type=Path)
     args = parser.parse_args(argv)
     args.arms = tuple(arm for arm in args.arms.split(",") if arm)
     require(args.arms and len(set(args.arms)) == len(args.arms) and set(args.arms) <= set(ARMS), f"invalid --arms {args.arms}")
     args.arms = tuple(arm for arm in ARMS if arm in args.arms)
-    args.ladder = tuple(args.ladder.split())
+    args.ladder = ("3x3",) if args.smoke else tuple(args.ladder.split())
     require(len(set(args.ladder)) == len(args.ladder) and set(args.ladder) <= set(LADDER), f"invalid --ladder {args.ladder}")
     args.proof_limit = args.limit if args.proof_limit is None else args.proof_limit
     require(args.limit > 0 and args.proof_limit > 0 and args.memory_mb > 0 and args.budget_seconds > 0, "limits must be positive")
@@ -504,14 +557,32 @@ def load_manifest(path, frame=FRAME):
     return manifest
 
 
-def smoke_instances(manifest):
-    """The smallest SAT and the smallest UNSAT instance by GBD bytes, so a smoke checks real models and proofs."""
+def smoke_instances(frame):
+    """The SMOKE positive controls, looked up in the frozen frame: a SAT and an UNSAT instance."""
+    pool = {digest: (stratum, family, result, size) for stratum, item in frame["strata"].items()
+            for family, rows in item["pool"].items() for digest, result, size in rows}
     picks = []
-    for result in ("sat", "unsat"):
-        candidates = [i for i in manifest["instances"] if i["gbd_result"] == result]
-        require(candidates, f"the manifest has no {result} instance for the smoke")
-        picks.append(min(candidates, key=lambda i: (i["bytes"], i["hash"])))
+    for digest in SMOKE:
+        require(digest in pool, f"smoke instance {digest} is not in the frozen frame")
+        stratum, family, result, size = pool[digest]
+        picks.append({"hash": digest, "stratum": stratum, "family": family, "gbd_result": result, "bytes": size})
+    require(sorted(pick["gbd_result"] for pick in picks) == ["sat", "unsat"],
+            "the smoke needs exactly one SAT and one UNSAT positive control")
     return picks
+
+
+def smoke_failures(rows):
+    """A smoke passes only if every arm solves every smoke instance and the 3x3 rung with a
+    completed certificate: a verified model, a verified refutation, or for MiniSat, which
+    writes no proof, an UNSAT that the others' refutations confirm. A total EMS or
+    drat-trim failure therefore turns the smoke red."""
+    failures = []
+    for r in rows:
+        want = ("model-verified" if r["expected"] == "sat" else "no-proof+agrees" if r["arm"] == "minisat"
+                else "drat-verified")
+        if r["verdict"] != r["expected"].upper() or r["certificate"] != want:
+            failures.append(f"{r['instance']} {r['arm']}: {r['verdict']} {r['certificate'] or '-'} (needs {want})")
+    return failures
 
 
 def main(argv=None):
@@ -520,7 +591,7 @@ def main(argv=None):
         started = time.monotonic()
         args = arguments(argv)
         manifest = load_manifest(args.manifest, args.frame)
-        instances = smoke_instances(manifest) if args.smoke else manifest["instances"]
+        instances = smoke_instances(select.load_frame(args.frame)) if args.smoke else manifest["instances"]
         args.output.mkdir(parents=True, exist_ok=False)
         output = args.output
         work = output / "work"
@@ -539,10 +610,11 @@ def main(argv=None):
                 "ladder": list(args.ladder), "limit_s": args.limit, "proof_limit_s": args.proof_limit,
                 "memory_mb": args.memory_mb, "budget_s": args.budget_seconds,
                 "subset": None if not args.smoke else
-                "smoke: the smallest SAT and the smallest UNSAT of the "
-                f"{len(manifest['instances'])} manifest instances by GBD bytes (not the baseline)",
+                "smoke: the positive controls " + ", ".join(SMOKE) + " and the 3x3 rung, which every arm "
+                "must solve (not the baseline)",
                 "tools": {name: {"path": str(path), "sha256": base.sha256(path),
-                                 "version": version(path) if name in ("kissat", "cadical", "eigenscript") else ""}
+                                 "version": version(path) if name in ("kissat", "cadical", "eigenscript")
+                                 else "unknown: no version flag; the SHA-256 identifies it"}
                           for name, path in args.tools.items()},
                 "minisat_package": base.native_package(args.tools["minisat"]) if "minisat" in args.tools else None,
                 "host": {"platform": platform.platform(), "python": sys.version.split()[0], "cpus": os.cpu_count(),
@@ -561,7 +633,7 @@ def main(argv=None):
             print(f"PREPARE tseitin-{rung}-odd", flush=True)
             cases.append(prepare_rung(rung, work, args.tools["eigenscript"], environment, deadline, 600))
         proof_arms = sum(arm in PROOF_ARMS for arm in args.arms)
-        worst = len(cases) * (len(args.arms) * args.limit + proof_arms * args.proof_limit + OVERHEAD)
+        worst = worst_case(len(cases), args.arms, args.limit, args.proof_limit)
         remaining = deadline - time.monotonic()
         meta["arithmetic"] = {"instances": len(cases), "runs_per_instance": len(args.arms), "drat_checks_per_instance": proof_arms,
                               "worst_case_s": worst, "formula": "instances * (runs * limit + drat checks * proof limit + overhead)",
@@ -585,13 +657,20 @@ def main(argv=None):
                     writer.writerow(rows[-1])
                 stream.flush()
         summary = summarize(rows, args.arms, cases, args.limit)
+        if args.smoke:
+            summary["smoke_failures"] = smoke_failures(rows)
         base.write_json(output / "summary.json", summary)
         (output / "summary.md").write_text(markdown(summary, rows, meta))
-        meta.update(status="failed: wrong answers" if summary["wrong"] else "complete",
+        meta.update(status="failed: wrong answers" if summary["wrong"] else
+                    "failed: smoke positive control" if summary.get("smoke_failures") else "complete",
                     elapsed_s=round(time.monotonic() - started, 1))
         base.write_json(output / "run.json", meta)
         if summary["wrong"]:
             print(f"FAIL {len(summary['wrong'])} wrong answer(s); see {output}/summary.md", file=sys.stderr)
+            return 1
+        if summary.get("smoke_failures"):
+            print(f"FAIL smoke positive control: {len(summary['smoke_failures'])} run(s) without a completed "
+                  f"certificate; see {output}/summary.md", file=sys.stderr)
             return 1
         print(f"SUMMARY COMPLETE instances={len(cases)} arms={len(args.arms)} runs={len(rows)} "
               f"wrong=0 artifacts={output}")

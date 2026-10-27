@@ -10,6 +10,7 @@ Two committed artifacts:
 
   python3 benchmarks/competition_select.py --check      # re-derive the manifest from the frame (offline)
   python3 benchmarks/competition_select.py --refresh    # rebuild frame and manifest from GBD (downloads)
+  python3 benchmarks/competition_select.py --check-frame    # rebuild the frame from the archived databases
   python3 benchmarks/competition_select.py --check-frame --meta meta.db --base base.db
 
 Instances are never committed: competition_run.py downloads each one by its GBD
@@ -27,6 +28,9 @@ import tempfile
 import urllib.request
 
 GBD = "https://benchmark-database.de"
+# Durable copies of the GBD databases a frame was built from, keyed by SHA-256, so
+# --check-frame still runs after GBD replaces its live databases.
+ARCHIVE = "https://github.com/InauguralSystems/EigenMiniSat/releases/download/gbd-databases/{name}-{sha256}.db"
 FRAME = Path(__file__).resolve().with_name("competition_frame.json")
 MANIFEST = Path(__file__).resolve().with_name("competition_manifest.json")
 SEED = 131                  # fixed before the first draw (the issue number); never re-drawn for a better sample
@@ -49,12 +53,27 @@ RULES = (
 )
 NOT_PARITY = {"parity-games": "games on graphs (a verification problem), not XOR constraints",
               "xor-shifting": "xorshift generator inversion (cryptanalysis), not a parity principle"}
+# Families whose label does not name their structure, placed by what they encode.
+# This map is consulted before RULES.
+STRUCTURE = {
+    "genurq": ["tseitin", "generalized Urquhart formulas: Tseitin parity constraints on random regular graphs"],
+    "lights-out": ["parity", "the Lights Out puzzle: a linear system over GF(2)"],
+    "mutilated-chessboard": ["pigeonhole", "domino tiling of a mutilated board: a matching (counting) principle"],
+    "perfect-matching": ["pigeonhole", "the perfect matching principle on odd vertex sets: a counting principle"],
+    "subset-cardinality": ["pigeonhole", "subset cardinality formulas (Miksa and Nordstrom): a counting principle"],
+}
 DESIGN_HISTORY = ["first draw (seed 131): five strata of five with Tseitin inside parity; it held no "
                   "tseitin-formulas instance, so Tseitin became its own stratum and each stratum four "
-                  "instances, before any solver ran. Same seed."]
+                  "instances, before any solver ran. Same seed.",
+                  "second change, before the first dispatched measurement: the label rules had put genurq "
+                  "(Tseitin on expanders), mutilated-chessboard and perfect-matching (matching principles) into "
+                  "other. The STRUCTURE map now places five families by what they encode; the tseitin, parity "
+                  "and pigeonhole pools grew, and their draws were re-derived with the same seed."]
 
 
 def main_stratum(family):
+    if family in STRUCTURE:
+        return STRUCTURE[family][0]
     for name, pattern in RULES:
         if re.search(pattern, family) and not (name == "parity" and family in NOT_PARITY):
             return name
@@ -145,7 +164,8 @@ def build_frame(meta, base, sources):
              "max_bytes": MAX_BYTES, "first_main_year": FIRST_MAIN_YEAR,
              "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
                              "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
-             "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "gbd": sources,
+             "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "structure": STRUCTURE,
+             "gbd": sources,
              "design_history": DESIGN_HISTORY,
              "population": {"gbd_rows_with_a_track": len(rows), "outside_population": outside},
              "strata": strata}
@@ -199,7 +219,7 @@ def derive_manifest(frame):
         instances += [{"hash": row["hash"], "stratum": stratum, "family": row["family"],
                        "gbd_result": row["result"], "bytes": row["bytes"]} for row in chosen]
     design = ("schema", "issue", "seed", "per_stratum", "max_bytes", "first_main_year", "random_3sat",
-              "rules", "not_parity", "gbd", "design_history", "population")
+              "rules", "not_parity", "structure", "gbd", "design_history", "population")
     return {**{name: frame[name] for name in design}, "frame": FRAME.name, "strata": strata, "instances": instances}
 
 
@@ -222,7 +242,20 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def sources_from(args, scratch):
+def fetch_archived(name, recorded, directory):
+    """The archived copy of a database the frame records, checked against its SHA-256."""
+    path = Path(directory) / f"{name}.db"
+    with urllib.request.urlopen(recorded["archive"], timeout=300) as response, path.open("wb") as out:
+        while chunk := response.read(1 << 20):
+            out.write(chunk)
+    if sha256(path) != recorded["sha256"]:
+        raise ValueError(f"archived {name} database {recorded['archive']} does not hash to {recorded['sha256']}")
+    return path
+
+
+def sources_from(args, scratch, known=None):
+    """Provenance of the databases used. A local file with the SHA-256 a frame already
+    records keeps that frame's retrieval record: same bytes, same provenance."""
     sources, paths = {}, {}
     for name in ("meta", "base"):
         local = getattr(args, name)
@@ -233,10 +266,14 @@ def sources_from(args, scratch):
             path, modified = fetch(name, scratch)
             retrieved = datetime.datetime.now(datetime.timezone.utc)
         paths[name] = path
-        sources[name] = {"url": f"{GBD}/getdatabase/{name}", "sha256": sha256(path),
+        digest = sha256(path)
+        sources[name] = {"url": f"{GBD}/getdatabase/{name}", "sha256": digest,
                          "retrieved_utc": retrieved.strftime("%Y-%m-%dT%H:%M:%SZ")}
         if modified:
             sources[name]["last_modified"] = modified
+        if known and known[name]["sha256"] == digest:
+            sources[name] = {key: value for key, value in known[name].items() if key != "archive"}
+        sources[name]["archive"] = ARCHIVE.format(name=name, sha256=digest)
     return sources, paths
 
 
@@ -245,7 +282,8 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true", help="re-derive the manifest from the frame (the default)")
     mode.add_argument("--refresh", action="store_true", help="rebuild the frame and the manifest from GBD")
-    mode.add_argument("--check-frame", action="store_true", help="rebuild the frame from --meta/--base and compare")
+    mode.add_argument("--check-frame", action="store_true",
+                      help="rebuild the frame from the archived databases (or --meta/--base) and compare")
     parser.add_argument("--meta", type=Path, help="local GBD meta database (default: download)")
     parser.add_argument("--base", type=Path, help="local GBD base database (default: download)")
     parser.add_argument("--frame", type=Path, default=FRAME)
@@ -264,10 +302,23 @@ def main(argv=None):
         print(f"CHECK PASS {len(derived['instances'])} instances re-derived identically from the frozen frame "
               f"(seed {derived['seed']}, {sum(item['eligible'] for item in derived['strata'].values())} eligible)")
         return 0
+    try:
+        return rebuild(args)
+    except (OSError, ValueError, KeyError, sqlite3.Error) as error:
+        print(f"FAIL {error}")
+        return 1
+
+
+def rebuild(args):
+    """--check-frame and --refresh: both start from the GBD databases."""
     with tempfile.TemporaryDirectory(prefix="ems-gbd-") as scratch:
-        sources, paths = sources_from(args, scratch)
         if args.check_frame:
             committed = load_frame(args.frame)
+            if args.meta or args.base:
+                sources, paths = sources_from(args, scratch)
+            else:
+                paths = {name: fetch_archived(name, committed["gbd"][name], scratch) for name in ("meta", "base")}
+                sources = committed["gbd"]
             for name in ("meta", "base"):
                 if committed["gbd"][name]["sha256"] != sources[name]["sha256"]:
                     print(f"FAIL GBD {name} database differs from the one the frame was built from "
@@ -279,6 +330,8 @@ def main(argv=None):
                 return 1
             print(f"CHECK-FRAME PASS {args.frame} rebuilt identically from the recorded GBD databases")
             return 0
+        known = json.loads(args.frame.read_text())["gbd"] if args.frame.exists() else None
+        sources, paths = sources_from(args, scratch, known)
         frame = build_frame(paths["meta"], paths["base"], sources)
     args.frame.write_text(dump_frame(frame))
     manifest = derive_manifest(frame)

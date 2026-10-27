@@ -8,17 +8,20 @@ and the local smoke.
 """
 import ast
 import csv
+import hashlib
 import io
 import json
 import lzma
 import os
 from pathlib import Path
 import re
+import sqlite3
 import sys
 import tempfile
 import time
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import certificate_validation as certificates
 import competition_run as runner
@@ -62,6 +65,11 @@ if role == "drat-trim":
     refutes = cnf.read_bytes().startswith(b"p cnf 1 2") and proof.read_bytes() == b"0\n"
     good = layout and (mode == "verify-all" or refutes)
     print("\rs VERIFIED" if good else "\ns NOT VERIFIED"); sys.exit(0 if good else 1)
+if mode == "rewrite":
+    # A solver that rewrites its input into a different, satisfiable formula.
+    import os
+    os.chmod(args[0], 0o644); Path(args[0]).write_bytes(b"p cnf 1 1\n1 0\n")
+    Path(args[1]).write_bytes(b""); print("s SATISFIABLE"); print("v 1 0"); sys.exit(10)
 if role == "eigenscript" and args and args[0].endswith("dump_tseitin_cnf.eigs"):
     sys.stdout.buffer.write(Path(root, "tests/fixtures/tseitin_torus_3x3_odd.cnf").read_bytes()); sys.exit(0)
 cnf = Path(args[-1] if role == "eigenscript" else args[0])
@@ -81,7 +89,7 @@ if mode == "unknown":
         sys.stderr.write("stub: gave up\n"); sys.exit(1)
     print("s UNKNOWN"); sys.exit(0)
 sat = cnf.read_bytes().startswith(b"p cnf 2 1")
-if mode == "lie":
+if mode in ("lie", "lie-rc1"):
     sat = not sat
 model = "-1 -2 0" if mode == "bad-model" else "1 -2 0"
 if role in ("kissat", "cadical"):
@@ -99,7 +107,7 @@ if role == "minisat":
     print("conflicts             : 0              (0 /sec)\nCPU time              : 0.001 s")
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
     Path(args[1]).write_text(("SAT\n" + model + "\n") if sat else "UNSAT\n")
-    sys.exit(10 if sat else 20)
+    sys.exit(0 if mode == "answer-rc0" else 10 if sat else 20)
 proof = Path(args[args.index("--proof") + 1])
 print("s SATISFIABLE" if sat else "s UNSATISFIABLE")
 if sat:
@@ -111,6 +119,8 @@ else:
     proof.write_bytes(b"0\n")
     if mode != "no-report":
         print("c proof written to " + str(proof))
+if mode in ("answer-rc1", "lie-rc1"):
+    sys.exit(1)
 '''
 
 
@@ -122,7 +132,7 @@ def frame_for(rows, per_stratum=1):
         item["pool"].setdefault("f", []).append([runner.gbd_hash(io.BytesIO(data)), result, len(data)])
         item["families"]["f"] = {"eligible": len(item["pool"]["f"]), "excluded": 0}
     return {"schema": 1, "issue": "synthetic", "seed": 131, "per_stratum": per_stratum, "max_bytes": 1 << 30,
-            "first_main_year": 2017, "random_3sat": {}, "rules": [], "not_parity": {}, "gbd": {},
+            "first_main_year": 2017, "random_3sat": {}, "rules": [], "not_parity": {}, "structure": {}, "gbd": {},
             "design_history": [], "population": {"gbd_rows_with_a_track": len(rows), "outside_population": 0},
             "strata": strata}
 
@@ -164,7 +174,7 @@ class CompetitionTests(unittest.TestCase):
 
     def run_case(self, name, expected=None, limit=10, proof_limit=None, arms=runner.ARMS):
         case = {"id": name, "kind": "competition", "stratum": "s", "family": "f",
-                "expected": expected or name, "cnf": self.cnf[name]}
+                "expected": expected or name, "cnf": self.cnf[name], **runner.seal(self.cnf[name])}
         ctx = self.context(limit, proof_limit)
         rows = {o["arm"]: runner.row(case, o, limit) for o in runner.run_instance(case, arms, ctx)}
         self.assertEqual(sorted(rows), sorted(arms))
@@ -254,10 +264,33 @@ class CompetitionTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.Failure, "both a verified model and a verified refutation"):
             self.run_case("sat", expected="unknown")
 
-    def test_an_answer_line_with_an_error_exit_stops_the_run(self):
-        self.tools["kissat"] = self.stub("kissat", "answer-rc1")
-        with self.assertRaisesRegex(runner.Failure, "an answer line with exit 1"):
-            self.run_case("sat")
+    def test_an_answer_with_a_non_answer_exit_stops_the_run_for_every_arm(self):
+        # EMS: a WRONG UNSAT on a satisfiable formula, proof report and all, then exit 1.
+        # MiniSat: UNSATISFIABLE and an UNSAT result file, then exit 0.
+        for role, mode, message in (("kissat", "answer-rc1", "kissat: an answer line with exit 1"),
+                                    ("eigenscript", "lie-rc1", "ems: an answer line with exit 1"),
+                                    ("minisat", "answer-rc0", "minisat: an answer with exit 0")):
+            with self.subTest(role=role):
+                self.tools = {tool: self.stub(tool) for tool in self.tools}
+                self.tools[role] = self.stub(role, mode)
+                with self.assertRaisesRegex(runner.Failure, message):
+                    self.run_case("sat")
+
+    def test_a_formula_changed_by_a_run_stops_it(self):
+        sealed = runner.seal(self.cnf["unsat"])
+        self.assertEqual((self.cnf["unsat"].stat().st_mode & 0o777, sealed["empty_clause"]), (0o444, False))
+        self.tools["kissat"] = self.stub("kissat", "rewrite")  # makes the file writable, then rewrites it
+        with self.assertRaisesRegex(runner.Failure, "the formula changed during run"):
+            self.run_case("unsat", expected="unknown")
+
+    def test_a_trivially_unsat_formula_is_verified_without_a_proof(self):
+        # The pinned drat-trim prints "s VERIFIED" with exit 1 on an empty clause; a slow
+        # checker stub proves it is never asked.
+        self.cnf["unsat"].write_bytes(b"p cnf 2 2\n1 2 0\n0\n")
+        self.tools["drat-trim"] = self.stub("drat-trim", "slow")
+        rows = self.run_case("unsat", proof_limit=1)
+        self.assertEqual({r["certificate"] for r in rows.values()}, {"empty-clause"})
+        self.assertEqual({r["solved"] for r in rows.values()}, {1})
 
     def test_a_run_is_never_shortened_to_fit_the_budget(self):
         case = {"id": "sat", "kind": "competition", "stratum": "s", "family": "f", "expected": "sat", "cnf": self.cnf["sat"]}
@@ -305,6 +338,10 @@ class CompetitionTests(unittest.TestCase):
         for literals in ([1, 1], [0], [3], [-1]):
             with self.subTest(literals=literals), self.assertRaises(ValueError):
                 certificates.check_assignment(records, literals, complete=False)
+        empty = self.root / "empty.cnf"
+        empty.write_bytes(b"p cnf 2 2\n1 2 0\n0\n")
+        with self.assertRaisesRegex(ValueError, "does not satisfy input clause"):
+            certificates.check_assignment(certificates.cnf_preservation.formula(empty, False), [1, 2], complete=False)
 
     def test_summary_counts_and_par2_totals(self):
         # Rows as row() writes them (limit 10): every certificate class, exact sums.
@@ -360,16 +397,47 @@ class CompetitionTests(unittest.TestCase):
         self.assertEqual((both["median_abs_diff_s"], both["max_rel_diff"]), (1.25, 1.0))
 
     def test_aa_summary_text_states_the_magnitude(self):
+        # Two competition pairs plus a ladder pair that must not enter the resolution.
         rows = [dict(r, kind="competition", stratum="s", family="f", verdict="SAT", certificate="model-verified",
                      solved_crosschecked=r["solved"], par2_crosschecked_s=r["par2_s"])
                 for r in pair_rows((1.0, 11.0, 1, 1), (12.0, 2.0, 1, 1))]
-        summary = runner.summarize(rows, ("kissat", "kissat-aa"), [{"id": "i0"}, {"id": "i1"}], 60)
+        rows += [dict(r, instance="tseitin-3x3-odd", kind="ladder", stratum="ladder", family="t", verdict="SAT",
+                      certificate="model-verified", solved_crosschecked=r["solved"], par2_crosschecked_s=r["par2_s"])
+                 for r in pair_rows((1.0, 100.0, 1, 1))]
+        summary = runner.summarize(rows, ("kissat", "kissat-aa"), [{"id": "i0"}, {"id": "i1"}, {"id": "3x3"}], 60)
+        self.assertEqual((summary["aa"]["pairs"], summary["aa"]["par2_abs_diff_total_s"]), (2, 20.0))
         text = runner.markdown(summary, rows, {"proof_limit_s": 60, "memory_mb": 1, "order_seed": 1,
                                                "manifest_seed": 1, "subset": None})
         self.assertIn("## A/A noise floor", text)
-        self.assertIn("sum of |delta PAR-2| over the 2 pairs = 20.000 s (median |delta PAR-2| 10.0 s)", text)
-        self.assertIn("|D| < 20.000 s are not resolved by this run", text)
-        self.assertIn("Diagnostic only, not a resolution: the signed sum of (kissat - kissat-aa) PAR-2 = 0.000 s", text)
+        self.assertIn("sum of |delta PAR-2| over the 2 competition pairs = 20.000000 s (median |delta PAR-2| 10.0 s)", text)
+        self.assertIn("relative wall difference over the 2 pairs both runs solved: median 154.8%, max 166.7%", text)
+        self.assertIn("PAR-2 totals differ by |D| < 20.000000 s", text)
+        self.assertIn("Diagnostic only, not a resolution: the signed sum of (kissat - kissat-aa) PAR-2 = 0.000000 s", text)
+
+    def test_documented_arithmetic_is_the_codes(self):
+        args = runner.arguments(["--output", str(self.root / "o"), "--arms", "minisat", "--ladder", "",
+                                 "--minisat", str(self.tools["minisat"])])
+        instances = len(json.loads(runner.MANIFEST.read_text())["instances"]) + len(runner.LADDER)
+        expected = (instances, len(runner.ARMS), args.limit, len(runner.PROOF_ARMS), args.limit, runner.OVERHEAD,
+                    runner.worst_case(instances, runner.ARMS, args.limit, args.limit))
+        readme = (runner.ROOT / "benchmarks/README.md").read_text()
+        workflow = (runner.ROOT / ".github/workflows/competition.yml").read_text()
+        for name, text, pattern in (
+                ("README", readme, r"= (\d+) × \((\d+) × (\d+) \+ (\d+) × (\d+) \+ (\d+)\) = ([\d,]+) s"),
+                ("workflow", workflow, r"(\d+) instances x \((\d+) runs x (\d+) s \+ (\d+) DRAT checks x (\d+) s \+ (\d+) s\) = ([\d,]+) s")):
+            with self.subTest(document=name):
+                found = [tuple(float(value.replace(",", "")) for value in match) for match in re.findall(pattern, text)]
+                self.assertEqual(found, [expected])
+        for name, text in (("README", readme), ("workflow", workflow)):
+            with self.subTest(budget=name):
+                self.assertIn(f"{args.budget_seconds:,.0f} s budget", text)
+
+    def test_version_is_never_silently_empty(self):
+        silent = self.root / "silent.sh"
+        silent.write_text("#!/bin/sh\nexit 3\n")
+        silent.chmod(0o700)
+        self.assertEqual(runner.version(silent), "unknown: --version printed nothing (exit 3)")
+        self.assertTrue(runner.version(self.root / "missing").startswith("unknown: --version failed:"))
 
     def manifest(self, rows=(("sat", SAT, "sat"), ("unsat", UNSAT, "unsat"))):
         cache = self.root / "cache"
@@ -421,15 +489,38 @@ class CompetitionTests(unittest.TestCase):
         self.assertEqual({r["certificate"] for r in rows if r["arm"] in runner.PROOF_ARMS and r["expected"] == "unsat"},
                          {"drat-verified"})
 
-    def test_smoke_takes_the_smallest_sat_and_unsat_and_says_so(self):
+    def smoke(self):
         larger = b"p cnf 2 2\n1 2 0\n1 -2 0\n"
-        status, output = self.main("--smoke", rows=(("big", larger, "sat"), ("sat", SAT, "sat"), ("unsat", UNSAT, "unsat")))
+        controls = {runner.gbd_hash(io.BytesIO(SAT)): "sat control", runner.gbd_hash(io.BytesIO(UNSAT)): "unsat control"}
+        with patch.object(runner, "SMOKE", controls):
+            return self.main("--smoke", rows=(("big", larger, "sat"), ("sat", SAT, "sat"), ("unsat", UNSAT, "unsat")))
+
+    def test_smoke_runs_the_positive_controls_and_requires_every_arm_to_solve_them(self):
+        self.tools["drat-trim"] = self.stub("drat-trim", "verify-all")
+        status, output = self.smoke()
         self.assertEqual(status, 0)
-        instances = {r["instance"] for r in csv.DictReader((output / "results.csv").open())}
-        self.assertEqual(instances, {runner.gbd_hash(io.BytesIO(SAT)), runner.gbd_hash(io.BytesIO(UNSAT))})
+        rows = list(csv.DictReader((output / "results.csv").open()))
+        self.assertEqual({r["instance"] for r in rows},
+                         {runner.gbd_hash(io.BytesIO(SAT)), runner.gbd_hash(io.BytesIO(UNSAT)), "tseitin-3x3-odd"})
+        self.assertEqual(json.loads((output / "summary.json").read_text())["smoke_failures"], [])
         subset = json.loads((output / "run.json").read_text())["subset"]
-        self.assertIn("smallest SAT and the smallest UNSAT", subset)
-        self.assertTrue((output / "summary.md").read_text().startswith(f"**SUBSET RUN: {subset}.**"))
+        self.assertIn("positive controls", subset)
+        text = (output / "summary.md").read_text()
+        self.assertTrue(text.startswith(f"**SUBSET RUN: {subset}.**"))
+        self.assertIn("Every arm solved every smoke instance with a completed certificate.", text)
+
+    def test_smoke_fails_on_a_total_ems_or_checker_failure(self):
+        for role, mode, broken in (("eigenscript", "unknown", "ems: ERROR"), ("drat-trim", "exit0-timeout", "drat-error")):
+            with self.subTest(role=role):
+                self.tools = {tool: self.stub(tool) for tool in self.tools}
+                self.tools["drat-trim"] = self.stub("drat-trim", "verify-all")
+                self.tools[role] = self.stub(role, mode)
+                status, output = self.smoke()
+                self.assertEqual(status, 1)
+                failures = json.loads((output / "summary.json").read_text())["smoke_failures"]
+                self.assertTrue(failures and all(broken.split(": ")[-1] in line for line in failures), failures)
+                self.assertEqual(json.loads((output / "run.json").read_text())["status"], "failed: smoke positive control")
+                self.assertIn("- FAILED: ", (output / "summary.md").read_text())
 
     def test_end_to_end_wrong_answer_exits_nonzero(self):
         self.tools["kissat"] = self.stub("kissat", "bad-model")
@@ -492,18 +583,84 @@ class CompetitionTests(unittest.TestCase):
 
     def test_frame_accounting_is_checked(self):
         frame = json.loads(runner.FRAME.read_text())
-        family, pool = next(iter(frame["strata"]["tseitin"]["pool"].items()))
-        for plant in ("dropped row", "repeated hash", "bad result"):
+        select.validate_frame(frame)
+        plants = {
+            "dropped row": lambda f: f["strata"]["tseitin"]["pool"]["tseitin-formulas"].pop(),
+            "repeated hash": lambda f: f["strata"]["tseitin"]["pool"]["tseitin-formulas"][1].__setitem__(
+                0, f["strata"]["tseitin"]["pool"]["tseitin-formulas"][0][0]),
+            "bad result": lambda f: f["strata"]["tseitin"]["pool"]["tseitin-formulas"][0].__setitem__(1, "maybe"),
+            "zero size": lambda f: f["strata"]["tseitin"]["pool"]["tseitin-formulas"][0].__setitem__(2, 0),
+            "oversize": lambda f: f["strata"]["tseitin"]["pool"]["tseitin-formulas"][0].__setitem__(2, f["max_bytes"] + 1),
+            "orphan pool family": lambda f: f["strata"]["tseitin"]["pool"].__setitem__(
+                "unlisted", [["f" * 32, "unsat", 10]]),
+            "family exclusions": lambda f: f["strata"]["tseitin"]["excluded"].__setitem__("over 25000000 bytes", 2),
+            "population sum": lambda f: f["population"].__setitem__("outside_population",
+                                                                    f["population"]["outside_population"] + 1),
+        }
+        for plant, change in plants.items():
             broken = json.loads(json.dumps(frame))
-            rows = broken["strata"]["tseitin"]["pool"][family]
-            if plant == "dropped row":
-                rows.pop()
-            elif plant == "repeated hash":
-                rows[1][0] = rows[0][0]
-            else:
-                rows[0][1] = "maybe"
+            change(broken)
             with self.subTest(plant=plant), self.assertRaises(ValueError):
                 select.validate_frame(broken)
+
+    def test_preparation_changing_more_than_comments_stops_the_run(self):
+        def lossy(source, target):  # a comment stripper that also drops the last clause line
+            lines = Path(source).read_bytes().splitlines(keepends=True)
+            Path(target).write_bytes(b"".join(line for line in lines[:-1] if not line.startswith(b"c")))
+        _, frame, cache = self.manifest()
+        digest = runner.gbd_hash(io.BytesIO(UNSAT))
+        with patch.object(runner, "strip_comments", lossy):
+            with self.assertRaisesRegex(runner.Failure, f"{digest}: .*clause count"):
+                runner.prepare_gbd({"hash": digest, "stratum": "s", "family": "f", "gbd_result": "unsat"},
+                                   self.root / "instance", cache)
+            work = self.root / "rung-work"
+            work.mkdir()
+            with self.assertRaisesRegex(runner.Failure, "tseitin-3x3-odd: "):
+                runner.prepare_rung("3x3", work, self.tools["eigenscript"], dict(os.environ), time.monotonic() + 60, 30)
+
+    def test_frame_is_checked_against_the_archived_databases(self):
+        # Tiny GBD databases: five rows per stratum, plus two "ktf" rows in other.
+        directory = self.root / "gbd"
+        directory.mkdir()
+        meta, base = directory / "meta.db", directory / "base.db"
+        with sqlite3.connect(meta) as m, sqlite3.connect(base) as b:
+            m.execute("CREATE TABLE features (hash TEXT, family TEXT, result TEXT)")
+            m.execute("CREATE TABLE track (hash TEXT, value TEXT)")
+            b.execute("CREATE TABLE features (hash TEXT, bytes TEXT, variables TEXT, clauses TEXT, cls3 TEXT)")
+            families = [("tseitin-formulas", 5), ("minimum-disagreement-parity", 5), ("pigeon-hole", 5),
+                        ("uniform-random", 5), ("cryptography", 5), ("coloring", 5), ("ktf", 2)]
+            for family, count in families:
+                for index in range(count):
+                    digest = hashlib.md5(f"{family}{index}".encode()).hexdigest()
+                    m.execute("INSERT INTO features VALUES (?, ?, ?)", (digest, family, "unsat"))
+                    random_track = family == "uniform-random"
+                    m.execute("INSERT INTO track VALUES (?, ?)", (digest, "random_2010" if random_track else "main_2020"))
+                    b.execute("INSERT INTO features VALUES (?, ?, ?, ?, ?)",
+                              (digest, "1000", "100", "426", "426" if random_track else "0"))
+        frame, manifest = directory / "frame.json", directory / "manifest.json"
+        self.assertEqual(select.main(["--refresh", "--meta", str(meta), "--base", str(base),
+                                      "--frame", str(frame), "--manifest", str(manifest)]), 0)
+        data = json.loads(frame.read_text())
+        for name, path in (("meta", meta), ("base", base)):
+            data["gbd"][name]["archive"] = path.as_uri()
+
+        def write(frame_data):
+            frame.write_text(select.dump_frame(frame_data))
+            manifest.write_text(json.dumps(select.derive_manifest(frame_data), indent=1) + "\n")
+
+        write(data)
+        argv = ["--frame", str(frame), "--manifest", str(manifest)]
+        self.assertEqual((select.main(["--check", *argv]), select.main(["--check-frame", *argv])), (0, 0))
+        dropped = json.loads(json.dumps(data))
+        other = dropped["strata"]["other"]
+        moved = other["families"].pop("ktf")
+        other["pool"].pop("ktf")
+        dropped["population"]["outside_population"] += moved["eligible"] + moved["excluded"]
+        write(dropped)
+        self.assertEqual((select.main(["--check", *argv]), select.main(["--check-frame", *argv])), (0, 1))
+        write(data)
+        meta.write_bytes(meta.read_bytes() + b"x")
+        self.assertEqual(select.main(["--check-frame", *argv]), 1)
 
     def test_schedule_is_a_seeded_interleaved_permutation(self):
         cases = [{"id": f"case{index}"} for index in range(40)]

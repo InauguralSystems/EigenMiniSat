@@ -33,22 +33,47 @@
   "parity-games": "games on graphs (a verification problem), not XOR constraints",
   "xor-shifting": "xorshift generator inversion (cryptanalysis), not a parity principle"
  },
+ "structure": {
+  "genurq": [
+   "tseitin",
+   "generalized Urquhart formulas: Tseitin parity constraints on random regular graphs"
+  ],
+  "lights-out": [
+   "parity",
+   "the Lights Out puzzle: a linear system over GF(2)"
+  ],
+  "mutilated-chessboard": [
+   "pigeonhole",
+   "domino tiling of a mutilated board: a matching (counting) principle"
+  ],
+  "perfect-matching": [
+   "pigeonhole",
+   "the perfect matching principle on odd vertex sets: a counting principle"
+  ],
+  "subset-cardinality": [
+   "pigeonhole",
+   "subset cardinality formulas (Miksa and Nordstrom): a counting principle"
+  ]
+ },
  "gbd": {
   "meta": {
    "url": "https://benchmark-database.de/getdatabase/meta",
    "sha256": "5b8bbc767bc5300cca6a12717fb2d7c8d52ccee24aced4447d71846352744ff3",
    "retrieved_utc": "2026-10-27T15:51:56Z",
-   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT"
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT",
+   "archive": "https://github.com/InauguralSystems/EigenMiniSat/releases/download/gbd-databases/meta-5b8bbc767bc5300cca6a12717fb2d7c8d52ccee24aced4447d71846352744ff3.db"
   },
   "base": {
    "url": "https://benchmark-database.de/getdatabase/base",
    "sha256": "15a3d19fd23ba72dd7c77b1b86113873f160760fa1c9710e9e5ed6a23ba29d84",
    "retrieved_utc": "2026-10-27T15:52:02Z",
-   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT"
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT",
+   "archive": "https://github.com/InauguralSystems/EigenMiniSat/releases/download/gbd-databases/base-15a3d19fd23ba72dd7c77b1b86113873f160760fa1c9710e9e5ed6a23ba29d84.db"
   }
  },
  "design_history": [
-  "first draw (seed 131): five strata of five with Tseitin inside parity; it held no tseitin-formulas instance, so Tseitin became its own stratum and each stratum four instances, before any solver ran. Same seed."
+  "first draw (seed 131): five strata of five with Tseitin inside parity; it held no tseitin-formulas instance, so Tseitin became its own stratum and each stratum four instances, before any solver ran. Same seed.",
+  "second change, before the first dispatched measurement: the label rules had put genurq (Tseitin on expanders), mutilated-chessboard and perfect-matching (matching principles) into other. The STRUCTURE map now places five families by what they encode; the tseitin, parity and pigeonhole pools grew, and their draws were re-derived with the same seed."
  ],
  "population": {
   "gbd_rows_with_a_track": 20225,
@@ -60,12 +85,19 @@
     "over 25000000 bytes": 1
    },
    "families": {
+    "genurq": {
+     "eligible": 1,
+     "excluded": 0
+    },
     "tseitin-formulas": {
      "eligible": 33,
      "excluded": 1
     }
    },
    "pool": {
+    "genurq": [
+     ["c6487f6dfcc1438eccca1876a33d9a9c", "unknown", 815033]
+    ],
     "tseitin-formulas": [
      ["01d142c43f3ce9a8c5ef7a1ecdbb6cba", "unsat", 3212],
      ["0297c2a35f116ffd5382aea5b421e6df", "unsat", 7916],
@@ -110,6 +142,10 @@
      "eligible": 2,
      "excluded": 0
     },
+    "lights-out": {
+     "eligible": 7,
+     "excluded": 0
+    },
     "minimal-disagreement-parity": {
      "eligible": 4,
      "excluded": 0
@@ -143,6 +179,15 @@
     "binary-tree-parity": [
      ["16c5482d8e658b54e20d59cfd4b1d588", "sat", 29956],
      ["7db30d12cb06f0dc2f30abff80d96d6a", "sat", 61594]
+    ],
+    "lights-out": [
+     ["01d6fa8efd18ebfecd06af408958477b", "sat", 215384],
+     ["0efcbd10294eb001b16b4d126923372f", "unsat", 179560],
+     ["28dcc4119e1bbb5fbd3fdd8f4140f28d", "sat", 147630],
+     ["32e344a5ab3af245f982678d2b751c6d", "unsat", 134380],
+     ["65ee6b49612eccb7d213e4d950f23677", "sat", 162800],
+     ["667341ee8c1dea3db613db317e2b2c33", "unsat", 122974],
+     ["80b163b706e0a16702173ec27f3d1331", "unsat", 197104]
     ],
     "minimal-disagreement-parity": [
      ["0c9bcbc815cf0f109b7aeef3fbffc42d", "sat", 162062],
@@ -220,6 +265,14 @@
      "eligible": 1,
      "excluded": 0
     },
+    "mutilated-chessboard": {
+     "eligible": 18,
+     "excluded": 0
+    },
+    "perfect-matching": {
+     "eligible": 11,
+     "excluded": 0
+    },
     "pigeon-hole": {
      "eligible": 34,
      "excluded": 0
@@ -227,6 +280,10 @@
     "relativized-pigeon-hole": {
      "eligible": 17,
      "excluded": 1
+    },
+    "subset-cardinality": {
+     "eligible": 2,
+     "excluded": 0
     },
     "sudoku-php": {
      "eligible": 2,
@@ -236,6 +293,39 @@
    "pool": {
     "binary-pigeon-hole": [
      ["fa5c6d6736a42650656c5bc018413254", "unsat", 207573]
+    ],
+    "mutilated-chessboard": [
+     ["112b0ac22b2a567cd3badfed3a5497fd", "unsat", 15471],
+     ["2c3c28f6d939d157e909c57a265fc908", "unsat", 22406],
+     ["41457ee03686b32962c12445524f62a9", "unsat", 20658],
+     ["45742d067cc851edc1201d8a02586eac", "unsat", 31920],
+     ["644fd765d26bd4a380922ccd0f594c58", "unsat", 19784],
+     ["6aacae96461cb65176942b6dc88ea470", "unsat", 24926],
+     ["751afd7ddf8f242ed7bd93517ba82149", "unsat", 26029],
+     ["822ac2997c9e0f0def5971dabcdb0dd9", "unsat", 25396],
+     ["8704094951693f99fd21403a039c8131", "unsat", 19594],
+     ["87ec32f70c5e3a279e636f7f62e70a19", "unsat", 31964],
+     ["8d458780fb74c28c01a5fe89990ad521", "unsat", 15793],
+     ["cd86fbfd8b7e0d66ec5fe8fe85c014d3", "unsat", 31277],
+     ["d7f381cd99ca40ba3324c8cc03a54269", "unsat", 15148],
+     ["ec84eecb124c63d4757e083dd0e5a9ff", "unsat", 16964],
+     ["ee90ba05c705de083ca3f3c374c583c5", "unsat", 28568],
+     ["fb5d0254bc4b8d258eb84ea1dbcdda13", "unsat", 30593],
+     ["fe8b1ef742724947620a419d0180a640", "unsat", 20215],
+     ["ff867fd35aa52058382a8b0c21cd1f38", "unsat", 25483]
+    ],
+    "perfect-matching": [
+     ["116bae11adddfa555f2e21f8ee678de5", "unsat", 7934],
+     ["1527378fc216e0506bf8b63d0fad56be", "unsat", 6943],
+     ["50d081a4b18eecdd0bc120f634d57a26", "unsat", 9493],
+     ["747955bb7addf0fb6fe4d465a9cbd035", "unsat", 8796],
+     ["912b89dd471295d3c72c66d0192dff72", "unsat", 13471],
+     ["951a20a37a23488001f3aa2fa53e6baa", "unsat", 6504],
+     ["9a296539e33398c9ae36663371a63b39", "unsat", 6087],
+     ["ac909ca2e27006f71389b6afa605f4be", "unknown", 14583],
+     ["b5c3e33e90f4c95502754c7e2e92a6d2", "unsat", 9800],
+     ["c879ee8f60ca65a013da7774277e489e", "unsat", 10977],
+     ["e8c79a0ee6be39b6b2211c9a527c192a", "unsat", 12633]
     ],
     "pigeon-hole": [
      ["03e9d1abe418a1727bbf2ead77d69d02", "unknown", 33316],
@@ -291,6 +381,10 @@
      ["e430acf720b63044e5c825a00a76b0eb", "unsat", 278189],
      ["eaf2f0803dd2045f1b189ee834ef0c8f", "unsat", 5799517],
      ["faea4b579b0010b32f001ac4b5b9415a", "unsat", 246220]
+    ],
+    "subset-cardinality": [
+     ["2d6d26e1c5b4f2763c03697a6d00d3cf", "unsat", 6594],
+     ["b628043a07c5576dd6cd21c9d73a69e0", "unsat", 8070]
     ],
     "sudoku-php": [
      ["43d40ced32b5be08814ef24f97379654", "unsat", 31782],
@@ -2793,10 +2887,6 @@
      "eligible": 4,
      "excluded": 0
     },
-    "genurq": {
-     "eligible": 1,
-     "excluded": 0
-    },
     "graceful-production": {
      "eligible": 0,
      "excluded": 20
@@ -2893,10 +2983,6 @@
      "eligible": 3,
      "excluded": 6
     },
-    "lights-out": {
-     "eligible": 7,
-     "excluded": 0
-    },
     "linear-equations": {
      "eligible": 12,
      "excluded": 0
@@ -2941,10 +3027,6 @@
      "eligible": 15,
      "excluded": 0
     },
-    "mutilated-chessboard": {
-     "eligible": 18,
-     "excluded": 0
-    },
     "ntil": {
      "eligible": 16,
      "excluded": 0
@@ -2963,10 +3045,6 @@
     },
     "pebbling": {
      "eligible": 2,
-     "excluded": 0
-    },
-    "perfect-matching": {
-     "eligible": 11,
      "excluded": 0
     },
     "petrinet-concurrency": {
@@ -3136,10 +3214,6 @@
     "subgraph-isomorphism": {
      "eligible": 17,
      "excluded": 5
-    },
-    "subset-cardinality": {
-     "eligible": 2,
-     "excluded": 0
     },
     "subsumptiontest": {
      "eligible": 0,
@@ -3833,9 +3907,6 @@
      ["76a2d95d995d94be5b0a0c9ec1a8e178", "unsat", 158941],
      ["d0b5d1dc96a5bf33d2c65106c3b179a8", "unsat", 117693]
     ],
-    "genurq": [
-     ["c6487f6dfcc1438eccca1876a33d9a9c", "unknown", 815033]
-    ],
     "grandtour-puzzle": [
      ["1573c39070c77802219d0b3e2562615e", "unknown", 61765],
      ["1d6609213826bec81693f2f6987b4c16", "unknown", 51410],
@@ -4154,15 +4225,6 @@
      ["ae65124c3dcc4f4b69a733b663ae2b05", "unknown", 4647151],
      ["b858ad4945086c193e5bce40e1a77837", "unknown", 4747748]
     ],
-    "lights-out": [
-     ["01d6fa8efd18ebfecd06af408958477b", "sat", 215384],
-     ["0efcbd10294eb001b16b4d126923372f", "unsat", 179560],
-     ["28dcc4119e1bbb5fbd3fdd8f4140f28d", "sat", 147630],
-     ["32e344a5ab3af245f982678d2b751c6d", "unsat", 134380],
-     ["65ee6b49612eccb7d213e4d950f23677", "sat", 162800],
-     ["667341ee8c1dea3db613db317e2b2c33", "unsat", 122974],
-     ["80b163b706e0a16702173ec27f3d1331", "unsat", 197104]
-    ],
     "linear-equations": [
      ["247e42e46495f1c4b8707e497af8c93e", "sat", 453005],
      ["2d89fda1bd6a761ca5e2f4bb89202681", "sat", 452789],
@@ -4302,26 +4364,6 @@
      ["e99ce61fe251b404ec85f6246fd4bb19", "sat", 1151707],
      ["e9b4369f9a98e397ac69eb7740ffef49", "sat", 1175103]
     ],
-    "mutilated-chessboard": [
-     ["112b0ac22b2a567cd3badfed3a5497fd", "unsat", 15471],
-     ["2c3c28f6d939d157e909c57a265fc908", "unsat", 22406],
-     ["41457ee03686b32962c12445524f62a9", "unsat", 20658],
-     ["45742d067cc851edc1201d8a02586eac", "unsat", 31920],
-     ["644fd765d26bd4a380922ccd0f594c58", "unsat", 19784],
-     ["6aacae96461cb65176942b6dc88ea470", "unsat", 24926],
-     ["751afd7ddf8f242ed7bd93517ba82149", "unsat", 26029],
-     ["822ac2997c9e0f0def5971dabcdb0dd9", "unsat", 25396],
-     ["8704094951693f99fd21403a039c8131", "unsat", 19594],
-     ["87ec32f70c5e3a279e636f7f62e70a19", "unsat", 31964],
-     ["8d458780fb74c28c01a5fe89990ad521", "unsat", 15793],
-     ["cd86fbfd8b7e0d66ec5fe8fe85c014d3", "unsat", 31277],
-     ["d7f381cd99ca40ba3324c8cc03a54269", "unsat", 15148],
-     ["ec84eecb124c63d4757e083dd0e5a9ff", "unsat", 16964],
-     ["ee90ba05c705de083ca3f3c374c583c5", "unsat", 28568],
-     ["fb5d0254bc4b8d258eb84ea1dbcdda13", "unsat", 30593],
-     ["fe8b1ef742724947620a419d0180a640", "unsat", 20215],
-     ["ff867fd35aa52058382a8b0c21cd1f38", "unsat", 25483]
-    ],
     "ntil": [
      ["09e0775d2b51c49ec1ec4d214ee7c8c8", "sat", 5540023],
      ["0e06895600b5cd0b6fadb87e17bf8145", "sat", 7086439],
@@ -4374,19 +4416,6 @@
     "pebbling": [
      ["17039a3ed02ea12653ec5389e56dab50", "unsat", 268124],
      ["92d6795785d35d1dcc42b15dc0e933d0", "unsat", 1165996]
-    ],
-    "perfect-matching": [
-     ["116bae11adddfa555f2e21f8ee678de5", "unsat", 7934],
-     ["1527378fc216e0506bf8b63d0fad56be", "unsat", 6943],
-     ["50d081a4b18eecdd0bc120f634d57a26", "unsat", 9493],
-     ["747955bb7addf0fb6fe4d465a9cbd035", "unsat", 8796],
-     ["912b89dd471295d3c72c66d0192dff72", "unsat", 13471],
-     ["951a20a37a23488001f3aa2fa53e6baa", "unsat", 6504],
-     ["9a296539e33398c9ae36663371a63b39", "unsat", 6087],
-     ["ac909ca2e27006f71389b6afa605f4be", "unknown", 14583],
-     ["b5c3e33e90f4c95502754c7e2e92a6d2", "unsat", 9800],
-     ["c879ee8f60ca65a013da7774277e489e", "unsat", 10977],
-     ["e8c79a0ee6be39b6b2211c9a527c192a", "unsat", 12633]
     ],
     "petrinet-concurrency": [
      ["0b348eb6b61e4f0026437fda402c9b62", "sat", 23471270],
@@ -4956,10 +4985,6 @@
      ["b18b58b3399e9fb62060017edcb24a24", "unsat", 1302539],
      ["d0364ea3e1680c6da7e982e6b0264af6", "sat", 455806],
      ["e47586f86868e83a5ebe7a3ecae204f1", "unsat", 765253]
-    ],
-    "subset-cardinality": [
-     ["2d6d26e1c5b4f2763c03697a6d00d3cf", "unsat", 6594],
-     ["b628043a07c5576dd6cd21c9d73a69e0", "unsat", 8070]
     ],
     "sum-of-3-cubes": [
      ["2a0f12ac393b2fb15f0dcc45c00e7434", "unknown", 23674393],

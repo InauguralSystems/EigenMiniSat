@@ -17,12 +17,20 @@
   refutes fails the run. A second, cross-checked score also credits an
   unverified UNSAT that another arm's certificate or GBD's record confirms
   (`+agrees`), a declared departure published beside the verified score; an
-  unverified UNSAT nothing confirms counts in neither. The sampling frame is
-  frozen in `competition_frame.json`, so the draw re-derives offline (`--check`)
-  after GBD updates. The A/A resolution is the sum of |PAR-2 difference|, not a
-  signed total. The "Competition baseline" workflow runs it on
-  workflow_dispatch, and a pull request touching what it reads runs a smoke on
-  the smallest SAT and smallest UNSAT instance.
+  unverified UNSAT nothing confirms counts in neither; MiniSat, which writes no
+  proofs, is compared on the cross-checked score. Any arm reporting an answer
+  with a non-answer exit stops the run, and so does a formula changed by a run
+  (it is read-only and re-hashed after every run). A formula with an empty
+  clause is verified UNSAT by itself. The sampling frame is frozen in
+  `competition_frame.json`, so the draw re-derives offline (`--check`) after GBD
+  updates, and `--check-frame` rebuilds it from the GBD databases archived by
+  SHA-256. Five families are placed by structure, not label (`genurq` to
+  tseitin; `lights-out` to parity; `mutilated-chessboard`, `perfect-matching`
+  and `subset-cardinality` to pigeonhole). The A/A resolution, from competition
+  pairs only, is the sum of |PAR-2 difference| plus the relative wall
+  difference. The "Competition baseline" workflow runs it on workflow_dispatch;
+  a pull request touching what it reads runs a smoke whose positive controls
+  every arm must solve with a completed certificate.
 
 ### CDCL Solver
 - **The learnt DB is sized against the instance (#86).** `learnt_limit` started

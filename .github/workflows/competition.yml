@@ -11,10 +11,12 @@ name: Competition baseline
 # limit is 360). The harness itself refuses to start if the worst case does not
 # fit what remains of its 19,800 s budget after the downloads.
 #
-# A pull request that touches what the harness reads runs a labelled SUBSET
-# (the manifest's smallest SAT and smallest UNSAT instance, the 3x3 rung, 10 s)
-# through the same builds and solvers. The path list is exactly the files the
-# harness reads; test_competition.py derives that set and fails if it differs.
+# A pull request that touches what the harness reads runs a labelled smoke
+# through the same builds and solvers: two positive controls every arm solved
+# (a SAT and an UNSAT instance) and the 3x3 rung, 10 s each. The smoke fails
+# unless every arm solves all three with a completed certificate. The path list
+# is exactly the files the harness reads; test_competition.py derives that set
+# and fails if it differs.
 on:
   workflow_dispatch:
   pull_request:
@@ -59,6 +61,11 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 benchmarks/competition_select.py --check
 
+      - name: Rebuild the frozen frame from the archived GBD databases
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/competition_select.py --check-frame
+
       - name: Build EigenScript at the pin in ci.yml
         run: |
           pin=$(grep -oE 'git clone --branch v[0-9]+[.][0-9]+[.][0-9]+ --depth 1 https://github.com/InauguralSystems/EigenScript.git' .github/workflows/ci.yml | awk '{print $4}')
@@ -96,7 +103,7 @@ jobs:
       - name: Run the competition baseline
         env:
           PYTHONDONTWRITEBYTECODE: '1'
-          SUBSET: ${{ github.event_name == 'pull_request' && '--smoke --ladder 3x3 --limit 10' || '' }}
+          SUBSET: ${{ github.event_name == 'pull_request' && '--smoke --limit 10' || '' }}
         run: |
           # SUBSET is empty for workflow_dispatch: the full manifest, every rung, 60 s.
           read -r -a subset <<< "$SUBSET"
