@@ -5,8 +5,8 @@
 ### Benchmarks
 - **The SAT Competition is the baseline measurement device (#131).**
   `benchmarks/competition_select.py` draws a seeded, stratified sample of
-  competition instances from the Global Benchmark Database (parity/Tseitin,
-  pigeonhole, random 3-SAT near the threshold, application, other; five each)
+  competition instances from the Global Benchmark Database (Tseitin, parity,
+  pigeonhole, random 3-SAT near the threshold, application, other; four each)
   into `competition_manifest.json`. `benchmarks/competition_run.py` downloads
   each instance by GBD hash, re-derives that hash, and runs Kissat (twice, the
   A/A noise arm), CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM in a seeded

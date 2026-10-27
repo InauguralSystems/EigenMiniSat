@@ -23,15 +23,19 @@ import urllib.request
 GBD = "https://benchmark-database.de"
 MANIFEST = Path(__file__).resolve().with_name("competition_manifest.json")
 SEED = 131                  # fixed before the first draw (the issue number); never re-drawn for a better sample
-PER_STRATUM = 5
+PER_STRATUM = 4
 MAX_BYTES = 25_000_000      # GBD `bytes` feature; a declared departure, sized by the CI job budget
 FIRST_MAIN_YEAR = 2017      # GBD `main_YYYY`: one combined main-track instance set per competition from 2017
 THRESHOLD, BAND = 4.267, 0.1
-STRATA = ("parity", "pigeonhole", "random-3sat", "application", "other")
+STRATA = ("tseitin", "parity", "pigeonhole", "random-3sat", "application", "other")
 # Main-track strata by GBD family label. The first matching rule wins; every other
 # main-track family is "other". The manifest lists every family under its stratum.
+# Tseitin is its own stratum: the first draw (five strata of five, Tseitin inside
+# parity) held no tseitin-formulas instance, and #131 names the family. Changed
+# before any solver ran; the seed did not change.
 RULES = (
-    ("parity", r"tseitin|parity|xor"),
+    ("tseitin", r"tseitin"),
+    ("parity", r"parity|xor"),
     ("pigeonhole", r"pigeon|php"),
     ("application", r"verification|model-checking|bmc|equi[v]?alence-checking|miter|cryptograph|planning|scheduling|timetabling"),
 )
@@ -138,6 +142,9 @@ def manifest(meta, base, sources):
             "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
                             "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
             "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "gbd": sources,
+            "design_history": ["first draw (seed 131): five strata of five with Tseitin inside parity; it held no "
+                               "tseitin-formulas instance, so Tseitin became its own stratum and each stratum four "
+                               "instances, before any solver ran. Same seed."],
             "population": {"gbd_rows_with_a_track": len(rows), "outside_population": outside},
             "strata": strata, "instances": instances}
 

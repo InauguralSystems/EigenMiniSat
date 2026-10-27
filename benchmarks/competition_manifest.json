@@ -2,7 +2,7 @@
  "schema": 1,
  "issue": "InauguralSystems/EigenMiniSat#131",
  "seed": 131,
- "per_stratum": 5,
+ "per_stratum": 4,
  "max_bytes": 25000000,
  "first_main_year": 2017,
  "random_3sat": {
@@ -13,8 +13,12 @@
  },
  "rules": [
   [
+   "tseitin",
+   "tseitin"
+  ],
+  [
    "parity",
-   "tseitin|parity|xor"
+   "parity|xor"
   ],
   [
    "pigeonhole",
@@ -41,17 +45,28 @@
    "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT"
   }
  },
+ "design_history": [
+  "first draw (seed 131): five strata of five with Tseitin inside parity; it held no tseitin-formulas instance, so Tseitin became its own stratum and each stratum four instances, before any solver ran. Same seed."
+ ],
  "population": {
   "gbd_rows_with_a_track": 20225,
   "outside_population": 15313
  },
  "strata": {
-  "parity": {
-   "eligible": 86,
+  "tseitin": {
+   "eligible": 33,
    "excluded": {
     "over 25000000 bytes": 1
    },
-   "selected": 5,
+   "selected": 4,
+   "families": {
+    "tseitin-formulas": 33
+   }
+  },
+  "parity": {
+   "eligible": 53,
+   "excluded": {},
+   "selected": 4,
    "families": {
     "binary-tree-parity": 2,
     "minimal-disagreement-parity": 4,
@@ -59,7 +74,6 @@
     "or_randxor": 6,
     "ordering-principle-xor": 3,
     "random-graph-xorsat": 5,
-    "tseitin-formulas": 33,
     "xor-chain": 2,
     "xor_op": 1
    }
@@ -69,7 +83,7 @@
    "excluded": {
     "over 25000000 bytes": 1
    },
-   "selected": 5,
+   "selected": 4,
    "families": {
     "binary-pigeon-hole": 1,
     "pigeon-hole": 34,
@@ -82,7 +96,7 @@
    "excluded": {
     "over 25000000 bytes": 17
    },
-   "selected": 5,
+   "selected": 4,
    "families": {
     "uniform-random": 1300
    }
@@ -92,7 +106,7 @@
    "excluded": {
     "over 25000000 bytes": 306
    },
-   "selected": 5,
+   "selected": 4,
    "families": {
     "algorithm-equivalence-checking": 23,
     "circuit-equialence-checking": 12,
@@ -120,7 +134,7 @@
    "excluded": {
     "over 25000000 bytes": 586
    },
-   "selected": 5,
+   "selected": 4,
    "families": {
     "01-integer-programming": 1,
     "2d-strip-packing": 2,
@@ -264,6 +278,63 @@
  },
  "instances": [
   {
+   "hash": "aa39c6d885d283a085d033ab7b89f8c8",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "tracks": [
+    "anni_2022",
+    "crafted_2012",
+    "main_2024"
+   ],
+   "bytes": 15758,
+   "variables": 74,
+   "clauses": 694,
+   "filename": "urq45.cnf.xz"
+  },
+  {
+   "hash": "5f6861053fb4ed4fc0b997cd6b505ef4",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2023",
+    "submissions_2023"
+   ],
+   "bytes": 9891112,
+   "variables": 165000,
+   "clauses": 440000,
+   "filename": "tseitin_d3_n110000.cnf.xz"
+  },
+  {
+   "hash": "6e5efd19744842d1fa5415173bffbf6b",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2023",
+    "submissions_2023"
+   ],
+   "bytes": 16751112,
+   "variables": 270000,
+   "clauses": 720000,
+   "filename": "tseitin_d3_n180000.cnf.xz"
+  },
+  {
+   "hash": "77a0d54f2fb3740a9a321623c0c10f3e",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2025",
+    "submissions_2023"
+   ],
+   "bytes": 17106,
+   "variables": 264,
+   "clauses": 968,
+   "filename": "tseitin_grid_n12_m12.cnf.xz"
+  },
+  {
    "hash": "6fa8b4b7f4b059bd46913dbe741c0b94",
    "stratum": "parity",
    "family": "minimum-disagreement-parity",
@@ -318,19 +389,6 @@
    "variables": 2520,
    "clauses": 345528,
    "filename": "xor_op_n36_d3.cnf.xz"
-  },
-  {
-   "hash": "fdb394fb3ccdb308bdf511b8996f4f69",
-   "stratum": "parity",
-   "family": "xor-chain",
-   "gbd_result": "unsat",
-   "tracks": [
-    "main_2019"
-   ],
-   "bytes": 14882,
-   "variables": 382,
-   "clauses": 1018,
-   "filename": "x2_128.shuffled-as.sat03-1598-sc2002.cnf.xz"
   },
   {
    "hash": "fa5c6d6736a42650656c5bc018413254",
@@ -391,21 +449,6 @@
    "filename": "php_sudoku_p15_h14.sanitized.cnf.xz"
   },
   {
-   "hash": "44092fcc83a5cba81419e82cfd18602c",
-   "stratum": "pigeonhole",
-   "family": "pigeon-hole",
-   "gbd_result": "unsat",
-   "tracks": [
-    "anni_2022",
-    "crafted_2005",
-    "main_2023"
-   ],
-   "bytes": 3918,
-   "variables": 90,
-   "clauses": 415,
-   "filename": "php-010-009.shuffled-as.sat05-1185.cnf.xz"
-  },
-  {
    "hash": "411a2468cba2725512c1e64c5679551d",
    "stratum": "random-3sat",
    "family": "uniform-random",
@@ -457,19 +500,6 @@
    "variables": 31400,
    "clauses": 132351,
    "filename": "unif-k3-r4.215-v31400-c132351-S6195301400647166688.cnf.xz"
-  },
-  {
-   "hash": "681d5db43aaf2a521ae270535f8a5424",
-   "stratum": "random-3sat",
-   "family": "uniform-random",
-   "gbd_result": "sat",
-   "tracks": [
-    "random_2017"
-   ],
-   "bytes": 743806,
-   "variables": 9600,
-   "clauses": 40963,
-   "filename": "unif-k3-r4.267-v9600-c40963-S2091738361900960619.cnf.xz"
   },
   {
    "hash": "b6e71c02c8352821cb3ec5dbf2bcb9e4",
@@ -527,20 +557,6 @@
    "filename": "BubbleVsPancakeSort_7_7.cnf.xz"
   },
   {
-   "hash": "f0bafebdcce23ccfbaf6c27a7522069b",
-   "stratum": "application",
-   "family": "circuit-equivalence-checking",
-   "gbd_result": "unsat",
-   "tracks": [
-    "main_2025",
-    "submissions_2022"
-   ],
-   "bytes": 205892,
-   "variables": 2851,
-   "clauses": 12113,
-   "filename": "div-mitern172.cnf.xz"
-  },
-  {
    "hash": "3f9fdded562e5b47d8b3dbcf4271a6ce",
    "stratum": "other",
    "family": "coloring-mycielski-graph",
@@ -596,20 +612,6 @@
    "variables": 60247,
    "clauses": 281152,
    "filename": "ktf_TF-7.tf_3_0.06_113.cnf.xz"
-  },
-  {
-   "hash": "ee44c3f464238366729bf2cb16eb412a",
-   "stratum": "other",
-   "family": "stable-semantics",
-   "gbd_result": "sat",
-   "tracks": [
-    "main_2026",
-    "submissions_2026"
-   ],
-   "bytes": 664766,
-   "variables": 384,
-   "clauses": 44173,
-   "filename": "n384p5q2_vh.af_138.sanitized.cnf.xz"
   }
  ]
 }

@@ -117,12 +117,16 @@ python3 benchmarks/competition_select.py --check
 every GBD instance of a SAT Competition main track from 2017 (`main_YYYY`, the
 years with one combined main-track set), plus, for the random 3-SAT stratum,
 the competition's random tracks, because main tracks hold no uniform random
-3-SAT. Five strata of five instances each, drawn with seed 131, which was fixed
-before the first draw:
+3-SAT. Six strata of four instances each, drawn with seed 131, which was fixed
+before the first draw. The first draw used five strata of five with Tseitin
+inside parity; it held no `tseitin-formulas` instance, although #131 names that
+family, so Tseitin became its own stratum before any solver ran. The seed did
+not change (`design_history` in the manifest).
 
 | stratum | rule on the GBD family label (first match wins) |
 |---|---|
-| parity | contains `tseitin`, `parity` or `xor`, except `parity-games` and `xor-shifting` |
+| tseitin | contains `tseitin` |
+| parity | contains `parity` or `xor`, except `parity-games` and `xor-shifting` |
 | pigeonhole | contains `pigeon` or `php` |
 | random-3sat | random track, `uniform-random`, every clause has 3 literals, \|clauses/variables − 4.267\| ≤ 0.1 |
 | application | verification, model checking, BMC, equivalence checking, miters, cryptography, planning, scheduling, timetabling |
@@ -141,9 +145,9 @@ the check here; it never passes.
 
 **Arms.** These run in one harness: Kissat 4.0.4 and CaDiCaL 3.0.1 (the latest
 releases, built from pinned commits), MiniSat 2.2.1 (Ubuntu 24.04's
-`1:2.2.1-8build1` package; the design EigenMiniSat follows), EigenMiniSat `--cdcl` with its regime C defaults
-on the VM built at the EigenScript pin read from `ci.yml`, and Kissat a second
-time as the A/A arm. Each instance runs its five arms back to back, so the arms
+`1:2.2.1-8build1` package; the design EigenMiniSat follows), EigenMiniSat
+`--cdcl` with its regime C defaults on the VM built at the EigenScript pin read
+from `ci.yml`, and Kissat a second time as the A/A arm. Each instance runs its five arms back to back, so the arms
 are interleaved and never blocked. The instance order and each instance's arm
 order are SHA-256 permutations of the seed, written to `order.tsv`. Before any
 timed run, EMS must reproduce the regime-C banks for 3x3 and 4x4 byte for byte.
@@ -166,9 +170,10 @@ killed, with its whole process session, and is charged 120 s.
   Odd tori are UNSAT by construction.
 
 A failed model, a refutation that drat-trim rejects, or an answer that
-contradicts a certified one is a WRONG answer: the run exits 1 and the summary
-lists it. A verified model together with a verified refutation, or certified
-evidence that contradicts GBD's record, stops the run. MiniSat writes no proofs,
+contradicts a certified answer (or GBD's recorded result, when no arm certified
+one) is a WRONG answer: the run exits 1 and the summary lists it. A verified
+model together with a verified refutation, or certified evidence that
+contradicts GBD's record, stops the run. MiniSat writes no proofs,
 and a drat-trim check can reach its cap: those UNSAT answers count as solved,
 are marked `+agrees` (another arm's refutation or GBD's record agrees) or
 `+unchecked`, and are counted in the last column of the summary table.
@@ -176,7 +181,7 @@ are marked `+agrees` (another arm's refutation or GBD's record agrees) or
 **Departures from the competition.**
 - The time limit is 60 s, not 5,000 s. Every run must fit one 6-hour GitHub
   job (see the arithmetic below).
-- The sample is 25 instances in equal strata, not a full set. Instances over
+- The sample is 24 instances in equal strata, not a full set. Instances over
   25 MB (GBD `bytes`) are excluded, because downloading, hashing, validating
   and model-checking them do not fit the budget. The manifest records each
   stratum's exclusions.
@@ -188,9 +193,9 @@ are marked `+agrees` (another arm's refutation or GBD's record agrees) or
   checking is allowed far longer.
 
 **Arithmetic.** worst case = instances × (runs × limit + DRAT checks × check
-cap + 30 s overhead) = 32 × (5 × 60 + 4 × 60 + 30) = 18,240 s (304 min). The
-builds are estimated at 10 minutes, and the job cap is 355 minutes of GitHub's 360.
-The harness recomputes the worst case after the downloads and refuses to start
+cap + 30 s overhead) = 31 × (5 × 60 + 4 × 60 + 30) = 17,670 s (294.5 min), for
+24 GBD instances plus 7 ladder rungs. The builds are estimated at 10 minutes,
+and the job cap is 355 minutes of GitHub's 360. The harness recomputes the worst case after the downloads and refuses to start
 if it does not fit what remains of its 19,800 s budget. It never shortens a run
 to make it fit.
 

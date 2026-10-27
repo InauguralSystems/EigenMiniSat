@@ -6,7 +6,7 @@ name: Competition baseline
 # departures from the competition.
 #
 # workflow_dispatch runs the full measurement. Its worst case is
-#   32 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 18,240 s = 304 min
+#   31 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 17,670 s = 294.5 min
 # plus an estimated 10 min of builds, inside the 355-minute cap below (GitHub's job
 # limit is 360). The harness itself refuses to start if the worst case does not
 # fit what remains of its 19,800 s budget after the downloads.
