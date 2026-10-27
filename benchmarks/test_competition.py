@@ -7,6 +7,7 @@ turn red. Real Kissat/CaDiCaL/MiniSat/EMS/drat-trim run only in the workflow
 and the local smoke.
 """
 import ast
+import contextlib
 import csv
 import hashlib
 import io
@@ -660,7 +661,11 @@ class CompetitionTests(unittest.TestCase):
         self.assertEqual((select.main(["--check", *argv]), select.main(["--check-frame", *argv])), (0, 1))
         write(data)
         meta.write_bytes(meta.read_bytes() + b"x")
-        self.assertEqual(select.main(["--check-frame", *argv]), 1)
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            self.assertEqual(select.main(["--check-frame", *argv]), 1)
+        self.assertIn("archived meta database", printed.getvalue())
+        self.assertIn("does not hash to", printed.getvalue())
 
     def test_schedule_is_a_seeded_interleaved_permutation(self):
         cases = [{"id": f"case{index}"} for index in range(40)]
