@@ -660,12 +660,20 @@ class CompetitionTests(unittest.TestCase):
         write(dropped)
         self.assertEqual((select.main(["--check", *argv]), select.main(["--check-frame", *argv])), (0, 1))
         write(data)
-        meta.write_bytes(meta.read_bytes() + b"x")
+        pristine = meta.read_bytes()
+        meta.write_bytes(pristine + b"x")
         printed = io.StringIO()
         with contextlib.redirect_stdout(printed):
             self.assertEqual(select.main(["--check-frame", *argv]), 1)
         self.assertIn("archived meta database", printed.getvalue())
         self.assertIn("does not hash to", printed.getvalue())
+        meta.write_bytes(pristine)
+        data["gbd"]["base"]["archive"] = (directory / "unpublished.db").as_uri()
+        write(data)
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            self.assertEqual(select.main(["--check-frame", *argv]), 1)
+        self.assertIn("cannot fetch the archived", printed.getvalue())
 
     def test_schedule_is_a_seeded_interleaved_permutation(self):
         cases = [{"id": f"case{index}"} for index in range(40)]
@@ -747,8 +755,18 @@ class SelectionTests(unittest.TestCase):
                     "parity-games": "other", "xor-shifting": "other", "relativized-pigeon-hole": "pigeonhole",
                     "sudoku-php": "pigeonhole", "hardware-model-checking": "application",
                     "cryptography-simon": "application", "circuit-equialence-checking": "application",
-                    "coloring": "other"}
+                    "coloring": "other", "genurq": "tseitin", "lights-out": "parity",
+                    "mutilated-chessboard": "pigeonhole", "perfect-matching": "pigeonhole",
+                    "subset-cardinality": "pigeonhole"}
         self.assertEqual({family: select.main_stratum(family) for family in expected}, expected)
+        # The frozen frame was built with these rules, and places every family where they do.
+        frame = select.load_frame()
+        self.assertEqual((frame["rules"], frame["not_parity"], frame["structure"]),
+                         ([list(rule) for rule in select.RULES], select.NOT_PARITY, select.STRUCTURE))
+        placed = {stratum: {select.main_stratum(family) for family in item["families"]}
+                  for stratum, item in frame["strata"].items() if stratum != "random-3sat"}
+        self.assertEqual(placed, {stratum: {stratum} for stratum in placed})
+        self.assertEqual(set(frame["strata"]["random-3sat"]["families"]), {"uniform-random"})
 
     def test_draw_spreads_by_family_and_is_seeded(self):
         rows = [{"family": family, "hash": f"{family}{index}"} for family, size in (("a", 3), ("b", 1), ("c", 2))

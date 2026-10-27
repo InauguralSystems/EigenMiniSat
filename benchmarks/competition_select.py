@@ -245,9 +245,12 @@ def sha256(path):
 def fetch_archived(name, recorded, directory):
     """The archived copy of a database the frame records, checked against its SHA-256."""
     path = Path(directory) / f"{name}.db"
-    with urllib.request.urlopen(recorded["archive"], timeout=300) as response, path.open("wb") as out:
-        while chunk := response.read(1 << 20):
-            out.write(chunk)
+    try:
+        with urllib.request.urlopen(recorded["archive"], timeout=300) as response, path.open("wb") as out:
+            while chunk := response.read(1 << 20):
+                out.write(chunk)
+    except OSError as error:  # urllib's HTTPError and URLError are OSErrors
+        raise ValueError(f"cannot fetch the archived {name} database {recorded['archive']}: {error}") from error
     if sha256(path) != recorded["sha256"]:
         raise ValueError(f"archived {name} database {recorded['archive']} does not hash to {recorded['sha256']}")
     return path

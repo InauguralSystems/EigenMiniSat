@@ -305,8 +305,10 @@ exactly the files the harness reads. `test_competition.py` derives that set
 loaded, the files the workflow steps name) and fails if the list differs.
 
 A pull request that touches one of those files runs the smoke. Its instances
-are positive controls, picked because every arm solved them well inside the 10 s
-smoke limit (`SMOKE` in `competition_run.py` records the measured times):
+are positive controls, picked from the frozen frame because MiniSat and EMS
+solved them well inside the 10 s smoke limit on the development host (`SMOKE`
+in `competition_run.py` records the measured times). Kissat and CaDiCaL are not
+built locally, so the smoke itself is their first measurement on them:
 - a SAT scheduling instance;
 - an UNSAT cover instance;
 - the 3x3 rung.
