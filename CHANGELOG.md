@@ -11,9 +11,18 @@
   each instance by GBD hash, re-derives that hash, and runs Kissat (twice, the
   A/A noise arm), CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM in a seeded
   interleaved order, with the Tseitin ladder re-measured in the same run. It
-  scores solved count and PAR-2 at a declared 60 s limit and checks every
-  answer (models, DRAT, cross-arm, GBD's record); a wrong answer fails the
-  run. The "Competition baseline" workflow runs it on workflow_dispatch.
+  scores solved count and PAR-2 at a declared 60 s limit, and, as in the
+  competition, counts an answer as solved only with a verified model or a
+  refutation drat-trim verified. An answer a certificate or GBD's record
+  refutes fails the run. A second, cross-checked score also credits an
+  unverified UNSAT that another arm's certificate or GBD's record confirms
+  (`+agrees`), a declared departure published beside the verified score; an
+  unverified UNSAT nothing confirms counts in neither. The sampling frame is
+  frozen in `competition_frame.json`, so the draw re-derives offline (`--check`)
+  after GBD updates. The A/A resolution is the sum of |PAR-2 difference|, not a
+  signed total. The "Competition baseline" workflow runs it on
+  workflow_dispatch, and a pull request touching what it reads runs a smoke on
+  the smallest SAT and smallest UNSAT instance.
 
 ### CDCL Solver
 - **The learnt DB is sized against the instance (#86).** `learnt_limit` started

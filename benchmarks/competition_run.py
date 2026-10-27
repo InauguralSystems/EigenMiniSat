@@ -8,11 +8,15 @@ plus the odd Tseitin torus ladder, measured under the same metric in the same
 run. Each instance runs every arm consecutively, in a per-instance random order
 drawn from a logged seed; the instance order is drawn from the same seed.
 
-Answers: every SAT model is checked against the formula; every UNSAT answer
-from a DRAT-writing arm (Kissat, CaDiCaL, EMS) is checked by drat-trim; all
-answers are cross-checked against each other and against GBD's recorded result
-(odd tori are UNSAT by construction). A wrong answer fails the run (exit 1),
-whatever the timings.
+Answers: every SAT model is checked against the formula, and every UNSAT answer
+from a DRAT-writing arm (Kissat, CaDiCaL, EMS) is checked by drat-trim. As in
+the competition, an answer counts as solved only with a completed certificate:
+a verified model or a verified refutation. An answer that a certificate or GBD's
+recorded result refutes (odd tori are UNSAT by construction) is WRONG and fails
+the run (exit 1), whatever the timings. An unverified UNSAT answer is never
+solved; when another arm's certificate or GBD's record confirms it, it counts in
+a separate cross-checked score, a declared departure. An unverified UNSAT that
+nothing confirms or refutes cannot be judged, and counts in neither score.
 """
 import argparse
 import csv
@@ -35,10 +39,12 @@ sys.dont_write_bytecode = True
 import certificate_validation as certificates
 import cnf_preservation
 import compare_native as base
+import competition_select as select
 from competition_select import key
 
 ROOT = base.ROOT
-MANIFEST = ROOT / "benchmarks/competition_manifest.json"
+MANIFEST = select.MANIFEST
+FRAME = select.FRAME
 ARMS = ("kissat", "kissat-aa", "cadical", "minisat", "ems")
 PROOF_ARMS = ("kissat", "kissat-aa", "cadical", "ems")
 TOOLS = {"kissat": "kissat", "kissat-aa": "kissat", "cadical": "cadical", "minisat": "minisat", "ems": "eigenscript"}
@@ -47,8 +53,9 @@ ANCHORS = {"3x3": ROOT / "tests/fixtures/tseitin_torus_3x3_odd.cnf",
            "4x4": ROOT / "benchmarks/oracle/tseitin_torus_4x4_odd.cnf"}
 OVERHEAD = 30  # seconds per instance allowed in the arithmetic for parsing and model checks
 FIELDS = ("order", "instance", "kind", "stratum", "family", "expected", "arm", "verdict", "certificate",
-          "solved", "wall_s", "par2_s", "timed_out", "returncode", "note")
+          "solved", "wall_s", "par2_s", "solved_crosschecked", "par2_crosschecked_s", "timed_out", "returncode", "note")
 VERDICT = {"SATISFIABLE": "SAT", "UNSATISFIABLE": "UNSAT"}
+VERIFIED = ("model-verified", "drat-verified")
 require = base.require
 Failure = base.Failure
 
@@ -120,15 +127,18 @@ def prepare_gbd(instance, directory, cache):
     with source.open("rb") as stream:
         actual = gbd_hash(stream)
     require(actual == digest, f"{digest}: the downloaded instance hashes to {actual}")
-    prepared = directory / "input.cnf"
-    with source.open("rb") as stream, prepared.open("wb") as out:
+    normalized = directory / "normalized.cnf"
+    with source.open("rb") as stream, normalized.open("wb") as out:
         rc = subprocess.run(["awk", "-f", str(ROOT / "benchmarks/normalize_cnf.awk")], stdin=stream, stdout=out).returncode
     require(rc == 0, f"{digest}: normalize_cnf.awk rc={rc} (65: data after a SATLIB trailer)")
+    prepared = directory / "input.cnf"
+    strip_comments(normalized, prepared)
     try:
         cnf_preservation.compare(source, prepared)
     except ValueError as error:
         raise Failure(f"{digest}: {error}") from error
     source.unlink()
+    normalized.unlink()
     return {"id": digest, "kind": "competition", "stratum": instance["stratum"], "family": instance["family"],
             "expected": instance["gbd_result"], "cnf": prepared}
 
@@ -136,8 +146,26 @@ def prepare_gbd(instance, directory, cache):
 def prepare_rung(rung, work, vm, environment, deadline, cap):
     """The repo's emitter, identity model, normalizer and preservation check (certificate_validation)."""
     case = certificates.prepare_rung(base, SimpleNamespace(vm=vm, timeout=cap), work, environment, deadline, rung)
+    formula = case["cnf"].with_name("formula.cnf")
+    strip_comments(case["cnf"], formula)
+    try:
+        cnf_preservation.compare(case["cnf"], formula)
+    except ValueError as error:
+        raise Failure(f"tseitin-{rung}-odd: {error}") from error
     return {"id": case["name"], "kind": "ladder", "stratum": "ladder", "family": "tseitin-torus-odd",
-            "expected": "unsat", "cnf": case["cnf"]}
+            "expected": "unsat", "cnf": formula}
+
+
+def strip_comments(source, target):
+    """Every arm and drat-trim get the formula without comment lines. drat-trim skips
+    a comment line only while its binary mode is 0 (drat-trim.c parse); binary
+    detection, -i and -I all leave it nonzero, and a comment after the header then
+    reads as an empty clause: "c trivial UNSAT", "s VERIFIED", exit 1.
+    cnf_preservation.compare checks that only comments went."""
+    with Path(source).open("rb") as stream, Path(target).open("wb") as out:
+        for line in stream:
+            if line.lstrip()[:1] != b"c":
+                out.write(line)
 
 
 def preflight(vm, work, environment, deadline, cap):
@@ -203,7 +231,12 @@ def with_model(verdict, read, form):
 
 def check_proof(arm, cnf, proof, directory, ctx):
     """drat-trim's exit status AND its status line: it exits 0 on its own timeout and on
-    memory exhaustion (drat-trim.c), so the exit status alone can certify an unchecked proof."""
+    memory exhaustion (drat-trim.c), so the exit status alone can certify an unchecked proof.
+
+    drat-trim opens argv[1] and argv[2] as formula and proof, whatever else is on the
+    line, so the files come first and the format flag after them (flag first, it
+    opens "-I" as the formula). -I/-i set the mode after drat-trim's own format
+    detection, overriding it; the formula is comment-free (strip_comments)."""
     record = base.run_process(ctx.limited([ctx.tools["drat-trim"], cnf, proof, "-I" if arm == "ems" else "-i"]),
                               directory, ctx.proof_limit, ctx.environment, allow_timeout=True)
     status = [line.strip() for line in re.split(rb"[\r\n]", (directory / "stdout").read_bytes())
@@ -237,6 +270,9 @@ def run_instance(case, arms, ctx):
                                   ctx.work / "runs" / name, ctx.limit, ctx.environment, allow_timeout=True)
         outcome = interpret(arm, record, ctx.work / "runs" / name, proof, result)
         outcome.update(arm=arm, order=ctx.order, record=record, certificate="", note=outcome.get("note", ""))
+        if record["leftover"]:
+            outcome["note"] = (f"killed {len(record['leftover']['signaled_pids'])} process(es) it left behind; "
+                               + outcome["note"]).strip()
         if outcome["verdict"] == "SAT":
             if "model" in outcome:
                 if records is None:
@@ -275,7 +311,9 @@ def judge(case, outcomes):
                                          or (truth is not None and outcome["verdict"] != truth))
         if answered and not outcome["wrong"] and outcome["certificate"] not in ("model-verified", "drat-verified"):
             outcome["certificate"] += "+agrees" if truth else "+unchecked"
-        outcome["solved"] = answered and not outcome["wrong"]
+        outcome["solved"] = outcome["certificate"] in VERIFIED and not outcome["wrong"]
+        outcome["solved_crosschecked"] = outcome["solved"] or (not outcome["wrong"]
+                                                               and outcome["certificate"].endswith("+agrees"))
     return outcomes
 
 
@@ -286,6 +324,8 @@ def row(case, outcome, limit):
             "verdict": "WRONG-" + outcome["verdict"] if outcome["wrong"] else outcome["verdict"],
             "certificate": outcome["certificate"], "solved": int(outcome["solved"]), "wall_s": round(wall, 6),
             "par2_s": round(wall if outcome["solved"] else 2 * limit, 6),
+            "solved_crosschecked": int(outcome["solved_crosschecked"]),
+            "par2_crosschecked_s": round(wall if outcome["solved_crosschecked"] else 2 * limit, 6),
             "timed_out": int(outcome["record"]["timed_out"]), "returncode": outcome["record"]["returncode"],
             "note": outcome["note"]}
 
@@ -299,27 +339,34 @@ def block(rows, arms):
                       "unsat": sum(r["solved"] and r["verdict"] == "UNSAT" for r in mine),
                       "par2_total_s": round(sum(r["par2_s"] for r in mine), 3),
                       "par2_mean_s": round(statistics.fmean(r["par2_s"] for r in mine), 3) if mine else None,
+                      "unsat_agrees": sum(r["certificate"].endswith("+agrees") for r in mine),
+                      "solved_crosschecked": sum(r["solved_crosschecked"] for r in mine),
+                      "par2_crosschecked_total_s": round(sum(r["par2_crosschecked_s"] for r in mine), 3),
+                      "unsat_unchecked": sum(r["certificate"].endswith("+unchecked") for r in mine),
                       "timeouts": sum(r["verdict"] == "TIMEOUT" for r in mine),
-                      "unknown_or_error": sum(r["verdict"] in ("UNKNOWN", "ERROR") for r in mine),
-                      "unsat_unverified": sum(r["solved"] and r["certificate"].endswith(("+agrees", "+unchecked"))
-                                              for r in mine)}
+                      "unknown_or_error": sum(r["verdict"] in ("UNKNOWN", "ERROR") for r in mine)}
     return table
 
 
 def noise_floor(rows):
-    """Kissat against itself: the smallest PAR-2 or time difference this run can resolve."""
+    """Kissat against itself. The resolution is a magnitude, sum |delta PAR-2| over the
+    pairs (with its median): the signed sum lets opposite deltas cancel, so it is
+    kept only as a labelled diagnostic, and swapping the two labels flips it."""
     runs = {}
     for r in rows:
         runs.setdefault(r["instance"], {})[r["arm"]] = r
     pairs = [(item["kissat"], item["kissat-aa"]) for item in runs.values() if {"kissat", "kissat-aa"} <= item.keys()]
     both = [(a["wall_s"], b["wall_s"]) for a, b in pairs if a["solved"] and b["solved"]]
     relative = [abs(x - y) / ((x + y) / 2) for x, y in both if x + y > 0]
+    deltas = [abs(a["par2_s"] - b["par2_s"]) for a, b in pairs]
     return {"pairs": len(pairs), "both_solved": len(both),
             "solved_status_disagreements": sum(a["solved"] != b["solved"] for a, b in pairs),
+            "par2_abs_diff_total_s": round(sum(deltas), 3),
+            "par2_abs_diff_median_s": round(statistics.median(deltas), 6) if deltas else None,
             "median_abs_diff_s": round(statistics.median(abs(x - y) for x, y in both), 6) if both else None,
             "median_rel_diff": round(statistics.median(relative), 6) if relative else None,
             "max_rel_diff": round(max(relative), 6) if relative else None,
-            "par2_total_diff_s": round(sum(a["par2_s"] - b["par2_s"] for a, b in pairs), 3)}
+            "par2_signed_diff_total_s_diagnostic": round(sum(a["par2_s"] - b["par2_s"] for a, b in pairs), 3)}
 
 
 def summarize(rows, arms, cases, limit):
@@ -346,16 +393,23 @@ def markdown(summary, rows, meta):
     if meta["subset"]:
         out[0:0] = [f"**SUBSET RUN: {meta['subset']}.**", ""]
     def table(title, data):
-        out.extend([f"## {title}", "", "| arm | n | solved | SAT | UNSAT | PAR-2 total (s) | PAR-2 mean (s) "
-                    "| timeouts | unknown/error | UNSAT not DRAT-verified |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"])
+        out.extend([f"## {title}", "",
+                    "Solved and PAR-2 count only verified answers (a checked model or a refutation drat-trim "
+                    "verified), as in the competition. The cross-checked columns also credit an UNSAT that another "
+                    "arm's certificate or GBD's record confirms (a declared departure). An UNSAT nothing confirms "
+                    "(unchecked) counts in neither, and is charged twice the limit.", "",
+                    "| arm | n | solved (verified) | SAT | UNSAT | PAR-2 total (s) | PAR-2 mean (s) | UNSAT confirmed, "
+                    "not verified | solved (cross-checked) | PAR-2 total, cross-checked (s) | UNSAT unchecked "
+                    "| timeouts | unknown/error |", "|---|" + "---:|" * 12])
         for arm, v in data.items():
             out.append(f"| {arm} | {v['n']} | {v['solved']} | {v['sat']} | {v['unsat']} | {v['par2_total_s']:.2f} | "
                        f"{v['par2_mean_s'] if v['par2_mean_s'] is None else format(v['par2_mean_s'], '.2f')} | "
-                       f"{v['timeouts']} | {v['unknown_or_error']} | {v['unsat_unverified']} |")
+                       f"{v['unsat_agrees']} | {v['solved_crosschecked']} | {v['par2_crosschecked_total_s']:.2f} | "
+                       f"{v['unsat_unchecked']} | {v['timeouts']} | {v['unknown_or_error']} |")
         out.append("")
     table("Competition sample", summary["competition"])
     for label, noun in (("strata", "stratum"), ("families", "family")):
-        out.extend([f"## Solved / PAR-2 total (s) per {noun}", "",
+        out.extend([f"## Solved / PAR-2 total (s) per {noun}, verified answers only", "",
                     f"| {noun} | n | " + " | ".join(arms) + " |",
                     "|---|---:|" + "---:|" * len(arms)])
         for name, data in summary[label].items():
@@ -367,17 +421,22 @@ def markdown(summary, rows, meta):
     if ladder:
         out.extend(["| rung | " + " | ".join(arms) + " |", "|---|" + "---:|" * len(arms)])
         for instance in sorted({r["instance"] for r in ladder}, key=lambda name: [int(x) for x in name.split("-")[1].split("x")]):
-            cells = {r["arm"]: (f"{r['wall_s']:.2f}" if r["solved"] else r["verdict"]) for r in ladder if r["instance"] == instance}
+            cells = {r["arm"]: (f"{r['wall_s']:.2f}" if r["solved"] else f"{r['wall_s']:.2f}*" if r["solved_crosschecked"]
+                                else r["verdict"]) for r in ladder if r["instance"] == instance}
             out.append(f"| {instance} | " + " | ".join(cells[arm] for arm in arms) + " |")
+        out.extend(["", "Seconds; * marks an UNSAT confirmed by the construction or another arm, not verified."])
         out.append("")
     aa = summary["aa"]
     if aa:
         out.extend(["## A/A noise floor (Kissat twice, same binary and options)", "",
-                    f"{aa['pairs']} pairs, {aa['both_solved']} solved by both; solved-status disagreements "
-                    f"{aa['solved_status_disagreements']}; median |dt| {aa['median_abs_diff_s']} s; median relative "
-                    f"|dt| {aa['median_rel_diff']}; max relative |dt| {aa['max_rel_diff']}; PAR-2 total difference "
-                    f"{aa['par2_total_diff_s']} s. A PAR-2 difference between two arms smaller than this "
-                    "A/A difference is not resolved by this run.", ""])
+                    f"Resolution: sum of |delta PAR-2| over the {aa['pairs']} pairs = {aa['par2_abs_diff_total_s']:.3f} s "
+                    f"(median |delta PAR-2| {aa['par2_abs_diff_median_s']} s). Two arms whose PAR-2 totals differ by "
+                    f"|D| < {aa['par2_abs_diff_total_s']:.3f} s are not resolved by this run.", "",
+                    f"Wall time over the {aa['both_solved']} pairs both runs solved: median |dt| {aa['median_abs_diff_s']} s, "
+                    f"median relative |dt| {aa['median_rel_diff']}, max relative |dt| {aa['max_rel_diff']}. "
+                    f"Solved-status disagreements: {aa['solved_status_disagreements']}.", "",
+                    f"Diagnostic only, not a resolution: the signed sum of (kissat - kissat-aa) PAR-2 = "
+                    f"{aa['par2_signed_diff_total_s_diagnostic']:.3f} s; opposite deltas cancel in it.", ""])
     if summary["wrong"]:
         out.extend(["## WRONG ANSWERS (the run fails)", ""] +
                     [f"- {r['instance']} {r['arm']}: {r['verdict']} {r['certificate']} {r['note']}" for r in summary["wrong"]] + [""])
@@ -396,6 +455,7 @@ def arguments(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", required=True, type=Path, help="new directory for results (must not exist)")
     parser.add_argument("--manifest", type=Path, default=MANIFEST)
+    parser.add_argument("--frame", type=Path, default=FRAME, help="frozen sampling frame the manifest must re-derive from")
     parser.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of " + ",".join(ARMS))
     parser.add_argument("--ladder", default=" ".join(LADDER), help="odd torus rungs, space separated ('' for none)")
     parser.add_argument("--limit", type=float, default=60, help="seconds per solver run (PAR-2 charges 2x)")
@@ -404,7 +464,8 @@ def arguments(argv):
     parser.add_argument("--budget-seconds", type=float, default=19800, help="wall budget for the whole harness")
     parser.add_argument("--order-seed", type=int, help="run-order seed (default: the manifest seed)")
     parser.add_argument("--cache", type=Path, help="directory reused for downloaded .cnf.xz files")
-    parser.add_argument("--first", type=int, help="SMOKE ONLY: the first N manifest instances (labelled a subset)")
+    parser.add_argument("--smoke", action="store_true",
+                        help="SMOKE ONLY: the manifest's smallest SAT and smallest UNSAT instance (labelled a subset)")
     for tool in ("kissat", "cadical", "minisat", "eigenscript", "drat-trim"):
         parser.add_argument("--" + tool, type=Path)
     args = parser.parse_args(argv)
@@ -414,7 +475,6 @@ def arguments(argv):
     args.ladder = tuple(args.ladder.split())
     require(len(set(args.ladder)) == len(args.ladder) and set(args.ladder) <= set(LADDER), f"invalid --ladder {args.ladder}")
     args.proof_limit = args.limit if args.proof_limit is None else args.proof_limit
-    require(args.first is None or args.first > 0, "--first must be positive")
     require(args.limit > 0 and args.proof_limit > 0 and args.memory_mb > 0 and args.budget_seconds > 0, "limits must be positive")
     needed = {TOOLS[arm] for arm in args.arms} | ({"drat-trim"} if set(args.arms) & set(PROOF_ARMS) else set())
     needed |= {"eigenscript"} if args.ladder else set()
@@ -426,8 +486,9 @@ def arguments(argv):
     return args
 
 
-def load_manifest(path):
-    manifest = json.loads(path.read_text())
+def load_manifest(path, frame=FRAME):
+    """The sample must be exactly the seeded draw from the frozen frame."""
+    manifest = json.loads(Path(path).read_text())
     instances = manifest["instances"]
     strata = manifest["strata"]
     require(instances and len({i["hash"] for i in instances}) == len(instances)
@@ -438,7 +499,19 @@ def load_manifest(path):
         require(count == item["selected"] == manifest["per_stratum"],
                 f"manifest stratum {name}: {count} instances, {item['selected']} declared, {manifest['per_stratum']} per stratum")
     require({i["stratum"] for i in instances} == set(strata), "manifest instances name an undeclared stratum")
+    require(manifest == select.derive_manifest(select.load_frame(frame)),
+            f"{path} is not the draw re-derived from the frozen frame {frame}")
     return manifest
+
+
+def smoke_instances(manifest):
+    """The smallest SAT and the smallest UNSAT instance by GBD bytes, so a smoke checks real models and proofs."""
+    picks = []
+    for result in ("sat", "unsat"):
+        candidates = [i for i in manifest["instances"] if i["gbd_result"] == result]
+        require(candidates, f"the manifest has no {result} instance for the smoke")
+        picks.append(min(candidates, key=lambda i: (i["bytes"], i["hash"])))
+    return picks
 
 
 def main(argv=None):
@@ -446,8 +519,8 @@ def main(argv=None):
     try:
         started = time.monotonic()
         args = arguments(argv)
-        manifest = load_manifest(args.manifest)
-        instances = manifest["instances"][:args.first]
+        manifest = load_manifest(args.manifest, args.frame)
+        instances = smoke_instances(manifest) if args.smoke else manifest["instances"]
         args.output.mkdir(parents=True, exist_ok=False)
         output = args.output
         work = output / "work"
@@ -461,11 +534,13 @@ def main(argv=None):
         require(prlimit, "prlimit (util-linux) is required for the per-process memory cap")
         seed = manifest["seed"] if args.order_seed is None else args.order_seed
         meta = {"status": "incomplete", "manifest": str(args.manifest), "manifest_sha256": base.sha256(args.manifest),
+                "frame": str(args.frame), "frame_sha256": base.sha256(args.frame),
                 "manifest_seed": manifest["seed"], "order_seed": seed, "arms": list(args.arms),
                 "ladder": list(args.ladder), "limit_s": args.limit, "proof_limit_s": args.proof_limit,
                 "memory_mb": args.memory_mb, "budget_s": args.budget_seconds,
-                "subset": None if len(instances) == len(manifest["instances"]) else
-                f"first {len(instances)} of {len(manifest['instances'])} manifest instances (smoke, not the baseline)",
+                "subset": None if not args.smoke else
+                "smoke: the smallest SAT and the smallest UNSAT of the "
+                f"{len(manifest['instances'])} manifest instances by GBD bytes (not the baseline)",
                 "tools": {name: {"path": str(path), "sha256": base.sha256(path),
                                  "version": version(path) if name in ("kissat", "cadical", "eigenscript") else ""}
                           for name, path in args.tools.items()},

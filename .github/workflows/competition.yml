@@ -11,19 +11,35 @@ name: Competition baseline
 # limit is 360). The harness itself refuses to start if the worst case does not
 # fit what remains of its 19,800 s budget after the downloads.
 #
-# A pull request that touches the harness runs a labelled SUBSET (two GBD
-# instances, the 3x3 rung, 10 s limit) through the same builds and solvers.
+# A pull request that touches what the harness reads runs a labelled SUBSET
+# (the manifest's smallest SAT and smallest UNSAT instance, the 3x3 rung, 10 s)
+# through the same builds and solvers. The path list is exactly the files the
+# harness reads; test_competition.py derives that set and fails if it differs.
 on:
   workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
+      - .github/workflows/ci.yml
       - .github/workflows/competition.yml
-      - benchmarks/competition_*
-      - benchmarks/compare_native.py
       - benchmarks/certificate_validation.py
       - benchmarks/cnf_preservation.py
+      - benchmarks/compare_native.py
+      - benchmarks/competition_frame.json
+      - benchmarks/competition_manifest.json
+      - benchmarks/competition_run.py
+      - benchmarks/competition_select.py
+      - benchmarks/dump_tseitin_cnf.eigs
       - benchmarks/normalize_cnf.awk
+      - benchmarks/oracle/regime-c-3x3.stdout
+      - benchmarks/oracle/regime-c-4x4.stdout
+      - benchmarks/oracle/tseitin_torus_4x4_odd.cnf
+      - benchmarks/torus_identity.awk
+      - lib/bench.eigs
+      - lib/dimacs.eigs
+      - lib/solver.eigs
+      - minisat.eigs
+      - tests/fixtures/tseitin_torus_3x3_odd.cnf
 
 permissions:
   contents: read
@@ -72,10 +88,15 @@ jobs:
           git -C /tmp/drat-trim checkout --detach 2e3b2dc0ecf938addbd779d42877b6ed69d9a985
           cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c
 
+      - name: Re-derive the sample from the frozen frame
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/competition_select.py --check
+
       - name: Run the competition baseline
         env:
           PYTHONDONTWRITEBYTECODE: '1'
-          SUBSET: ${{ github.event_name == 'pull_request' && '--first 2 --ladder 3x3 --limit 10' || '' }}
+          SUBSET: ${{ github.event_name == 'pull_request' && '--smoke --ladder 3x3 --limit 10' || '' }}
         run: |
           # SUBSET is empty for workflow_dispatch: the full manifest, every rung, 60 s.
           read -r -a subset <<< "$SUBSET"
