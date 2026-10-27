@@ -194,8 +194,12 @@ def kill_session(session_id):
         time.sleep(0.005)
 
 
-def run_process(command, directory, timeout, environment, cwd=ROOT):
-    """Retain output/exit evidence even on failure; no timeout polling in timer."""
+def run_process(command, directory, timeout, environment, cwd=ROOT, allow_timeout=False):
+    """Retain output/exit evidence even on failure; no timeout polling in timer.
+
+    allow_timeout returns a cleaned-up timed-out record instead of failing: a
+    competition run treats reaching its limit as "unsolved", not as an error.
+    """
     directory.mkdir(parents=True, exist_ok=False)
     process = None
     received_signal = None
@@ -257,8 +261,8 @@ def run_process(command, directory, timeout, environment, cwd=ROOT):
                   "directory": str(directory), "cleanup": cleanup}
         write_json(directory / "process.json", record)
         require(cleanup is None or not cleanup["remaining_live"], f"cancellation cleanup left live session members: {directory}")
-        require(received_signal != signal.SIGALRM, f"process timeout/interruption: {directory}")
-        require(received_signal is None,
+        require(received_signal != signal.SIGALRM or allow_timeout, f"process timeout/interruption: {directory}")
+        require(received_signal in (None, signal.SIGALRM),
                 f"process interrupted by {signal.Signals(received_signal).name if received_signal is not None else 'unknown'}: {directory}")
         return record
     finally:

@@ -1,0 +1,615 @@
+{
+ "schema": 1,
+ "issue": "InauguralSystems/EigenMiniSat#131",
+ "seed": 131,
+ "per_stratum": 5,
+ "max_bytes": 25000000,
+ "first_main_year": 2017,
+ "random_3sat": {
+  "family": "uniform-random",
+  "threshold": 4.267,
+  "band": 0.1,
+  "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"
+ },
+ "rules": [
+  [
+   "parity",
+   "tseitin|parity|xor"
+  ],
+  [
+   "pigeonhole",
+   "pigeon|php"
+  ],
+  [
+   "application",
+   "verification|model-checking|bmc|equi[v]?alence-checking|miter|cryptograph|planning|scheduling|timetabling"
+  ]
+ ],
+ "not_parity": {
+  "parity-games": "games on graphs (a verification problem), not XOR constraints",
+  "xor-shifting": "xorshift generator inversion (cryptanalysis), not a parity principle"
+ },
+ "gbd": {
+  "meta": {
+   "url": "https://benchmark-database.de/getdatabase/meta",
+   "sha256": "5b8bbc767bc5300cca6a12717fb2d7c8d52ccee24aced4447d71846352744ff3",
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT"
+  },
+  "base": {
+   "url": "https://benchmark-database.de/getdatabase/base",
+   "sha256": "15a3d19fd23ba72dd7c77b1b86113873f160760fa1c9710e9e5ed6a23ba29d84",
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT"
+  }
+ },
+ "population": {
+  "gbd_rows_with_a_track": 20225,
+  "outside_population": 15313
+ },
+ "strata": {
+  "parity": {
+   "eligible": 86,
+   "excluded": {
+    "over 25000000 bytes": 1
+   },
+   "selected": 5,
+   "families": {
+    "binary-tree-parity": 2,
+    "minimal-disagreement-parity": 4,
+    "minimum-disagreement-parity": 30,
+    "or_randxor": 6,
+    "ordering-principle-xor": 3,
+    "random-graph-xorsat": 5,
+    "tseitin-formulas": 33,
+    "xor-chain": 2,
+    "xor_op": 1
+   }
+  },
+  "pigeonhole": {
+   "eligible": 54,
+   "excluded": {
+    "over 25000000 bytes": 1
+   },
+   "selected": 5,
+   "families": {
+    "binary-pigeon-hole": 1,
+    "pigeon-hole": 34,
+    "relativized-pigeon-hole": 17,
+    "sudoku-php": 2
+   }
+  },
+  "random-3sat": {
+   "eligible": 1300,
+   "excluded": {
+    "over 25000000 bytes": 17
+   },
+   "selected": 5,
+   "families": {
+    "uniform-random": 1300
+   }
+  },
+  "application": {
+   "eligible": 840,
+   "excluded": {
+    "over 25000000 bytes": 306
+   },
+   "selected": 5,
+   "families": {
+    "algorithm-equivalence-checking": 23,
+    "circuit-equialence-checking": 12,
+    "circuit-equivalence-checking": 14,
+    "cryptography": 242,
+    "cryptography-ascon": 26,
+    "cryptography-simon": 32,
+    "datapath-equivalence-checking": 6,
+    "exam-scheduling": 12,
+    "hardware-model-checking": 17,
+    "hardware-verification": 41,
+    "miter": 125,
+    "multiplier-circuit-miters": 12,
+    "multiplier-equivalence-checking": 13,
+    "multiplier-verification": 4,
+    "planning": 23,
+    "scheduling": 160,
+    "school-timetabling": 40,
+    "software-bmc": 2,
+    "software-verification": 36
+   }
+  },
+  "other": {
+   "eligible": 1721,
+   "excluded": {
+    "over 25000000 bytes": 586
+   },
+   "selected": 5,
+   "families": {
+    "01-integer-programming": 1,
+    "2d-strip-packing": 2,
+    "agile": 1,
+    "algebra": 8,
+    "allowable-seqence": 5,
+    "antibandwidth": 6,
+    "argumentation": 69,
+    "at-least-two-sol": 5,
+    "auto-correlation": 8,
+    "automata-synchronization": 2,
+    "battleship": 6,
+    "belpyramid-puzzle": 31,
+    "bioinformatics": 10,
+    "bitvector": 72,
+    "boxfolding": 16,
+    "brent-equations": 19,
+    "cardinality-constraints": 17,
+    "cellular-automata": 12,
+    "chnl": 6,
+    "circuit-minimization": 5,
+    "circuit-multiplier": 13,
+    "clique-coloring": 8,
+    "clique-formulas": 2,
+    "clique-width": 2,
+    "clustered-random": 1,
+    "coloring": 79,
+    "coloring-clique": 5,
+    "coloring-mycielski-graph": 7,
+    "count": 6,
+    "cover": 13,
+    "crafted-cec": 20,
+    "diagnosis": 16,
+    "dimacs-sorter": 1,
+    "dining-philosophers": 2,
+    "discrete-logarithm": 7,
+    "edge-matching": 10,
+    "edit-distance": 13,
+    "ensemble-computation": 4,
+    "equivalence-chain-principle": 3,
+    "erdos-discrepancy": 1,
+    "fermat": 5,
+    "fixed-shape-random": 3,
+    "fpga-routing": 8,
+    "generic-csp": 4,
+    "genurq": 1,
+    "grandtour-puzzle": 20,
+    "graph-coloring": 24,
+    "gray_codes": 4,
+    "greentao": 3,
+    "grs-fp-comm": 17,
+    "hamiltonian": 46,
+    "hamiltonian-cycle": 13,
+    "hard-cep": 1,
+    "heule-folkman": 11,
+    "heule-nol": 11,
+    "hgen": 35,
+    "hidoku": 4,
+    "independent-set": 13,
+    "independent-set-reconfiguration": 8,
+    "influence-maximization": 15,
+    "interval-matching": 20,
+    "karatsuba-multiplication": 3,
+    "knights-problem": 14,
+    "ktf": 13,
+    "lam-discrete-geometry": 3,
+    "lights-out": 7,
+    "linear-equations": 12,
+    "linvrinv": 1,
+    "long-learned-clauses": 1,
+    "matrix-multiplication": 24,
+    "maximum-constraint-partition": 2,
+    "maxsat-optimum": 37,
+    "mechanical-master-key": 8,
+    "minimal-superpermutation": 13,
+    "modcircuits": 2,
+    "mosoi-289": 2,
+    "multiplier-circuits": 15,
+    "mutilated-chessboard": 18,
+    "ntil": 16,
+    "oddball-weighing": 10,
+    "p-center": 14,
+    "parity-games": 1,
+    "pebbling": 2,
+    "perfect-matching": 11,
+    "petrinet-concurrency": 10,
+    "philips": 1,
+    "polynomial-multiplication": 29,
+    "popularity-similarity": 42,
+    "prime-factoring": 39,
+    "prime-testing": 17,
+    "product-configuration": 1,
+    "purdom-instances": 3,
+    "puzzle": 21,
+    "pythagorean-triples": 2,
+    "quantum-kochen-specker": 4,
+    "quasigroup-completion": 15,
+    "ramsey": 3,
+    "ramsey-numbers": 5,
+    "random-circuits": 5,
+    "random-csp": 9,
+    "random-modularity": 7,
+    "random-mus": 1,
+    "rbsat": 17,
+    "reg-n": 6,
+    "register-allocation": 20,
+    "relational-dependencies": 13,
+    "risc-instruction-removal-golcrest": 1,
+    "rooks": 6,
+    "rubikcube": 20,
+    "sat-x": 1,
+    "satcoin": 15,
+    "set-covering": 38,
+    "sgen": 8,
+    "sgen-balanced": 4,
+    "sliding-puzzle": 14,
+    "social-golfer": 24,
+    "sorting-networks": 3,
+    "ssp-0": 2,
+    "st-connectivity-principle": 2,
+    "stable-semantics": 6,
+    "station-repacking": 19,
+    "stedman-triples": 41,
+    "subgraph-isomorphism": 17,
+    "subset-cardinality": 2,
+    "sum-of-3-cubes": 9,
+    "summle": 17,
+    "syndrome-decoding": 12,
+    "tensors": 34,
+    "termination-analysis": 13,
+    "test-configuration": 13,
+    "theorem-proving": 1,
+    "tree-decomposition": 9,
+    "unknown": 71,
+    "unknown-cases": 11,
+    "van-der-waerden": 11,
+    "waerden": 7,
+    "xor-shifting": 11
+   }
+  }
+ },
+ "instances": [
+  {
+   "hash": "6fa8b4b7f4b059bd46913dbe741c0b94",
+   "stratum": "parity",
+   "family": "minimum-disagreement-parity",
+   "gbd_result": "sat",
+   "tracks": [
+    "main_2022",
+    "submissions_2022"
+   ],
+   "bytes": 120291,
+   "variables": 1302,
+   "clauses": 7382,
+   "filename": "mdp-36-11-sat.cnf.xz"
+  },
+  {
+   "hash": "16c5482d8e658b54e20d59cfd4b1d588",
+   "stratum": "parity",
+   "family": "binary-tree-parity",
+   "gbd_result": "sat",
+   "tracks": [
+    "main_2024",
+    "submissions_2024"
+   ],
+   "bytes": 29956,
+   "variables": 511,
+   "clauses": 2039,
+   "filename": "two-trees-511v.sanitized.cnf.xz"
+  },
+  {
+   "hash": "354936f86e55ab8d00e6e1f5f7c140a9",
+   "stratum": "parity",
+   "family": "ordering-principle-xor",
+   "gbd_result": "unknown",
+   "tracks": [
+    "main_2022",
+    "submissions_2022"
+   ],
+   "bytes": 21228116,
+   "variables": 3784,
+   "clauses": 639848,
+   "filename": "xor_op_n44_d3.cnf.xz"
+  },
+  {
+   "hash": "bea83d274b1c57b2171b380e34fd645d",
+   "stratum": "parity",
+   "family": "xor_op",
+   "gbd_result": "unknown",
+   "tracks": [
+    "main_2025",
+    "submissions_2023"
+   ],
+   "bytes": 11154004,
+   "variables": 2520,
+   "clauses": 345528,
+   "filename": "xor_op_n36_d3.cnf.xz"
+  },
+  {
+   "hash": "fdb394fb3ccdb308bdf511b8996f4f69",
+   "stratum": "parity",
+   "family": "xor-chain",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2019"
+   ],
+   "bytes": 14882,
+   "variables": 382,
+   "clauses": 1018,
+   "filename": "x2_128.shuffled-as.sat03-1598-sc2002.cnf.xz"
+  },
+  {
+   "hash": "fa5c6d6736a42650656c5bc018413254",
+   "stratum": "pigeonhole",
+   "family": "binary-pigeon-hole",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2024",
+    "submissions_2024"
+   ],
+   "bytes": 207573,
+   "variables": 115,
+   "clauses": 5796,
+   "filename": "bphp_p23_h22.sanitized.cnf.xz"
+  },
+  {
+   "hash": "183d151693172be95f047880198a586a",
+   "stratum": "pigeonhole",
+   "family": "pigeon-hole",
+   "gbd_result": "unsat",
+   "tracks": [
+    "anni_2022",
+    "main_2018"
+   ],
+   "bytes": 482101,
+   "variables": 833,
+   "clauses": 22593,
+   "filename": "a_rphp098_04.cnf.xz"
+  },
+  {
+   "hash": "faea4b579b0010b32f001ac4b5b9415a",
+   "stratum": "pigeonhole",
+   "family": "relativized-pigeon-hole",
+   "gbd_result": "unsat",
+   "tracks": [
+    "anni_2022",
+    "crafted_2016",
+    "main_2020",
+    "main_2021"
+   ],
+   "bytes": 246220,
+   "variables": 720,
+   "clauses": 13009,
+   "filename": "rphp4_090_shuffled.cnf.xz"
+  },
+  {
+   "hash": "43d40ced32b5be08814ef24f97379654",
+   "stratum": "pigeonhole",
+   "family": "sudoku-php",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2026",
+    "submissions_2026"
+   ],
+   "bytes": 31782,
+   "variables": 210,
+   "clauses": 2850,
+   "filename": "php_sudoku_p15_h14.sanitized.cnf.xz"
+  },
+  {
+   "hash": "44092fcc83a5cba81419e82cfd18602c",
+   "stratum": "pigeonhole",
+   "family": "pigeon-hole",
+   "gbd_result": "unsat",
+   "tracks": [
+    "anni_2022",
+    "crafted_2005",
+    "main_2023"
+   ],
+   "bytes": 3918,
+   "variables": 90,
+   "clauses": 415,
+   "filename": "php-010-009.shuffled-as.sat05-1185.cnf.xz"
+  },
+  {
+   "hash": "411a2468cba2725512c1e64c5679551d",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "tracks": [
+    "random_2011"
+   ],
+   "bytes": 44768,
+   "variables": 700,
+   "clauses": 2982,
+   "filename": "unif-k3-r4.26-v700-c2982-S899463426-096.UNKNOWN.cnf.xz"
+  },
+  {
+   "hash": "6839b4b46c490964fbd027c129596880",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "sat",
+   "tracks": [
+    "random_2009"
+   ],
+   "bytes": 24948,
+   "variables": 400,
+   "clauses": 1700,
+   "filename": "unif-k3-r4.25-v400-c1700-S142096783-019.cnf.xz"
+  },
+  {
+   "hash": "d79a0c691881954300babf99269ad98d",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "tracks": [
+    "random_2014"
+   ],
+   "bytes": 648701,
+   "variables": 8400,
+   "clauses": 35843,
+   "filename": "unif-k3-r4.267-v8400-c35843-S8351125360632431735.cnf.xz"
+  },
+  {
+   "hash": "e89d5a851a9408a3a02344050047ff90",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "tracks": [
+    "portfolio_2012",
+    "random_2012"
+   ],
+   "bytes": 2704853,
+   "variables": 31400,
+   "clauses": 132351,
+   "filename": "unif-k3-r4.215-v31400-c132351-S6195301400647166688.cnf.xz"
+  },
+  {
+   "hash": "681d5db43aaf2a521ae270535f8a5424",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "sat",
+   "tracks": [
+    "random_2017"
+   ],
+   "bytes": 743806,
+   "variables": 9600,
+   "clauses": 40963,
+   "filename": "unif-k3-r4.267-v9600-c40963-S2091738361900960619.cnf.xz"
+  },
+  {
+   "hash": "b6e71c02c8352821cb3ec5dbf2bcb9e4",
+   "stratum": "application",
+   "family": "cryptography",
+   "gbd_result": "sat",
+   "tracks": [
+    "main_2019"
+   ],
+   "bytes": 295878,
+   "variables": 3426,
+   "clauses": 15458,
+   "filename": "ASG_72_keystream76_2.cnf.xz"
+  },
+  {
+   "hash": "3ec81fcaac5a1da8a6ca4da0b9d8eb02",
+   "stratum": "application",
+   "family": "multiplier-verification",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2025",
+    "submissions_2025"
+   ],
+   "bytes": 5849798,
+   "variables": 52092,
+   "clauses": 312356,
+   "filename": "gm16spctrc.cnf.xz"
+  },
+  {
+   "hash": "bc3a8bd47c5575c2f1b31882d28ee091",
+   "stratum": "application",
+   "family": "cryptography-simon",
+   "gbd_result": "sat",
+   "tracks": [
+    "main_2023",
+    "submissions_2023"
+   ],
+   "bytes": 229756,
+   "variables": 4288,
+   "clauses": 14336,
+   "filename": "26_1.cnf.xz"
+  },
+  {
+   "hash": "824cd6f379c23cc863e501e397092cb9",
+   "stratum": "application",
+   "family": "algorithm-equivalence-checking",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2026",
+    "submissions_2022"
+   ],
+   "bytes": 286778,
+   "variables": 4367,
+   "clauses": 17158,
+   "filename": "BubbleVsPancakeSort_7_7.cnf.xz"
+  },
+  {
+   "hash": "f0bafebdcce23ccfbaf6c27a7522069b",
+   "stratum": "application",
+   "family": "circuit-equivalence-checking",
+   "gbd_result": "unsat",
+   "tracks": [
+    "main_2025",
+    "submissions_2022"
+   ],
+   "bytes": 205892,
+   "variables": 2851,
+   "clauses": 12113,
+   "filename": "div-mitern172.cnf.xz"
+  },
+  {
+   "hash": "3f9fdded562e5b47d8b3dbcf4271a6ce",
+   "stratum": "other",
+   "family": "coloring-mycielski-graph",
+   "gbd_result": "unsat",
+   "tracks": [
+    "anni_2022",
+    "main_2021"
+   ],
+   "bytes": 14581586,
+   "variables": 6903,
+   "clauses": 822884,
+   "filename": "Mycielski-10-hints-7.cnf.xz"
+  },
+  {
+   "hash": "000a41cdca43be89ed62ea3abf2d0b64",
+   "stratum": "other",
+   "family": "sorting-networks",
+   "gbd_result": "sat",
+   "tracks": [
+    "anni_2022",
+    "application_2016",
+    "main_2021"
+   ],
+   "bytes": 16343754,
+   "variables": 24517,
+   "clauses": 830517,
+   "filename": "snw_13_9_pre.cnf.xz"
+  },
+  {
+   "hash": "b858ad4945086c193e5bce40e1a77837",
+   "stratum": "other",
+   "family": "lam-discrete-geometry",
+   "gbd_result": "unknown",
+   "tracks": [
+    "main_2020"
+   ],
+   "bytes": 4747748,
+   "variables": 10638,
+   "clauses": 192716,
+   "filename": "w16-5.cnf.xz"
+  },
+  {
+   "hash": "86173292a2c6a506acf27a81db853bb5",
+   "stratum": "other",
+   "family": "ktf",
+   "gbd_result": "sat",
+   "tracks": [
+    "anni_2022",
+    "main_2021",
+    "main_2025"
+   ],
+   "bytes": 5555417,
+   "variables": 60247,
+   "clauses": 281152,
+   "filename": "ktf_TF-7.tf_3_0.06_113.cnf.xz"
+  },
+  {
+   "hash": "ee44c3f464238366729bf2cb16eb412a",
+   "stratum": "other",
+   "family": "stable-semantics",
+   "gbd_result": "sat",
+   "tracks": [
+    "main_2026",
+    "submissions_2026"
+   ],
+   "bytes": 664766,
+   "variables": 384,
+   "clauses": 44173,
+   "filename": "n384p5q2_vh.af_138.sanitized.cnf.xz"
+  }
+ ]
+}
