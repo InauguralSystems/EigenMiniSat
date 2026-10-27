@@ -199,6 +199,9 @@ def run_process(command, directory, timeout, environment, cwd=ROOT, allow_timeou
 
     allow_timeout returns a cleaned-up timed-out record instead of failing: a
     competition run treats reaching its limit as "unsolved", not as an error.
+    Wall time ends when the launched process exits. Any process still left in
+    its session is then killed and listed under "leftover", so no run's work
+    leaks into the next one.
     """
     directory.mkdir(parents=True, exist_ok=False)
     process = None
@@ -255,12 +258,16 @@ def run_process(command, directory, timeout, environment, cwd=ROOT, allow_timeou
                 can_raise = False
                 signal.setitimer(signal.ITIMER_REAL, 0)
         interrupted_signal = received_signal if received_signal != signal.SIGALRM else None
+        leftover = None
+        if process is not None and cleanup is None and session_members(process.pid):
+            leftover = kill_session(process.pid)
         record = {"command": [str(arg) for arg in command], "cwd": str(cwd),
                   "wall_ns": elapsed_ns, "returncode": returncode, "timeout_seconds": timeout,
                   "timed_out": received_signal == signal.SIGALRM, "interrupted_signal": interrupted_signal,
-                  "directory": str(directory), "cleanup": cleanup}
+                  "directory": str(directory), "cleanup": cleanup, "leftover": leftover}
         write_json(directory / "process.json", record)
         require(cleanup is None or not cleanup["remaining_live"], f"cancellation cleanup left live session members: {directory}")
+        require(leftover is None or not leftover["remaining_live"], f"processes outlived their run and survived cleanup: {directory}")
         require(received_signal != signal.SIGALRM or allow_timeout, f"process timeout/interruption: {directory}")
         require(received_signal in (None, signal.SIGALRM),
                 f"process interrupted by {signal.Signals(received_signal).name if received_signal is not None else 'unknown'}: {directory}")
