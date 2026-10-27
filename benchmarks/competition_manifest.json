@@ -60,7 +60,10 @@
    },
    "selected": 4,
    "families": {
-    "tseitin-formulas": 33
+    "tseitin-formulas": {
+     "eligible": 33,
+     "excluded": 1
+    }
    }
   },
   "parity": {
@@ -68,14 +71,38 @@
    "excluded": {},
    "selected": 4,
    "families": {
-    "binary-tree-parity": 2,
-    "minimal-disagreement-parity": 4,
-    "minimum-disagreement-parity": 30,
-    "or_randxor": 6,
-    "ordering-principle-xor": 3,
-    "random-graph-xorsat": 5,
-    "xor-chain": 2,
-    "xor_op": 1
+    "binary-tree-parity": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "minimal-disagreement-parity": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "minimum-disagreement-parity": {
+     "eligible": 30,
+     "excluded": 0
+    },
+    "or_randxor": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "ordering-principle-xor": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "random-graph-xorsat": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "xor-chain": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "xor_op": {
+     "eligible": 1,
+     "excluded": 0
+    }
    }
   },
   "pigeonhole": {
@@ -85,10 +112,22 @@
    },
    "selected": 4,
    "families": {
-    "binary-pigeon-hole": 1,
-    "pigeon-hole": 34,
-    "relativized-pigeon-hole": 17,
-    "sudoku-php": 2
+    "binary-pigeon-hole": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "pigeon-hole": {
+     "eligible": 34,
+     "excluded": 0
+    },
+    "relativized-pigeon-hole": {
+     "eligible": 17,
+     "excluded": 1
+    },
+    "sudoku-php": {
+     "eligible": 2,
+     "excluded": 0
+    }
    }
   },
   "random-3sat": {
@@ -98,7 +137,10 @@
    },
    "selected": 4,
    "families": {
-    "uniform-random": 1300
+    "uniform-random": {
+     "eligible": 1300,
+     "excluded": 17
+    }
    }
   },
   "application": {
@@ -108,25 +150,102 @@
    },
    "selected": 4,
    "families": {
-    "algorithm-equivalence-checking": 23,
-    "circuit-equialence-checking": 12,
-    "circuit-equivalence-checking": 14,
-    "cryptography": 242,
-    "cryptography-ascon": 26,
-    "cryptography-simon": 32,
-    "datapath-equivalence-checking": 6,
-    "exam-scheduling": 12,
-    "hardware-model-checking": 17,
-    "hardware-verification": 41,
-    "miter": 125,
-    "multiplier-circuit-miters": 12,
-    "multiplier-equivalence-checking": 13,
-    "multiplier-verification": 4,
-    "planning": 23,
-    "scheduling": 160,
-    "school-timetabling": 40,
-    "software-bmc": 2,
-    "software-verification": 36
+    "algorithm-equivalence-checking": {
+     "eligible": 23,
+     "excluded": 0
+    },
+    "circuit-equialence-checking": {
+     "eligible": 12,
+     "excluded": 3
+    },
+    "circuit-equivalence-checking": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "cryptography": {
+     "eligible": 242,
+     "excluded": 6
+    },
+    "cryptography-ascon": {
+     "eligible": 26,
+     "excluded": 0
+    },
+    "cryptography-cbmc": {
+     "eligible": 0,
+     "excluded": 4
+    },
+    "cryptography-simon": {
+     "eligible": 32,
+     "excluded": 0
+    },
+    "datapath-equivalence-checking": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "ecc-equivalence-checking": {
+     "eligible": 0,
+     "excluded": 10
+    },
+    "equivalence-checking": {
+     "eligible": 0,
+     "excluded": 12
+    },
+    "exam-scheduling": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "hardware-bmc": {
+     "eligible": 0,
+     "excluded": 3
+    },
+    "hardware-model-checking": {
+     "eligible": 17,
+     "excluded": 31
+    },
+    "hardware-verification": {
+     "eligible": 41,
+     "excluded": 22
+    },
+    "md5-equivalence-checking": {
+     "eligible": 0,
+     "excluded": 13
+    },
+    "miter": {
+     "eligible": 125,
+     "excluded": 43
+    },
+    "multiplier-circuit-miters": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "multiplier-equivalence-checking": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "multiplier-verification": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "planning": {
+     "eligible": 23,
+     "excluded": 27
+    },
+    "scheduling": {
+     "eligible": 160,
+     "excluded": 51
+    },
+    "school-timetabling": {
+     "eligible": 40,
+     "excluded": 3
+    },
+    "software-bmc": {
+     "eligible": 2,
+     "excluded": 1
+    },
+    "software-verification": {
+     "eligible": 36,
+     "excluded": 77
+    }
    }
   },
   "other": {
@@ -136,143 +255,614 @@
    },
    "selected": 4,
    "families": {
-    "01-integer-programming": 1,
-    "2d-strip-packing": 2,
-    "agile": 1,
-    "algebra": 8,
-    "allowable-seqence": 5,
-    "antibandwidth": 6,
-    "argumentation": 69,
-    "at-least-two-sol": 5,
-    "auto-correlation": 8,
-    "automata-synchronization": 2,
-    "battleship": 6,
-    "belpyramid-puzzle": 31,
-    "bioinformatics": 10,
-    "bitvector": 72,
-    "boxfolding": 16,
-    "brent-equations": 19,
-    "cardinality-constraints": 17,
-    "cellular-automata": 12,
-    "chnl": 6,
-    "circuit-minimization": 5,
-    "circuit-multiplier": 13,
-    "clique-coloring": 8,
-    "clique-formulas": 2,
-    "clique-width": 2,
-    "clustered-random": 1,
-    "coloring": 79,
-    "coloring-clique": 5,
-    "coloring-mycielski-graph": 7,
-    "count": 6,
-    "cover": 13,
-    "crafted-cec": 20,
-    "diagnosis": 16,
-    "dimacs-sorter": 1,
-    "dining-philosophers": 2,
-    "discrete-logarithm": 7,
-    "edge-matching": 10,
-    "edit-distance": 13,
-    "ensemble-computation": 4,
-    "equivalence-chain-principle": 3,
-    "erdos-discrepancy": 1,
-    "fermat": 5,
-    "fixed-shape-random": 3,
-    "fpga-routing": 8,
-    "generic-csp": 4,
-    "genurq": 1,
-    "grandtour-puzzle": 20,
-    "graph-coloring": 24,
-    "gray_codes": 4,
-    "greentao": 3,
-    "grs-fp-comm": 17,
-    "hamiltonian": 46,
-    "hamiltonian-cycle": 13,
-    "hard-cep": 1,
-    "heule-folkman": 11,
-    "heule-nol": 11,
-    "hgen": 35,
-    "hidoku": 4,
-    "independent-set": 13,
-    "independent-set-reconfiguration": 8,
-    "influence-maximization": 15,
-    "interval-matching": 20,
-    "karatsuba-multiplication": 3,
-    "knights-problem": 14,
-    "ktf": 13,
-    "lam-discrete-geometry": 3,
-    "lights-out": 7,
-    "linear-equations": 12,
-    "linvrinv": 1,
-    "long-learned-clauses": 1,
-    "matrix-multiplication": 24,
-    "maximum-constraint-partition": 2,
-    "maxsat-optimum": 37,
-    "mechanical-master-key": 8,
-    "minimal-superpermutation": 13,
-    "modcircuits": 2,
-    "mosoi-289": 2,
-    "multiplier-circuits": 15,
-    "mutilated-chessboard": 18,
-    "ntil": 16,
-    "oddball-weighing": 10,
-    "p-center": 14,
-    "parity-games": 1,
-    "pebbling": 2,
-    "perfect-matching": 11,
-    "petrinet-concurrency": 10,
-    "philips": 1,
-    "polynomial-multiplication": 29,
-    "popularity-similarity": 42,
-    "prime-factoring": 39,
-    "prime-testing": 17,
-    "product-configuration": 1,
-    "purdom-instances": 3,
-    "puzzle": 21,
-    "pythagorean-triples": 2,
-    "quantum-kochen-specker": 4,
-    "quasigroup-completion": 15,
-    "ramsey": 3,
-    "ramsey-numbers": 5,
-    "random-circuits": 5,
-    "random-csp": 9,
-    "random-modularity": 7,
-    "random-mus": 1,
-    "rbsat": 17,
-    "reg-n": 6,
-    "register-allocation": 20,
-    "relational-dependencies": 13,
-    "risc-instruction-removal-golcrest": 1,
-    "rooks": 6,
-    "rubikcube": 20,
-    "sat-x": 1,
-    "satcoin": 15,
-    "set-covering": 38,
-    "sgen": 8,
-    "sgen-balanced": 4,
-    "sliding-puzzle": 14,
-    "social-golfer": 24,
-    "sorting-networks": 3,
-    "ssp-0": 2,
-    "st-connectivity-principle": 2,
-    "stable-semantics": 6,
-    "station-repacking": 19,
-    "stedman-triples": 41,
-    "subgraph-isomorphism": 17,
-    "subset-cardinality": 2,
-    "sum-of-3-cubes": 9,
-    "summle": 17,
-    "syndrome-decoding": 12,
-    "tensors": 34,
-    "termination-analysis": 13,
-    "test-configuration": 13,
-    "theorem-proving": 1,
-    "tree-decomposition": 9,
-    "unknown": 71,
-    "unknown-cases": 11,
-    "van-der-waerden": 11,
-    "waerden": 7,
-    "xor-shifting": 11
+    "01-integer-programming": {
+     "eligible": 1,
+     "excluded": 1
+    },
+    "2d-strip-packing": {
+     "eligible": 2,
+     "excluded": 1
+    },
+    "agile": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "algebra": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "allowable-seqence": {
+     "eligible": 5,
+     "excluded": 11
+    },
+    "antibandwidth": {
+     "eligible": 6,
+     "excluded": 9
+    },
+    "argumentation": {
+     "eligible": 69,
+     "excluded": 19
+    },
+    "at-least-two-sol": {
+     "eligible": 5,
+     "excluded": 7
+    },
+    "auto-correlation": {
+     "eligible": 8,
+     "excluded": 2
+    },
+    "automata-synchronization": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "baseball-lineup": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "battleship": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "belpyramid-puzzle": {
+     "eligible": 31,
+     "excluded": 1
+    },
+    "bioinformatics": {
+     "eligible": 10,
+     "excluded": 1
+    },
+    "bitvector": {
+     "eligible": 72,
+     "excluded": 10
+    },
+    "boxfolding": {
+     "eligible": 16,
+     "excluded": 0
+    },
+    "brent-equations": {
+     "eligible": 19,
+     "excluded": 0
+    },
+    "cardinality-constraints": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "cellular-automata": {
+     "eligible": 12,
+     "excluded": 25
+    },
+    "chnl": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "circuit-minimization": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "circuit-multiplier": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "clique-coloring": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "clique-formulas": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "clique-width": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "clustered-random": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "coloring": {
+     "eligible": 79,
+     "excluded": 12
+    },
+    "coloring-clique": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "coloring-mycielski-graph": {
+     "eligible": 7,
+     "excluded": 4
+    },
+    "core-based-generator": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "count": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "cover": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "crafted-cec": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "cril-misc": {
+     "eligible": 0,
+     "excluded": 62
+    },
+    "cyclic-anti-bandwidth": {
+     "eligible": 0,
+     "excluded": 16
+    },
+    "diagnosis": {
+     "eligible": 16,
+     "excluded": 9
+    },
+    "dimacs-sorter": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "dining-philosophers": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "discrete-logarithm": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "edge-matching": {
+     "eligible": 10,
+     "excluded": 20
+    },
+    "edit-distance": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "ensemble-computation": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "equivalence-chain-principle": {
+     "eligible": 3,
+     "excluded": 1
+    },
+    "erdos-discrepancy": {
+     "eligible": 1,
+     "excluded": 2
+    },
+    "fermat": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "fixed-shape-random": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "fpga-routing": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "generic-csp": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "genurq": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "graceful-production": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "grandtour-puzzle": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "graph-coloring": {
+     "eligible": 24,
+     "excluded": 1
+    },
+    "graph-isomorphism": {
+     "eligible": 0,
+     "excluded": 29
+    },
+    "gray_codes": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "greentao": {
+     "eligible": 3,
+     "excluded": 1
+    },
+    "grs-fp-comm": {
+     "eligible": 17,
+     "excluded": 7
+    },
+    "hamiltonian": {
+     "eligible": 46,
+     "excluded": 0
+    },
+    "hamiltonian-cycle": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "hard-cep": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "hashtable-safety": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "heule-folkman": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "heule-nol": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "hgen": {
+     "eligible": 35,
+     "excluded": 0
+    },
+    "hidoku": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "hypertree-decomposition": {
+     "eligible": 0,
+     "excluded": 27
+    },
+    "independent-set": {
+     "eligible": 13,
+     "excluded": 6
+    },
+    "independent-set-reconfiguration": {
+     "eligible": 8,
+     "excluded": 10
+    },
+    "influence-maximization": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "interval-matching": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "karatsuba-multiplication": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "knights-problem": {
+     "eligible": 14,
+     "excluded": 7
+    },
+    "ktf": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "lam-discrete-geometry": {
+     "eligible": 3,
+     "excluded": 6
+    },
+    "lights-out": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "linear-equations": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "linvrinv": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "long-learned-clauses": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "matrix-multiplication": {
+     "eligible": 24,
+     "excluded": 0
+    },
+    "maximum-constraint-partition": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "maxsat-optimum": {
+     "eligible": 37,
+     "excluded": 0
+    },
+    "mechanical-master-key": {
+     "eligible": 8,
+     "excluded": 4
+    },
+    "minimal-superpermutation": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "modcircuits": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "mosoi-289": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "multiplier-circuits": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "mutilated-chessboard": {
+     "eligible": 18,
+     "excluded": 0
+    },
+    "ntil": {
+     "eligible": 16,
+     "excluded": 0
+    },
+    "oddball-weighing": {
+     "eligible": 10,
+     "excluded": 11
+    },
+    "p-center": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "parity-games": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "pebbling": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "perfect-matching": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "petrinet-concurrency": {
+     "eligible": 10,
+     "excluded": 16
+    },
+    "philips": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "polynomial-multiplication": {
+     "eligible": 29,
+     "excluded": 21
+    },
+    "popularity-similarity": {
+     "eligible": 42,
+     "excluded": 0
+    },
+    "prime-factoring": {
+     "eligible": 39,
+     "excluded": 0
+    },
+    "prime-testing": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "product-configuration": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "profitable-robust-production": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "purdom-instances": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "puzzle": {
+     "eligible": 21,
+     "excluded": 0
+    },
+    "pythagorean-triples": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "quantum-kochen-specker": {
+     "eligible": 4,
+     "excluded": 6
+    },
+    "quasigroup-completion": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "ramsey": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "ramsey-numbers": {
+     "eligible": 5,
+     "excluded": 1
+    },
+    "random-circuits": {
+     "eligible": 5,
+     "excluded": 12
+    },
+    "random-csp": {
+     "eligible": 9,
+     "excluded": 0
+    },
+    "random-modularity": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "random-mus": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "rbsat": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "reg-n": {
+     "eligible": 6,
+     "excluded": 5
+    },
+    "register-allocation": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "relational-dependencies": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "risc-instruction-removal-golcrest": {
+     "eligible": 1,
+     "excluded": 3
+    },
+    "risc-instruction-removal-subrv": {
+     "eligible": 0,
+     "excluded": 8
+    },
+    "rooks": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "rubikcube": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "sat-x": {
+     "eligible": 1,
+     "excluded": 15
+    },
+    "satcoin": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "set-covering": {
+     "eligible": 38,
+     "excluded": 0
+    },
+    "sgen": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "sgen-balanced": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "sliding-puzzle": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "social-golfer": {
+     "eligible": 24,
+     "excluded": 0
+    },
+    "sorting-networks": {
+     "eligible": 3,
+     "excluded": 7
+    },
+    "ssp-0": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "st-connectivity-principle": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "stable-semantics": {
+     "eligible": 6,
+     "excluded": 6
+    },
+    "station-repacking": {
+     "eligible": 19,
+     "excluded": 0
+    },
+    "stedman-triples": {
+     "eligible": 41,
+     "excluded": 0
+    },
+    "stone": {
+     "eligible": 0,
+     "excluded": 1
+    },
+    "subgraph-isomorphism": {
+     "eligible": 17,
+     "excluded": 5
+    },
+    "subset-cardinality": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "subsumptiontest": {
+     "eligible": 0,
+     "excluded": 5
+    },
+    "sudoku": {
+     "eligible": 0,
+     "excluded": 16
+    },
+    "sum-of-3-cubes": {
+     "eligible": 9,
+     "excluded": 1
+    },
+    "summle": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "syndrome-decoding": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "tensors": {
+     "eligible": 34,
+     "excluded": 0
+    },
+    "termination-analysis": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "test-configuration": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "theorem-proving": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "tournament": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "tree-decomposition": {
+     "eligible": 9,
+     "excluded": 15
+    },
+    "trigonometric-functions": {
+     "eligible": 0,
+     "excluded": 4
+    },
+    "unknown": {
+     "eligible": 71,
+     "excluded": 13
+    },
+    "unknown-cases": {
+     "eligible": 11,
+     "excluded": 1
+    },
+    "van-der-waerden": {
+     "eligible": 11,
+     "excluded": 1
+    },
+    "waerden": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "xor-shifting": {
+     "eligible": 11,
+     "excluded": 0
+    }
    }
   }
  },

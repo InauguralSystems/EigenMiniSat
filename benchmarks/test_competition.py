@@ -18,6 +18,7 @@ import unittest
 
 import certificate_validation as certificates
 import competition_run as runner
+import competition_select as select
 
 SAT = b"p cnf 2 1\n1 2 0\n"
 UNSAT = b"p cnf 1 2\n1 0\n-1 0\n"
@@ -284,6 +285,26 @@ class CompetitionTests(unittest.TestCase):
         case = {"id": "sat"}
         with self.assertRaisesRegex(runner.Failure, "run population"):
             runner.summarize(rows[:-1], runner.ARMS, [case], 3)
+
+
+class SelectionTests(unittest.TestCase):
+    def test_strata_rules(self):
+        expected = {"tseitin-formulas": "tseitin", "minimum-disagreement-parity": "parity", "xor-chain": "parity",
+                    "parity-games": "other", "xor-shifting": "other", "relativized-pigeon-hole": "pigeonhole",
+                    "sudoku-php": "pigeonhole", "hardware-model-checking": "application",
+                    "cryptography-simon": "application", "circuit-equialence-checking": "application",
+                    "coloring": "other"}
+        self.assertEqual({family: select.main_stratum(family) for family in expected}, expected)
+
+    def test_draw_spreads_by_family_and_is_seeded(self):
+        rows = [{"family": family, "hash": f"{family}{index}"} for family, size in (("a", 3), ("b", 1), ("c", 2))
+                for index in range(size)]
+        chosen = select.draw("s", rows, 131, 4)
+        self.assertEqual(len({row["family"] for row in chosen[:3]}), 3)
+        self.assertEqual(chosen, select.draw("s", list(reversed(rows)), 131, 4))
+        self.assertEqual(sorted(row["hash"] for row in select.draw("s", rows, 131, 6)), sorted(row["hash"] for row in rows))
+        with self.assertRaisesRegex(ValueError, "6 eligible instances, 7 required"):
+            select.draw("s", rows, 131, 7)
 
 
 if __name__ == "__main__":

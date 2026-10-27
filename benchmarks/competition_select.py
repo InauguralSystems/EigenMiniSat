@@ -75,6 +75,7 @@ def classify(rows):
     """Assign each row to a stratum or to an exclusion reason, never to both."""
     members = {name: [] for name in STRATA}
     excluded = {}
+    families = {name: {} for name in STRATA}
     outside = 0
     for row in rows.values():
         years = [int(t[5:]) for t in row["tracks"] if re.fullmatch(r"main_[0-9]{4}", t)]
@@ -90,12 +91,14 @@ def classify(rows):
             continue
         reason = ("missing GBD base features" if None in (row["bytes"], row["variables"], row["clauses"])
                   else f"over {MAX_BYTES} bytes" if row["bytes"] > MAX_BYTES else None)
+        count = families[stratum].setdefault(row["family"], {"eligible": 0, "excluded": 0})
+        count["excluded" if reason else "eligible"] += 1
         if reason:
             excluded.setdefault(stratum, {}).setdefault(reason, 0)
             excluded[stratum][reason] += 1
         else:
             members[stratum].append(row)
-    return members, excluded, outside
+    return members, excluded, families, outside
 
 
 def key(*parts):
@@ -119,16 +122,13 @@ def draw(stratum, rows, seed, count):
 
 def manifest(meta, base, sources):
     rows = load(meta, base)
-    members, excluded, outside = classify(rows)
+    members, excluded, families, outside = classify(rows)
     strata = {}
     instances = []
     for stratum in STRATA:
-        families = {}
-        for row in members[stratum]:
-            families[row["family"]] = families.get(row["family"], 0) + 1
         chosen = draw(stratum, members[stratum], SEED, PER_STRATUM)
         strata[stratum] = {"eligible": len(members[stratum]), "excluded": excluded.get(stratum, {}),
-                           "selected": len(chosen), "families": dict(sorted(families.items()))}
+                           "selected": len(chosen), "families": dict(sorted(families[stratum].items()))}
         for row in chosen:
             instances.append({"hash": row["hash"], "stratum": stratum, "family": row["family"],
                               "gbd_result": row["result"], "tracks": sorted(row["tracks"]),

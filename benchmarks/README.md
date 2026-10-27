@@ -218,8 +218,8 @@ drat-trim exiting 0 without `s VERIFIED`, an unproven UNSAT that contradicts
 verified models, certified evidence that contradicts GBD, an exit status that
 disagrees with its report, a checker timeout, the PAR-2 charge for a timeout, a
 budget too small for the sample, a run that would need shortening, regime-C
-drift, a download whose hash differs, a malformed manifest, a missing run, and
-the seeded schedule.
+drift, a download whose hash differs, a malformed manifest, a missing run, the
+seeded schedule, the strata rules and the family-spreading draw.
 
 ## Native MiniSat differential oracle
 
