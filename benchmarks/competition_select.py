@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Seeded, stratified SAT Competition sample from the Global Benchmark Database (#131).
 
-The population, the strata and the draw are derived from GBD's own metadata
-(its `meta` and `base` databases, recorded by SHA-256). Instances are never
-committed: competition_run.py downloads each one by its GBD hash and re-derives
-that hash from the downloaded bytes.
+Two committed artifacts:
+- competition_frame.json, the FROZEN sampling frame: each stratum's eligible pool
+  ([GBD hash, GBD result, GBD bytes] per family) and its exclusion counts, built
+  once from GBD's own `meta` and `base` databases, whose SHA-256, Last-Modified
+  date and retrieval time it records;
+- competition_manifest.json, the sample: the seeded draw from that frame.
 
-  python3 benchmarks/competition_select.py                    # download GBD, write the manifest
-  python3 benchmarks/competition_select.py --check            # re-derive and compare (same GBD databases)
-  python3 benchmarks/competition_select.py --meta meta.db --base base.db --output /tmp/m.json
+  python3 benchmarks/competition_select.py --check      # re-derive the manifest from the frame (offline)
+  python3 benchmarks/competition_select.py --refresh    # rebuild frame and manifest from GBD (downloads)
+  python3 benchmarks/competition_select.py --check-frame --meta meta.db --base base.db
+
+Instances are never committed: competition_run.py downloads each one by its GBD
+hash and re-derives that hash from the downloaded bytes.
 """
 import argparse
+import datetime
 import hashlib
 import json
 from pathlib import Path
@@ -21,6 +27,7 @@ import tempfile
 import urllib.request
 
 GBD = "https://benchmark-database.de"
+FRAME = Path(__file__).resolve().with_name("competition_frame.json")
 MANIFEST = Path(__file__).resolve().with_name("competition_manifest.json")
 SEED = 131                  # fixed before the first draw (the issue number); never re-drawn for a better sample
 PER_STRATUM = 4
@@ -28,8 +35,9 @@ MAX_BYTES = 25_000_000      # GBD `bytes` feature; a declared departure, sized b
 FIRST_MAIN_YEAR = 2017      # GBD `main_YYYY`: one combined main-track instance set per competition from 2017
 THRESHOLD, BAND = 4.267, 0.1
 STRATA = ("tseitin", "parity", "pigeonhole", "random-3sat", "application", "other")
+RESULTS = ("sat", "unsat", "unknown")
 # Main-track strata by GBD family label. The first matching rule wins; every other
-# main-track family is "other". The manifest lists every family under its stratum.
+# main-track family is "other". The frame lists every family under its stratum.
 # Tseitin is its own stratum: the first draw (five strata of five, Tseitin inside
 # parity) held no tseitin-formulas instance, and #131 names the family. Changed
 # before any solver ran; the seed did not change.
@@ -41,6 +49,9 @@ RULES = (
 )
 NOT_PARITY = {"parity-games": "games on graphs (a verification problem), not XOR constraints",
               "xor-shifting": "xorshift generator inversion (cryptanalysis), not a parity principle"}
+DESIGN_HISTORY = ["first draw (seed 131): five strata of five with Tseitin inside parity; it held no "
+                  "tseitin-formulas instance, so Tseitin became its own stratum and each stratum four "
+                  "instances, before any solver ran. Same seed."]
 
 
 def main_stratum(family):
@@ -59,13 +70,12 @@ def load(meta, base):
     db = sqlite3.connect(f"file:{meta}?mode=ro", uri=True)
     db.execute("ATTACH DATABASE ? AS base", (f"file:{base}?mode=ro",))
     rows = {}
-    for digest, family, result, track, size, variables, clauses, cls3, filename in db.execute(
-            "SELECT f.hash, f.family, f.result, t.value, b.bytes, b.variables, b.clauses, b.cls3, "
-            "(SELECT MIN(value) FROM filename n WHERE n.hash = f.hash) "
+    for digest, family, result, track, size, variables, clauses, cls3 in db.execute(
+            "SELECT f.hash, f.family, f.result, t.value, b.bytes, b.variables, b.clauses, b.cls3 "
             "FROM features f JOIN track t ON t.hash = f.hash LEFT JOIN base.features b ON b.hash = f.hash"):
         row = rows.setdefault(digest, {"hash": digest, "family": family, "result": result, "tracks": set(),
                                        "bytes": number(size), "variables": number(variables),
-                                       "clauses": number(clauses), "cls3": number(cls3), "filename": filename})
+                                       "clauses": number(clauses), "cls3": number(cls3)})
         row["tracks"].add(track)
     db.close()
     return rows
@@ -120,33 +130,83 @@ def draw(stratum, rows, seed, count):
     return chosen[:count]
 
 
-def manifest(meta, base, sources):
+def build_frame(meta, base, sources):
     rows = load(meta, base)
     members, excluded, families, outside = classify(rows)
     strata = {}
-    instances = []
     for stratum in STRATA:
-        chosen = draw(stratum, members[stratum], SEED, PER_STRATUM)
-        strata[stratum] = {"eligible": len(members[stratum]), "excluded": excluded.get(stratum, {}),
-                           "selected": len(chosen), "families": dict(sorted(families[stratum].items()))}
-        for row in chosen:
-            instances.append({"hash": row["hash"], "stratum": stratum, "family": row["family"],
-                              "gbd_result": row["result"], "tracks": sorted(row["tracks"]),
-                              "bytes": row["bytes"], "variables": row["variables"],
-                              "clauses": row["clauses"], "filename": row["filename"]})
-    total = sum(item["eligible"] + sum(item["excluded"].values()) for item in strata.values())
-    if total + outside != len(rows):
-        raise ValueError(f"population accounting: {total} classified + {outside} outside != {len(rows)} rows")
-    return {"schema": 1, "issue": "InauguralSystems/EigenMiniSat#131", "seed": SEED,
-            "per_stratum": PER_STRATUM, "max_bytes": MAX_BYTES, "first_main_year": FIRST_MAIN_YEAR,
-            "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
-                            "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
-            "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "gbd": sources,
-            "design_history": ["first draw (seed 131): five strata of five with Tseitin inside parity; it held no "
-                               "tseitin-formulas instance, so Tseitin became its own stratum and each stratum four "
-                               "instances, before any solver ran. Same seed."],
-            "population": {"gbd_rows_with_a_track": len(rows), "outside_population": outside},
-            "strata": strata, "instances": instances}
+        pool = {}
+        for row in sorted(members[stratum], key=lambda row: row["hash"]):
+            pool.setdefault(row["family"], []).append([row["hash"], row["result"], row["bytes"]])
+        strata[stratum] = {"excluded": excluded.get(stratum, {}),
+                           "families": dict(sorted(families[stratum].items())),
+                           "pool": dict(sorted(pool.items()))}
+    frame = {"schema": 1, "issue": "InauguralSystems/EigenMiniSat#131", "seed": SEED, "per_stratum": PER_STRATUM,
+             "max_bytes": MAX_BYTES, "first_main_year": FIRST_MAIN_YEAR,
+             "random_3sat": {"family": "uniform-random", "threshold": THRESHOLD, "band": BAND,
+                             "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"},
+             "rules": [list(rule) for rule in RULES], "not_parity": NOT_PARITY, "gbd": sources,
+             "design_history": DESIGN_HISTORY,
+             "population": {"gbd_rows_with_a_track": len(rows), "outside_population": outside},
+             "strata": strata}
+    validate_frame(frame)
+    return frame
+
+
+def validate_frame(frame):
+    """The frame's own accounting: every pool row is unique, well formed and counted."""
+    seen = set()
+    classified = 0
+    for stratum, item in frame["strata"].items():
+        if set(item["pool"]) - set(item["families"]):
+            raise ValueError(f"frame stratum {stratum}: pool family missing from its family counts")
+        for family, count in item["families"].items():
+            pool = item["pool"].get(family, [])
+            if count["eligible"] != len(pool):
+                raise ValueError(f"frame {stratum}/{family}: {len(pool)} pool rows, {count['eligible']} eligible counted")
+            for digest, result, size in pool:
+                if not re.fullmatch(r"[0-9a-f]{32}", digest) or digest in seen:
+                    raise ValueError(f"frame {stratum}/{family}: malformed or repeated hash {digest!r}")
+                if result not in RESULTS or not isinstance(size, int) or not 0 < size <= frame["max_bytes"]:
+                    raise ValueError(f"frame {stratum}/{family}/{digest}: result {result!r} or size {size!r} out of range")
+                seen.add(digest)
+        excluded = sum(count["excluded"] for count in item["families"].values())
+        if excluded != sum(item["excluded"].values()):
+            raise ValueError(f"frame stratum {stratum}: family exclusions {excluded} != {sum(item['excluded'].values())}")
+        classified += sum(count["eligible"] + count["excluded"] for count in item["families"].values())
+    population = frame["population"]
+    if classified + population["outside_population"] != population["gbd_rows_with_a_track"]:
+        raise ValueError(f"frame accounting: {classified} classified + {population['outside_population']} outside "
+                         f"!= {population['gbd_rows_with_a_track']} GBD rows")
+
+
+def load_frame(path=FRAME):
+    frame = json.loads(Path(path).read_text())
+    validate_frame(frame)
+    return frame
+
+
+def derive_manifest(frame):
+    """The sample is a pure function of the frozen frame."""
+    strata = {}
+    instances = []
+    for stratum, item in frame["strata"].items():
+        rows = [{"hash": digest, "family": family, "result": result, "bytes": size}
+                for family, pool in item["pool"].items() for digest, result, size in pool]
+        chosen = draw(stratum, rows, frame["seed"], frame["per_stratum"])
+        strata[stratum] = {"eligible": len(rows), "excluded": item["excluded"], "selected": len(chosen),
+                           "families": item["families"]}
+        instances += [{"hash": row["hash"], "stratum": stratum, "family": row["family"],
+                       "gbd_result": row["result"], "bytes": row["bytes"]} for row in chosen]
+    design = ("schema", "issue", "seed", "per_stratum", "max_bytes", "first_main_year", "random_3sat",
+              "rules", "not_parity", "gbd", "design_history", "population")
+    return {**{name: frame[name] for name in design}, "frame": FRAME.name, "strata": strata, "instances": instances}
+
+
+def dump_frame(frame):
+    """Readable but compact: one pool row per line."""
+    text = json.dumps(frame, indent=1)
+    return re.sub(r'\[\s+("[0-9a-f]{32}"),\s+("[a-z]+"),\s+([0-9]+)\s+\]', r"[\1, \2, \3]", text) + "\n"
 
 
 def fetch(name, directory):
@@ -162,41 +222,69 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def sources_from(args, scratch):
+    sources, paths = {}, {}
+    for name in ("meta", "base"):
+        local = getattr(args, name)
+        if local:
+            path, modified = local, None
+            retrieved = datetime.datetime.fromtimestamp(Path(local).stat().st_mtime, datetime.timezone.utc)
+        else:
+            path, modified = fetch(name, scratch)
+            retrieved = datetime.datetime.now(datetime.timezone.utc)
+        paths[name] = path
+        sources[name] = {"url": f"{GBD}/getdatabase/{name}", "sha256": sha256(path),
+                         "retrieved_utc": retrieved.strftime("%Y-%m-%dT%H:%M:%SZ")}
+        if modified:
+            sources[name]["last_modified"] = modified
+    return sources, paths
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="re-derive the manifest from the frame (the default)")
+    mode.add_argument("--refresh", action="store_true", help="rebuild the frame and the manifest from GBD")
+    mode.add_argument("--check-frame", action="store_true", help="rebuild the frame from --meta/--base and compare")
     parser.add_argument("--meta", type=Path, help="local GBD meta database (default: download)")
     parser.add_argument("--base", type=Path, help="local GBD base database (default: download)")
-    parser.add_argument("--output", type=Path, default=MANIFEST)
-    parser.add_argument("--check", action="store_true", help="re-derive and compare with --output")
+    parser.add_argument("--frame", type=Path, default=FRAME)
+    parser.add_argument("--manifest", type=Path, default=MANIFEST)
     args = parser.parse_args(argv)
-    with tempfile.TemporaryDirectory(prefix="ems-gbd-") as scratch:
-        sources = {}
-        paths = {}
-        for name in ("meta", "base"):
-            local = getattr(args, name)
-            path, modified = (local, None) if local else fetch(name, scratch)
-            paths[name] = path
-            sources[name] = {"url": f"{GBD}/getdatabase/{name}", "sha256": sha256(path)}
-            if modified:
-                sources[name]["last_modified"] = modified
-        derived = manifest(paths["meta"], paths["base"], sources)
-    if args.check:
-        committed = json.loads(args.output.read_text())
-        for name in ("meta", "base"):
-            if committed["gbd"][name]["sha256"] != sources[name]["sha256"]:
-                print(f"FAIL GBD {name} database differs from the one this manifest was drawn from "
-                      f"({sources[name]['sha256']} != {committed['gbd'][name]['sha256']}); cannot re-derive")
-                return 1
-            for side in (derived, committed):  # provenance only; the SHA-256 is the identity
-                side["gbd"][name].pop("last_modified", None)
-        if derived != committed:
-            print(f"FAIL re-derived manifest differs from {args.output}")
+    if not (args.refresh or args.check_frame):
+        try:
+            derived = derive_manifest(load_frame(args.frame))
+            committed = json.loads(args.manifest.read_text())
+        except (OSError, ValueError, KeyError) as error:
+            print(f"FAIL {error}")
             return 1
-        print(f"CHECK PASS {len(derived['instances'])} instances re-derived identically from seed {SEED}")
+        if derived != committed:
+            print(f"FAIL {args.manifest} is not the draw re-derived from {args.frame}")
+            return 1
+        print(f"CHECK PASS {len(derived['instances'])} instances re-derived identically from the frozen frame "
+              f"(seed {derived['seed']}, {sum(item['eligible'] for item in derived['strata'].values())} eligible)")
         return 0
-    args.output.write_text(json.dumps(derived, indent=1) + "\n")
-    print(f"WROTE {args.output}: {len(derived['instances'])} instances, "
-          + ", ".join(f"{name}={item['selected']}/{item['eligible']}" for name, item in derived["strata"].items()))
+    with tempfile.TemporaryDirectory(prefix="ems-gbd-") as scratch:
+        sources, paths = sources_from(args, scratch)
+        if args.check_frame:
+            committed = load_frame(args.frame)
+            for name in ("meta", "base"):
+                if committed["gbd"][name]["sha256"] != sources[name]["sha256"]:
+                    print(f"FAIL GBD {name} database differs from the one the frame was built from "
+                          f"({sources[name]['sha256']} != {committed['gbd'][name]['sha256']}); cannot re-verify")
+                    return 1
+            rebuilt = build_frame(paths["meta"], paths["base"], committed["gbd"])
+            if rebuilt != committed:
+                print(f"FAIL {args.frame} differs from the frame rebuilt from the recorded GBD databases")
+                return 1
+            print(f"CHECK-FRAME PASS {args.frame} rebuilt identically from the recorded GBD databases")
+            return 0
+        frame = build_frame(paths["meta"], paths["base"], sources)
+    args.frame.write_text(dump_frame(frame))
+    manifest = derive_manifest(frame)
+    args.manifest.write_text(json.dumps(manifest, indent=1) + "\n")
+    print(f"WROTE {args.frame} and {args.manifest}: {len(manifest['instances'])} instances, "
+          + ", ".join(f"{name}={item['selected']}/{item['eligible']}" for name, item in manifest["strata"].items()))
     return 0
 
 
