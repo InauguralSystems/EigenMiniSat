@@ -122,9 +122,11 @@ python3 benchmarks/competition_select.py --check-frame
   - The verified score is the competition's own: only verified certificates
     count.
   - MiniSat writes no proofs, so its UNSAT answers count only in the
-    cross-checked score (`+agrees`). MiniSat is therefore compared on the
-    cross-checked score, and its verified score holds only its SAT answers.
-  - Every other arm is compared on the verified score.
+    cross-checked score (`+agrees`), and its verified score holds only its SAT
+    answers. Every comparison with MiniSat therefore uses the cross-checked
+    score for both arms, never one score against the other. This includes the
+    ladder, where every MiniSat answer is UNSAT.
+  - Comparisons among Kissat, CaDiCaL and EMS use the verified score.
 - Noise: the Kissat A/A pair fixes the resolution (see "Reading the table").
 - Decision: none. This run is the baseline that later changes are measured
   against.
