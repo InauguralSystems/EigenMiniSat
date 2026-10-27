@@ -114,10 +114,10 @@ python3 benchmarks/competition_select.py --check
 
 **Sample.** `competition_select.py` reads GBD's own `meta` and `base` databases
 (their SHA-256 is recorded in `competition_manifest.json`). The population is
-every GBD instance of a SAT Competition main track from 2017 (`main_YYYY`, the
-years with one combined main-track set), plus, for the random 3-SAT stratum,
-the competition's random tracks, because main tracks hold no uniform random
-3-SAT. Six strata of four instances each, drawn with seed 131, which was fixed
+every GBD instance labelled `main_YYYY` for 2017 on (the SAT Competition main
+tracks, and SAT Race 2019's; one combined main-track set per year), plus, for
+the random 3-SAT stratum, the competition's random tracks, because main tracks
+hold no uniform random 3-SAT. Six strata of four instances each, drawn with seed 131, which was fixed
 before the first draw. The first draw used five strata of five with Tseitin
 inside parity; it held no `tseitin-formulas` instance, although #131 names that
 family, so Tseitin became its own stratum before any solver ran. The seed did
