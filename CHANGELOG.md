@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Benchmarks
+- **The SAT Competition is the baseline measurement device (#131).**
+  `benchmarks/competition_select.py` draws a seeded, stratified sample of
+  competition instances from the Global Benchmark Database (parity/Tseitin,
+  pigeonhole, random 3-SAT near the threshold, application, other; five each)
+  into `competition_manifest.json`. `benchmarks/competition_run.py` downloads
+  each instance by GBD hash, re-derives that hash, and runs Kissat (twice, the
+  A/A noise arm), CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM in a seeded
+  interleaved order, with the Tseitin ladder re-measured in the same run. It
+  scores solved count and PAR-2 at a declared 60 s limit and checks every
+  answer (models, DRAT, cross-arm, GBD's record); a wrong answer fails the
+  run. The "Competition baseline" workflow runs it on workflow_dispatch.
+
 ### CDCL Solver
 - **The learnt DB is sized against the instance (#86).** `learnt_limit` started
   at a literal `4` and grew `+2` per reduce run, deleting `floor(active / 2)`

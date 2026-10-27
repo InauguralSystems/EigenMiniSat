@@ -45,12 +45,15 @@ if mode == "slow":
 if role == "drat-trim":
     if mode == "exit0-timeout":
         print("s TIMEOUT"); sys.exit(0)
+    if mode == "reject-cadical" and "cadical" in Path(args[1]).name:
+        print("\ns NOT VERIFIED"); sys.exit(1)
     good = Path(args[0]).read_bytes().startswith(b"p cnf 1 2") and Path(args[1]).read_bytes() == b"0\n"
     print("\rs VERIFIED" if good else "\ns NOT VERIFIED"); sys.exit(0 if good else 1)
 cnf = Path(args[-1] if role == "eigenscript" else args[0])
 if role == "eigenscript" and cnf.name.startswith("tseitin_torus_"):
     rung = cnf.name.split("_")[2]
-    sys.stdout.buffer.write(Path(root, "benchmarks/oracle/regime-c-%s.stdout" % rung).read_bytes()); sys.exit(0)
+    bank = Path(root, "benchmarks/oracle/regime-c-%s.stdout" % rung).read_bytes()
+    sys.stdout.buffer.write(bank.replace(b" conflicts=", b" conflicts=1") if mode == "drift" else bank); sys.exit(0)
 sat = cnf.read_bytes().startswith(b"p cnf 2 1")
 if mode == "lie":
     sat = not sat
@@ -133,10 +136,24 @@ class CompetitionTests(unittest.TestCase):
         self.tools["minisat"] = self.stub("minisat", "lie")
         self.assertEqual(self.run_case("sat", expected="unknown")["minisat"]["verdict"], "WRONG-UNSAT")
 
-    def test_rejected_refutation_is_a_wrong_answer(self):
-        self.tools["cadical"] = self.stub("cadical", "lie")
-        rows = self.run_case("sat", expected="unknown")
+    def test_rejected_refutation_is_wrong_even_when_the_answer_is_right(self):
+        self.tools["drat-trim"] = self.stub("drat-trim", "reject-cadical")
+        rows = self.run_case("unsat", expected="unknown")
         self.assertEqual((rows["cadical"]["verdict"], rows["cadical"]["certificate"]), ("WRONG-UNSAT", "drat-rejected"))
+        self.assertEqual(rows["kissat"]["certificate"], "drat-verified")
+
+    def test_checker_timeout_is_unverified_not_wrong(self):
+        self.tools["drat-trim"] = self.stub("drat-trim", "slow")
+        rows = self.run_case("unsat", limit=1)
+        self.assertEqual({rows[arm]["certificate"] for arm in runner.PROOF_ARMS}, {"drat-timeout+agrees"})
+        self.assertTrue(all(rows[arm]["solved"] for arm in runner.ARMS))
+
+    def test_a_run_is_never_shortened_to_fit_the_budget(self):
+        case = {"id": "sat", "kind": "competition", "stratum": "s", "family": "f", "expected": "sat", "cnf": self.cnf["sat"]}
+        ctx = self.context(limit=3)
+        ctx.deadline = time.monotonic() + 4
+        with self.assertRaisesRegex(runner.Failure, "budget exhausted before run"):
+            runner.run_instance(case, runner.ARMS, ctx)
 
     def test_checker_exit_zero_without_verified_line_is_not_verification(self):
         self.tools["drat-trim"] = self.stub("drat-trim", "exit0-timeout")
@@ -218,6 +235,18 @@ class CompetitionTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("WRONG ANSWERS", (output / "summary.md").read_text())
         self.assertEqual(json.loads((output / "run.json").read_text())["status"], "failed: wrong answers")
+
+    def test_regime_preflight_drift_fails_the_run(self):
+        self.tools["eigenscript"] = self.stub("eigenscript", "drift")
+        status, output = self.main()
+        self.assertEqual(status, 1)
+        self.assertIn("regime-C preflight 3x3", json.loads((output / "failure.json").read_text())["error"])
+
+    def test_a_sample_that_cannot_fit_the_budget_is_refused(self):
+        status, output = self.main("--budget-seconds", "60")
+        self.assertEqual(status, 1)
+        self.assertIn("does not fit the remaining budget", json.loads((output / "failure.json").read_text())["error"])
+        self.assertFalse((output / "results.csv").exists())
 
     def test_downloaded_bytes_must_hash_to_the_manifest_hash(self):
         manifest, cache = self.manifest({"unsat": "0" * 32})

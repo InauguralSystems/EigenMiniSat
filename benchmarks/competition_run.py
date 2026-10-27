@@ -56,10 +56,10 @@ Failure = base.Failure
 def gbd_hash(stream):
     """GBD's instance identity (gbdc CNF::gbdhash): MD5 over the clause tokens joined
     by single spaces, comment and header lines skipped, a final unterminated
-    clause closed with 0. Differential-tested against gbdc 0.4.3; gbdc differs
-    only for a file ending without whitespace after a comment line falls in its
-    last 16 KiB buffer, where its buffer alignment drops the final token: such a
-    file mismatches here and fails loudly, never passes."""
+    clause closed with 0. Fuzz-tested against gbdc 0.4.3: the only differences
+    are files that end without trailing whitespace and skip a comment or header
+    line in gbdc's last 16 KiB buffer, whose re-alignment drops the final token.
+    Such a file mismatches its manifest hash here and fails; it never passes."""
     digest = hashlib.md5()
     inside = started = seen = False
     plain = re.compile(rb"[ \t\x0b\x0c]*-?[0-9]+(?:[ \t\x0b\x0c]+-?[0-9]+)*[ \t\x0b\x0c\r]*\n?")
@@ -343,11 +343,13 @@ def markdown(summary, rows, meta):
            f"Time limit {limit:g} s per run (PAR-2 penalty {2 * limit:g} s), DRAT checks capped at "
            f"{meta['proof_limit_s']:g} s, {meta['memory_mb']} MiB address space per process. "
            f"Order seed {meta['order_seed']}; manifest seed {meta['manifest_seed']}. Arms: {', '.join(arms)}.", ""]
+    if meta["subset"]:
+        out[0:0] = [f"**SUBSET RUN: {meta['subset']}.**", ""]
     def table(title, data):
         out.extend([f"## {title}", "", "| arm | n | solved | SAT | UNSAT | PAR-2 total (s) | PAR-2 mean (s) "
                     "| timeouts | unknown/error | UNSAT not DRAT-verified |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"])
         for arm, v in data.items():
-            out.append(f"| {arm} | {v['n']} | {v['solved']} | {v['sat']} | {v['unsat']} | {v['par2_total_s']:.1f} | "
+            out.append(f"| {arm} | {v['n']} | {v['solved']} | {v['sat']} | {v['unsat']} | {v['par2_total_s']:.2f} | "
                        f"{v['par2_mean_s'] if v['par2_mean_s'] is None else format(v['par2_mean_s'], '.2f')} | "
                        f"{v['timeouts']} | {v['unknown_or_error']} | {v['unsat_unverified']} |")
         out.append("")
@@ -358,7 +360,7 @@ def markdown(summary, rows, meta):
                     "|---|---:|" + "---:|" * len(arms)])
         for name, data in summary[label].items():
             out.append(f"| {name} | {data[arms[0]]['n']} | " + " | ".join(
-                f"{data[arm]['solved']} / {data[arm]['par2_total_s']:.1f}" for arm in arms) + " |")
+                f"{data[arm]['solved']} / {data[arm]['par2_total_s']:.2f}" for arm in arms) + " |")
         out.append("")
     table("Tseitin ladder (odd torus, same metric)", summary["ladder"])
     ladder = [r for r in rows if r["kind"] == "ladder"]
@@ -399,9 +401,10 @@ def arguments(argv):
     parser.add_argument("--limit", type=float, default=60, help="seconds per solver run (PAR-2 charges 2x)")
     parser.add_argument("--proof-limit", type=float, help="seconds per drat-trim check (default: --limit)")
     parser.add_argument("--memory-mb", type=int, default=12288, help="address-space cap per process (prlimit --as)")
-    parser.add_argument("--budget-seconds", type=float, default=19200, help="wall budget for the whole harness")
+    parser.add_argument("--budget-seconds", type=float, default=19800, help="wall budget for the whole harness")
     parser.add_argument("--order-seed", type=int, help="run-order seed (default: the manifest seed)")
     parser.add_argument("--cache", type=Path, help="directory reused for downloaded .cnf.xz files")
+    parser.add_argument("--first", type=int, help="SMOKE ONLY: the first N manifest instances (labelled a subset)")
     for tool in ("kissat", "cadical", "minisat", "eigenscript", "drat-trim"):
         parser.add_argument("--" + tool, type=Path)
     args = parser.parse_args(argv)
@@ -411,6 +414,7 @@ def arguments(argv):
     args.ladder = tuple(args.ladder.split())
     require(len(set(args.ladder)) == len(args.ladder) and set(args.ladder) <= set(LADDER), f"invalid --ladder {args.ladder}")
     args.proof_limit = args.limit if args.proof_limit is None else args.proof_limit
+    require(args.first is None or args.first > 0, "--first must be positive")
     require(args.limit > 0 and args.proof_limit > 0 and args.memory_mb > 0 and args.budget_seconds > 0, "limits must be positive")
     needed = {TOOLS[arm] for arm in args.arms} | ({"drat-trim"} if set(args.arms) & set(PROOF_ARMS) else set())
     needed |= {"eigenscript"} if args.ladder else set()
@@ -443,6 +447,7 @@ def main(argv=None):
         started = time.monotonic()
         args = arguments(argv)
         manifest = load_manifest(args.manifest)
+        instances = manifest["instances"][:args.first]
         args.output.mkdir(parents=True, exist_ok=False)
         output = args.output
         work = output / "work"
@@ -459,6 +464,8 @@ def main(argv=None):
                 "manifest_seed": manifest["seed"], "order_seed": seed, "arms": list(args.arms),
                 "ladder": list(args.ladder), "limit_s": args.limit, "proof_limit_s": args.proof_limit,
                 "memory_mb": args.memory_mb, "budget_s": args.budget_seconds,
+                "subset": None if len(instances) == len(manifest["instances"]) else
+                f"first {len(instances)} of {len(manifest['instances'])} manifest instances (smoke, not the baseline)",
                 "tools": {name: {"path": str(path), "sha256": base.sha256(path),
                                  "version": version(path) if name in ("kissat", "cadical", "eigenscript") else ""}
                           for name, path in args.tools.items()},
@@ -467,12 +474,12 @@ def main(argv=None):
                          "cpu": next((line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines()
                                       if line.startswith("model name")), ""), "loadavg_at_start": os.getloadavg()}}
         base.write_json(output / "run.json", meta)
-        print(f"Competition baseline: {len(manifest['instances'])} GBD instances, ladder {' '.join(args.ladder) or 'none'}, "
+        print(f"Competition baseline: {len(instances)} GBD instances, ladder {' '.join(args.ladder) or 'none'}, "
               f"arms {','.join(args.arms)}, limit {args.limit:g}s, DRAT cap {args.proof_limit:g}s", flush=True)
         if "ems" in args.arms:
             preflight(args.tools["eigenscript"], work, environment, deadline, 600)
         cases = []
-        for instance in manifest["instances"]:
+        for instance in instances:
             print(f"PREPARE {instance['hash']} ({instance['stratum']}/{instance['family']})", flush=True)
             cases.append(prepare_gbd(instance, work / "instances" / instance["hash"], args.cache))
         for rung in args.ladder:

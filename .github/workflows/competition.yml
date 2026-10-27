@@ -1,0 +1,101 @@
+name: Competition baseline
+
+# SAT Competition baseline (#131): solved count and PAR-2 for Kissat (twice, A/A),
+# CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM, on the committed GBD sample
+# plus the odd Tseitin ladder. benchmarks/README.md has the design and the
+# departures from the competition.
+#
+# workflow_dispatch runs the full measurement. Its worst case is
+#   32 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 18,240 s = 304 min
+# plus an estimated 10 min of builds, inside the 355-minute cap below (GitHub's job
+# limit is 360). The harness itself refuses to start if the worst case does not
+# fit what remains of its 19,800 s budget after the downloads.
+#
+# A pull request that touches the harness runs a labelled SUBSET (two GBD
+# instances, the 3x3 rung, 10 s limit) through the same builds and solvers.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/competition.yml
+      - benchmarks/competition_*
+      - benchmarks/compare_native.py
+      - benchmarks/certificate_validation.py
+      - benchmarks/cnf_preservation.py
+      - benchmarks/normalize_cnf.awk
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build EigenScript at the pin in ci.yml
+        run: |
+          pin=$(grep -oE 'git clone --branch v[0-9]+[.][0-9]+[.][0-9]+ --depth 1 https://github.com/InauguralSystems/EigenScript.git' .github/workflows/ci.yml | awk '{print $4}')
+          if [ "$(printf '%s\n' "$pin" | grep -c .)" != 1 ]; then echo "FAIL: need exactly one EigenScript pin in ci.yml, got '$pin'"; exit 1; fi
+          git clone --branch "$pin" --depth 1 https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript
+          make -C /tmp/eigenscript build
+          /tmp/eigenscript/src/eigenscript --version
+
+      - name: Install MiniSat 2.2 (Ubuntu package)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q minisat
+          dpkg-query -W minisat
+
+      - name: Build Kissat rel-4.0.4 (latest release)
+        run: |
+          git clone --branch rel-4.0.4 --depth 1 https://github.com/arminbiere/kissat.git /tmp/kissat
+          test "$(git -C /tmp/kissat rev-parse HEAD)" = 8af8e56f174b778aef3aa45af9f739b2a5f492c2
+          cd /tmp/kissat && ./configure && make
+          test "$(/tmp/kissat/build/kissat --version)" = 4.0.4
+
+      - name: Build CaDiCaL rel-3.0.1 (latest release)
+        run: |
+          git clone --branch rel-3.0.1 --depth 1 https://github.com/arminbiere/cadical.git /tmp/cadical
+          test "$(git -C /tmp/cadical rev-parse HEAD)" = c60730422e758ef1cebe7aeddf2dda31c996bf04
+          cd /tmp/cadical && ./configure && make
+          test "$(/tmp/cadical/build/cadical --version)" = 3.0.1
+
+      - name: Build drat-trim (pinned commit)
+        run: |
+          git clone https://github.com/marijnheule/drat-trim.git /tmp/drat-trim
+          git -C /tmp/drat-trim checkout --detach 2e3b2dc0ecf938addbd779d42877b6ed69d9a985
+          cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c
+
+      - name: Run the competition baseline
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SUBSET: ${{ github.event_name == 'pull_request' && '--first 2 --ladder 3x3 --limit 10' || '' }}
+        run: |
+          # SUBSET is empty for workflow_dispatch: the full manifest, every rung, 60 s.
+          read -r -a subset <<< "$SUBSET"
+          python3 benchmarks/competition_run.py --output "$RUNNER_TEMP/competition" "${subset[@]}" \
+            --kissat /tmp/kissat/build/kissat --cadical /tmp/cadical/build/cadical \
+            --minisat /usr/bin/minisat --eigenscript /tmp/eigenscript/src/eigenscript \
+            --drat-trim /tmp/drat-trim/drat-trim
+
+      - name: Publish the summary table
+        if: always()
+        run: |
+          out="$RUNNER_TEMP/competition"
+          if [ -f "$out/summary.md" ]; then cat "$out/summary.md"; else echo "No summary: the run did not complete."; cat "$out/failure.json" 2>/dev/null || true; fi >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: competition-baseline
+          path: |
+            ${{ runner.temp }}/competition/
+            !${{ runner.temp }}/competition/work/instances/
+          if-no-files-found: error
