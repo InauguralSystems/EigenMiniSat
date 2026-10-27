@@ -68,7 +68,7 @@ VERIFIED = ("model-verified", "drat-verified", "empty-clause")
 # every arm to solve them, and the 3x3 rung, with a completed certificate.
 SMOKE = {
     "69f6dd335626a9b71bfc6f2332f52b9d": "application/scheduling, SAT: MiniSat 0.01 s, EMS 0.79 s (Celeron N3350, "
-                                        "2026-10-27); in CI (run 40568851522) every arm 0.004-0.11 s, model-verified",
+                                        "2026-10-27); in CI (run 40568851522) every arm 0.003-0.11 s, model-verified",
     "0928111a3d5d5ce05dffb83cb5982eba": "other/cover, UNSAT: MiniSat 0.03 s, EMS 0.16 s with a drat-verified "
                                         "refutation (same host and date); in CI (same run) every proof-writing arm "
                                         "drat-verified within 0.04 s",
