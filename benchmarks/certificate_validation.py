@@ -14,31 +14,46 @@ import cnf_preservation
 
 def check_model(cnf, data, native=False):
     """Require one complete, consistent DIMACS assignment satisfying all clauses."""
-    records = cnf_preservation.formula(cnf, False)
-    variables = int(records[0][2])
-    if native:
+    check_assignment(cnf_preservation.formula(cnf, False), model_literals(data, "native" if native else "ems"))
+
+
+def model_literals(data, form):
+    """Model literals: 'ems' (one v-line), 'native' (MiniSat result file), or
+    'competition' (v-lines split anywhere, as Kissat and CaDiCaL print them)."""
+    if form == "native":
         status, separator, body = data.partition(b"\n")
         if status != b"SAT" or not separator:
             raise ValueError("native SAT model lacks SAT header")
         fields = body.split()
     else:
         lines = [line for line in data.split(b"\n") if line.startswith(b"v ") or line == b"v"]
-        if len(lines) != 1:
+        if form == "ems" and len(lines) != 1:
             raise ValueError("SAT model needs exactly one v-line")
-        fields = lines[0].split()[1:]
+        fields = [field for line in lines for field in line.split()[1:]]
     if not fields or fields[-1] != b"0" or any(not re.fullmatch(rb"-?[0-9]+", x) for x in fields):
         raise ValueError("SAT model is malformed or unterminated")
-    literals = [int(x) for x in fields[:-1]]
-    if len(literals) != variables or {abs(x) for x in literals} != set(range(1, variables + 1)):
+    return [int(x) for x in fields[:-1]]
+
+
+def check_assignment(records, literals, complete=True):
+    """Every clause of the parsed formula needs a true literal. complete=False
+    accepts a partial model: with every clause satisfied it is still a sound
+    SAT certificate (MiniSat omits unused trailing variables)."""
+    variables = int(records[0][2])
+    if complete and (len(literals) != variables or {abs(x) for x in literals} != set(range(1, variables + 1))):
         raise ValueError("SAT model needs every declared variable exactly once")
-    assignment = {abs(x): x > 0 for x in literals}
+    assignment = {}
+    for x in literals:
+        if not 0 < abs(x) <= variables or abs(x) in assignment:
+            raise ValueError("SAT model literal is zero, out of range or repeated")
+        assignment[abs(x)] = x > 0
     clause = []
     for token in (token for record in records[1:] for token in record):
         value = int(token)
         if value:
             clause.append(value)
         else:
-            if not any(assignment[abs(x)] == (x > 0) for x in clause):
+            if not any(assignment.get(abs(x)) == (x > 0) for x in clause):
                 raise ValueError("SAT model does not satisfy input clause")
             clause = []
 

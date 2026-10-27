@@ -1,0 +1,1067 @@
+{
+ "schema": 1,
+ "issue": "InauguralSystems/EigenMiniSat#131",
+ "seed": 131,
+ "per_stratum": 4,
+ "max_bytes": 25000000,
+ "first_main_year": 2017,
+ "random_3sat": {
+  "family": "uniform-random",
+  "threshold": 4.267,
+  "band": 0.1,
+  "rule": "every clause has 3 literals and |clauses/variables - threshold| <= band"
+ },
+ "rules": [
+  [
+   "tseitin",
+   "tseitin"
+  ],
+  [
+   "parity",
+   "parity|xor"
+  ],
+  [
+   "pigeonhole",
+   "pigeon|php"
+  ],
+  [
+   "application",
+   "verification|model-checking|bmc|equi[v]?alence-checking|miter|cryptograph|planning|scheduling|timetabling"
+  ]
+ ],
+ "not_parity": {
+  "parity-games": "games on graphs (a verification problem), not XOR constraints",
+  "xor-shifting": "xorshift generator inversion (cryptanalysis), not a parity principle"
+ },
+ "structure": {
+  "genurq": [
+   "tseitin",
+   "generalized Urquhart formulas: Tseitin parity constraints on random regular graphs"
+  ],
+  "lights-out": [
+   "parity",
+   "the Lights Out puzzle: a linear system over GF(2)"
+  ],
+  "mutilated-chessboard": [
+   "pigeonhole",
+   "domino tiling of a mutilated board: a matching (counting) principle"
+  ],
+  "perfect-matching": [
+   "pigeonhole",
+   "the perfect matching principle on odd vertex sets: a counting principle"
+  ],
+  "subset-cardinality": [
+   "pigeonhole",
+   "subset cardinality formulas (Miksa and Nordstrom): a counting principle"
+  ]
+ },
+ "gbd": {
+  "meta": {
+   "url": "https://benchmark-database.de/getdatabase/meta",
+   "sha256": "5b8bbc767bc5300cca6a12717fb2d7c8d52ccee24aced4447d71846352744ff3",
+   "retrieved_utc": "2026-10-27T15:51:56Z",
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT",
+   "archive": "https://github.com/InauguralSystems/EigenMiniSat/releases/download/gbd-databases/meta-5b8bbc767bc5300cca6a12717fb2d7c8d52ccee24aced4447d71846352744ff3.db"
+  },
+  "base": {
+   "url": "https://benchmark-database.de/getdatabase/base",
+   "sha256": "15a3d19fd23ba72dd7c77b1b86113873f160760fa1c9710e9e5ed6a23ba29d84",
+   "retrieved_utc": "2026-10-27T15:52:02Z",
+   "last_modified": "Fri, 25 Sep 2026 09:53:26 GMT",
+   "archive": "https://github.com/InauguralSystems/EigenMiniSat/releases/download/gbd-databases/base-15a3d19fd23ba72dd7c77b1b86113873f160760fa1c9710e9e5ed6a23ba29d84.db"
+  }
+ },
+ "design_history": [
+  "first draw (seed 131): five strata of five with Tseitin inside parity; it held no tseitin-formulas instance, so Tseitin became its own stratum and each stratum four instances, before any solver ran. Same seed.",
+  "second change, before the first dispatched measurement: the label rules had put genurq (Tseitin on expanders), mutilated-chessboard and perfect-matching (matching principles) into other. The STRUCTURE map now places five families by what they encode; the tseitin, parity and pigeonhole pools grew, and their draws were re-derived with the same seed."
+ ],
+ "population": {
+  "gbd_rows_with_a_track": 20225,
+  "outside_population": 15313
+ },
+ "frame": "competition_frame.json",
+ "strata": {
+  "tseitin": {
+   "eligible": 34,
+   "excluded": {
+    "over 25000000 bytes": 1
+   },
+   "selected": 4,
+   "families": {
+    "genurq": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "tseitin-formulas": {
+     "eligible": 33,
+     "excluded": 1
+    }
+   }
+  },
+  "parity": {
+   "eligible": 60,
+   "excluded": {},
+   "selected": 4,
+   "families": {
+    "binary-tree-parity": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "lights-out": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "minimal-disagreement-parity": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "minimum-disagreement-parity": {
+     "eligible": 30,
+     "excluded": 0
+    },
+    "or_randxor": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "ordering-principle-xor": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "random-graph-xorsat": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "xor-chain": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "xor_op": {
+     "eligible": 1,
+     "excluded": 0
+    }
+   }
+  },
+  "pigeonhole": {
+   "eligible": 85,
+   "excluded": {
+    "over 25000000 bytes": 1
+   },
+   "selected": 4,
+   "families": {
+    "binary-pigeon-hole": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "mutilated-chessboard": {
+     "eligible": 18,
+     "excluded": 0
+    },
+    "perfect-matching": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "pigeon-hole": {
+     "eligible": 34,
+     "excluded": 0
+    },
+    "relativized-pigeon-hole": {
+     "eligible": 17,
+     "excluded": 1
+    },
+    "subset-cardinality": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "sudoku-php": {
+     "eligible": 2,
+     "excluded": 0
+    }
+   }
+  },
+  "random-3sat": {
+   "eligible": 1300,
+   "excluded": {
+    "over 25000000 bytes": 17
+   },
+   "selected": 4,
+   "families": {
+    "uniform-random": {
+     "eligible": 1300,
+     "excluded": 17
+    }
+   }
+  },
+  "application": {
+   "eligible": 840,
+   "excluded": {
+    "over 25000000 bytes": 306
+   },
+   "selected": 4,
+   "families": {
+    "algorithm-equivalence-checking": {
+     "eligible": 23,
+     "excluded": 0
+    },
+    "circuit-equialence-checking": {
+     "eligible": 12,
+     "excluded": 3
+    },
+    "circuit-equivalence-checking": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "cryptography": {
+     "eligible": 242,
+     "excluded": 6
+    },
+    "cryptography-ascon": {
+     "eligible": 26,
+     "excluded": 0
+    },
+    "cryptography-cbmc": {
+     "eligible": 0,
+     "excluded": 4
+    },
+    "cryptography-simon": {
+     "eligible": 32,
+     "excluded": 0
+    },
+    "datapath-equivalence-checking": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "ecc-equivalence-checking": {
+     "eligible": 0,
+     "excluded": 10
+    },
+    "equivalence-checking": {
+     "eligible": 0,
+     "excluded": 12
+    },
+    "exam-scheduling": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "hardware-bmc": {
+     "eligible": 0,
+     "excluded": 3
+    },
+    "hardware-model-checking": {
+     "eligible": 17,
+     "excluded": 31
+    },
+    "hardware-verification": {
+     "eligible": 41,
+     "excluded": 22
+    },
+    "md5-equivalence-checking": {
+     "eligible": 0,
+     "excluded": 13
+    },
+    "miter": {
+     "eligible": 125,
+     "excluded": 43
+    },
+    "multiplier-circuit-miters": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "multiplier-equivalence-checking": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "multiplier-verification": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "planning": {
+     "eligible": 23,
+     "excluded": 27
+    },
+    "scheduling": {
+     "eligible": 160,
+     "excluded": 51
+    },
+    "school-timetabling": {
+     "eligible": 40,
+     "excluded": 3
+    },
+    "software-bmc": {
+     "eligible": 2,
+     "excluded": 1
+    },
+    "software-verification": {
+     "eligible": 36,
+     "excluded": 77
+    }
+   }
+  },
+  "other": {
+   "eligible": 1682,
+   "excluded": {
+    "over 25000000 bytes": 586
+   },
+   "selected": 4,
+   "families": {
+    "01-integer-programming": {
+     "eligible": 1,
+     "excluded": 1
+    },
+    "2d-strip-packing": {
+     "eligible": 2,
+     "excluded": 1
+    },
+    "agile": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "algebra": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "allowable-seqence": {
+     "eligible": 5,
+     "excluded": 11
+    },
+    "antibandwidth": {
+     "eligible": 6,
+     "excluded": 9
+    },
+    "argumentation": {
+     "eligible": 69,
+     "excluded": 19
+    },
+    "at-least-two-sol": {
+     "eligible": 5,
+     "excluded": 7
+    },
+    "auto-correlation": {
+     "eligible": 8,
+     "excluded": 2
+    },
+    "automata-synchronization": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "baseball-lineup": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "battleship": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "belpyramid-puzzle": {
+     "eligible": 31,
+     "excluded": 1
+    },
+    "bioinformatics": {
+     "eligible": 10,
+     "excluded": 1
+    },
+    "bitvector": {
+     "eligible": 72,
+     "excluded": 10
+    },
+    "boxfolding": {
+     "eligible": 16,
+     "excluded": 0
+    },
+    "brent-equations": {
+     "eligible": 19,
+     "excluded": 0
+    },
+    "cardinality-constraints": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "cellular-automata": {
+     "eligible": 12,
+     "excluded": 25
+    },
+    "chnl": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "circuit-minimization": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "circuit-multiplier": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "clique-coloring": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "clique-formulas": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "clique-width": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "clustered-random": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "coloring": {
+     "eligible": 79,
+     "excluded": 12
+    },
+    "coloring-clique": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "coloring-mycielski-graph": {
+     "eligible": 7,
+     "excluded": 4
+    },
+    "core-based-generator": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "count": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "cover": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "crafted-cec": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "cril-misc": {
+     "eligible": 0,
+     "excluded": 62
+    },
+    "cyclic-anti-bandwidth": {
+     "eligible": 0,
+     "excluded": 16
+    },
+    "diagnosis": {
+     "eligible": 16,
+     "excluded": 9
+    },
+    "dimacs-sorter": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "dining-philosophers": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "discrete-logarithm": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "edge-matching": {
+     "eligible": 10,
+     "excluded": 20
+    },
+    "edit-distance": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "ensemble-computation": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "equivalence-chain-principle": {
+     "eligible": 3,
+     "excluded": 1
+    },
+    "erdos-discrepancy": {
+     "eligible": 1,
+     "excluded": 2
+    },
+    "fermat": {
+     "eligible": 5,
+     "excluded": 0
+    },
+    "fixed-shape-random": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "fpga-routing": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "generic-csp": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "graceful-production": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "grandtour-puzzle": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "graph-coloring": {
+     "eligible": 24,
+     "excluded": 1
+    },
+    "graph-isomorphism": {
+     "eligible": 0,
+     "excluded": 29
+    },
+    "gray_codes": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "greentao": {
+     "eligible": 3,
+     "excluded": 1
+    },
+    "grs-fp-comm": {
+     "eligible": 17,
+     "excluded": 7
+    },
+    "hamiltonian": {
+     "eligible": 46,
+     "excluded": 0
+    },
+    "hamiltonian-cycle": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "hard-cep": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "hashtable-safety": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "heule-folkman": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "heule-nol": {
+     "eligible": 11,
+     "excluded": 0
+    },
+    "hgen": {
+     "eligible": 35,
+     "excluded": 0
+    },
+    "hidoku": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "hypertree-decomposition": {
+     "eligible": 0,
+     "excluded": 27
+    },
+    "independent-set": {
+     "eligible": 13,
+     "excluded": 6
+    },
+    "independent-set-reconfiguration": {
+     "eligible": 8,
+     "excluded": 10
+    },
+    "influence-maximization": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "interval-matching": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "karatsuba-multiplication": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "knights-problem": {
+     "eligible": 14,
+     "excluded": 7
+    },
+    "ktf": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "lam-discrete-geometry": {
+     "eligible": 3,
+     "excluded": 6
+    },
+    "linear-equations": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "linvrinv": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "long-learned-clauses": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "matrix-multiplication": {
+     "eligible": 24,
+     "excluded": 0
+    },
+    "maximum-constraint-partition": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "maxsat-optimum": {
+     "eligible": 37,
+     "excluded": 0
+    },
+    "mechanical-master-key": {
+     "eligible": 8,
+     "excluded": 4
+    },
+    "minimal-superpermutation": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "modcircuits": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "mosoi-289": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "multiplier-circuits": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "ntil": {
+     "eligible": 16,
+     "excluded": 0
+    },
+    "oddball-weighing": {
+     "eligible": 10,
+     "excluded": 11
+    },
+    "p-center": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "parity-games": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "pebbling": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "petrinet-concurrency": {
+     "eligible": 10,
+     "excluded": 16
+    },
+    "philips": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "polynomial-multiplication": {
+     "eligible": 29,
+     "excluded": 21
+    },
+    "popularity-similarity": {
+     "eligible": 42,
+     "excluded": 0
+    },
+    "prime-factoring": {
+     "eligible": 39,
+     "excluded": 0
+    },
+    "prime-testing": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "product-configuration": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "profitable-robust-production": {
+     "eligible": 0,
+     "excluded": 20
+    },
+    "purdom-instances": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "puzzle": {
+     "eligible": 21,
+     "excluded": 0
+    },
+    "pythagorean-triples": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "quantum-kochen-specker": {
+     "eligible": 4,
+     "excluded": 6
+    },
+    "quasigroup-completion": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "ramsey": {
+     "eligible": 3,
+     "excluded": 0
+    },
+    "ramsey-numbers": {
+     "eligible": 5,
+     "excluded": 1
+    },
+    "random-circuits": {
+     "eligible": 5,
+     "excluded": 12
+    },
+    "random-csp": {
+     "eligible": 9,
+     "excluded": 0
+    },
+    "random-modularity": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "random-mus": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "rbsat": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "reg-n": {
+     "eligible": 6,
+     "excluded": 5
+    },
+    "register-allocation": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "relational-dependencies": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "risc-instruction-removal-golcrest": {
+     "eligible": 1,
+     "excluded": 3
+    },
+    "risc-instruction-removal-subrv": {
+     "eligible": 0,
+     "excluded": 8
+    },
+    "rooks": {
+     "eligible": 6,
+     "excluded": 0
+    },
+    "rubikcube": {
+     "eligible": 20,
+     "excluded": 0
+    },
+    "sat-x": {
+     "eligible": 1,
+     "excluded": 15
+    },
+    "satcoin": {
+     "eligible": 15,
+     "excluded": 0
+    },
+    "set-covering": {
+     "eligible": 38,
+     "excluded": 0
+    },
+    "sgen": {
+     "eligible": 8,
+     "excluded": 0
+    },
+    "sgen-balanced": {
+     "eligible": 4,
+     "excluded": 0
+    },
+    "sliding-puzzle": {
+     "eligible": 14,
+     "excluded": 0
+    },
+    "social-golfer": {
+     "eligible": 24,
+     "excluded": 0
+    },
+    "sorting-networks": {
+     "eligible": 3,
+     "excluded": 7
+    },
+    "ssp-0": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "st-connectivity-principle": {
+     "eligible": 2,
+     "excluded": 0
+    },
+    "stable-semantics": {
+     "eligible": 6,
+     "excluded": 6
+    },
+    "station-repacking": {
+     "eligible": 19,
+     "excluded": 0
+    },
+    "stedman-triples": {
+     "eligible": 41,
+     "excluded": 0
+    },
+    "stone": {
+     "eligible": 0,
+     "excluded": 1
+    },
+    "subgraph-isomorphism": {
+     "eligible": 17,
+     "excluded": 5
+    },
+    "subsumptiontest": {
+     "eligible": 0,
+     "excluded": 5
+    },
+    "sudoku": {
+     "eligible": 0,
+     "excluded": 16
+    },
+    "sum-of-3-cubes": {
+     "eligible": 9,
+     "excluded": 1
+    },
+    "summle": {
+     "eligible": 17,
+     "excluded": 0
+    },
+    "syndrome-decoding": {
+     "eligible": 12,
+     "excluded": 0
+    },
+    "tensors": {
+     "eligible": 34,
+     "excluded": 0
+    },
+    "termination-analysis": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "test-configuration": {
+     "eligible": 13,
+     "excluded": 0
+    },
+    "theorem-proving": {
+     "eligible": 1,
+     "excluded": 0
+    },
+    "tournament": {
+     "eligible": 0,
+     "excluded": 14
+    },
+    "tree-decomposition": {
+     "eligible": 9,
+     "excluded": 15
+    },
+    "trigonometric-functions": {
+     "eligible": 0,
+     "excluded": 4
+    },
+    "unknown": {
+     "eligible": 71,
+     "excluded": 13
+    },
+    "unknown-cases": {
+     "eligible": 11,
+     "excluded": 1
+    },
+    "van-der-waerden": {
+     "eligible": 11,
+     "excluded": 1
+    },
+    "waerden": {
+     "eligible": 7,
+     "excluded": 0
+    },
+    "xor-shifting": {
+     "eligible": 11,
+     "excluded": 0
+    }
+   }
+  }
+ },
+ "instances": [
+  {
+   "hash": "c6487f6dfcc1438eccca1876a33d9a9c",
+   "stratum": "tseitin",
+   "family": "genurq",
+   "gbd_result": "unknown",
+   "bytes": 815033
+  },
+  {
+   "hash": "aa39c6d885d283a085d033ab7b89f8c8",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "bytes": 15758
+  },
+  {
+   "hash": "5f6861053fb4ed4fc0b997cd6b505ef4",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "bytes": 9891112
+  },
+  {
+   "hash": "6e5efd19744842d1fa5415173bffbf6b",
+   "stratum": "tseitin",
+   "family": "tseitin-formulas",
+   "gbd_result": "unsat",
+   "bytes": 16751112
+  },
+  {
+   "hash": "6fa8b4b7f4b059bd46913dbe741c0b94",
+   "stratum": "parity",
+   "family": "minimum-disagreement-parity",
+   "gbd_result": "sat",
+   "bytes": 120291
+  },
+  {
+   "hash": "667341ee8c1dea3db613db317e2b2c33",
+   "stratum": "parity",
+   "family": "lights-out",
+   "gbd_result": "unsat",
+   "bytes": 122974
+  },
+  {
+   "hash": "16c5482d8e658b54e20d59cfd4b1d588",
+   "stratum": "parity",
+   "family": "binary-tree-parity",
+   "gbd_result": "sat",
+   "bytes": 29956
+  },
+  {
+   "hash": "354936f86e55ab8d00e6e1f5f7c140a9",
+   "stratum": "parity",
+   "family": "ordering-principle-xor",
+   "gbd_result": "unknown",
+   "bytes": 21228116
+  },
+  {
+   "hash": "fa5c6d6736a42650656c5bc018413254",
+   "stratum": "pigeonhole",
+   "family": "binary-pigeon-hole",
+   "gbd_result": "unsat",
+   "bytes": 207573
+  },
+  {
+   "hash": "b628043a07c5576dd6cd21c9d73a69e0",
+   "stratum": "pigeonhole",
+   "family": "subset-cardinality",
+   "gbd_result": "unsat",
+   "bytes": 8070
+  },
+  {
+   "hash": "50d081a4b18eecdd0bc120f634d57a26",
+   "stratum": "pigeonhole",
+   "family": "perfect-matching",
+   "gbd_result": "unsat",
+   "bytes": 9493
+  },
+  {
+   "hash": "183d151693172be95f047880198a586a",
+   "stratum": "pigeonhole",
+   "family": "pigeon-hole",
+   "gbd_result": "unsat",
+   "bytes": 482101
+  },
+  {
+   "hash": "411a2468cba2725512c1e64c5679551d",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "bytes": 44768
+  },
+  {
+   "hash": "6839b4b46c490964fbd027c129596880",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "sat",
+   "bytes": 24948
+  },
+  {
+   "hash": "d79a0c691881954300babf99269ad98d",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "bytes": 648701
+  },
+  {
+   "hash": "e89d5a851a9408a3a02344050047ff90",
+   "stratum": "random-3sat",
+   "family": "uniform-random",
+   "gbd_result": "unknown",
+   "bytes": 2704853
+  },
+  {
+   "hash": "b6e71c02c8352821cb3ec5dbf2bcb9e4",
+   "stratum": "application",
+   "family": "cryptography",
+   "gbd_result": "sat",
+   "bytes": 295878
+  },
+  {
+   "hash": "3ec81fcaac5a1da8a6ca4da0b9d8eb02",
+   "stratum": "application",
+   "family": "multiplier-verification",
+   "gbd_result": "unsat",
+   "bytes": 5849798
+  },
+  {
+   "hash": "bc3a8bd47c5575c2f1b31882d28ee091",
+   "stratum": "application",
+   "family": "cryptography-simon",
+   "gbd_result": "sat",
+   "bytes": 229756
+  },
+  {
+   "hash": "824cd6f379c23cc863e501e397092cb9",
+   "stratum": "application",
+   "family": "algorithm-equivalence-checking",
+   "gbd_result": "unsat",
+   "bytes": 286778
+  },
+  {
+   "hash": "3f9fdded562e5b47d8b3dbcf4271a6ce",
+   "stratum": "other",
+   "family": "coloring-mycielski-graph",
+   "gbd_result": "unsat",
+   "bytes": 14581586
+  },
+  {
+   "hash": "000a41cdca43be89ed62ea3abf2d0b64",
+   "stratum": "other",
+   "family": "sorting-networks",
+   "gbd_result": "sat",
+   "bytes": 16343754
+  },
+  {
+   "hash": "b858ad4945086c193e5bce40e1a77837",
+   "stratum": "other",
+   "family": "lam-discrete-geometry",
+   "gbd_result": "unknown",
+   "bytes": 4747748
+  },
+  {
+   "hash": "86173292a2c6a506acf27a81db853bb5",
+   "stratum": "other",
+   "family": "ktf",
+   "gbd_result": "sat",
+   "bytes": 5555417
+  }
+ ]
+}

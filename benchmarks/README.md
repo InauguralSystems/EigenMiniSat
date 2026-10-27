@@ -1,5 +1,10 @@
 # Benchmarks
 
+The baseline measurement device is the field's standard one: SAT Competition
+instances scored by solved count and PAR-2 against Kissat, CaDiCaL and MiniSat,
+counting only answers with a verified certificate.
+See [SAT Competition baseline](#sat-competition-baseline-131).
+
 For five-sample **external process wall-time** comparisons of prebuilt EMS AOT
 and native MiniSat, including an optional interleaved AOT candidate, use
 [`compare_native.py`](NATIVE_TIMING.md). It first runs the existing correctness
@@ -86,6 +91,296 @@ rows. Negative overhead marks a native-builder win over repeated concat, and
 the summary reports that as `text_builder_native_win=1`. This keeps
 string-assembly pressure visible after the main generated-DIMACS path moves to
 EigenScript's root-backed builder API.
+
+## SAT Competition baseline (#131)
+
+The field's standard device: SAT Competition instances, the competition's metric
+(instances solved within a time limit, and PAR-2, which charges an unsolved
+instance twice the limit) and its reference solvers. The Tseitin ladder is the
+specialized device; this run re-measures it under the same metric, in the same
+job, so the two devices can be compared.
+
+```bash
+# The full measurement runs in GitHub Actions: workflow "Competition baseline",
+# run it with workflow_dispatch. Locally, with the five tools built:
+python3 benchmarks/competition_run.py --output /tmp/competition \
+  --kissat /path/kissat --cadical /path/cadical --minisat /usr/bin/minisat \
+  --eigenscript /path/EigenScript/src/eigenscript --drat-trim /path/drat-trim
+# The smoke a pull request runs (positive controls plus the 3x3 rung):
+python3 benchmarks/competition_run.py --output /tmp/competition-smoke \
+  --smoke --limit 10 ...   # same tool options
+# The sample, offline, then the frame against the archived GBD databases:
+python3 benchmarks/competition_select.py --check
+python3 benchmarks/competition_select.py --check-frame
+```
+
+**Pre-registration.**
+- What is measured: per arm, the solved count and PAR-2 at 60 s, over the 24
+  sampled instances and, separately, over the 7 ladder rungs.
+- Arms: Kissat, Kissat again (A/A), CaDiCaL, MiniSat 2.2, EigenMiniSat on the
+  VM. The scores are judged as follows:
+  - The verified score is the competition's own: only verified certificates
+    count.
+  - MiniSat writes no proofs, so its UNSAT answers count only in the
+    cross-checked score (`+agrees`), and its verified score holds only its SAT
+    answers. Every comparison with MiniSat therefore uses the cross-checked
+    score for both arms, never one score against the other. This includes the
+    ladder, where every MiniSat answer is UNSAT.
+  - Comparisons among Kissat, CaDiCaL and EMS use the verified score.
+- Noise: the Kissat A/A pair fixes the resolution (see "Reading the table").
+- Decision: none. This run is the baseline that later changes are measured
+  against.
+
+**Sample.** The sampling frame is frozen in `competition_frame.json`: each
+stratum's eligible pool, as `[GBD hash, GBD result, GBD bytes]` per family, with
+its exclusion counts. `competition_select.py --refresh` built it once from GBD's
+own `meta` and `base` databases. The frame records their SHA-256,
+Last-Modified date, retrieval time, and a durable archive URL (a release asset
+of this repository, named by SHA-256).
+
+The sample in `competition_manifest.json` is the seeded draw from that frame.
+- `--check` re-derives it offline. The workflow runs it before anything else.
+- The runner refuses a manifest that differs from the re-derived draw, so a
+  swapped hash or a relabelled result stops the run.
+- `--check-frame` (also run by the workflow) rebuilds the frame from the
+  archived databases, checks them against the recorded hashes, and compares.
+  This catches what `--check` cannot: a family dropped from the frame and
+  moved into the outside count.
+
+The population is every GBD instance labelled `main_YYYY` for 2017 on (the SAT
+Competition main tracks, and SAT Race 2019's; one combined main-track set per
+year), plus, for the random 3-SAT stratum, the competition's random tracks,
+because main tracks hold no uniform random 3-SAT. Six strata of four instances
+each, drawn with seed 131, which was fixed before the first draw. Two design
+changes came before the first dispatched measurement, with the same seed
+(`design_history`):
+- Tseitin got its own stratum. The first draw held no `tseitin-formulas`
+  instance, although #131 names that family.
+- Five families whose labels hide their structure are placed by what they
+  encode. This re-drew the tseitin, parity and pigeonhole strata.
+
+| stratum | rule (the structure map first, then the label; first match wins) |
+|---|---|
+| tseitin | label contains `tseitin`; and `genurq` (Tseitin constraints on random regular graphs) |
+| parity | label contains `parity` or `xor`, except `parity-games` and `xor-shifting`; and `lights-out` (a GF(2) linear system) |
+| pigeonhole | label contains `pigeon` or `php`; and `mutilated-chessboard`, `perfect-matching`, `subset-cardinality` (matching and counting principles) |
+| random-3sat | random track, `uniform-random`, every clause has 3 literals, \|clauses/variables − 4.267\| ≤ 0.1 |
+| application | verification, model checking, BMC, equivalence checking, miters, cryptography, planning, scheduling, timetabling |
+| other | every other main-track family |
+
+Within a stratum the draw visits families in a keyed order (SHA-256 of seed,
+stratum and family) and takes one instance from each family before it takes a
+second from any. The frame lists every family under its stratum, with the
+eligible and excluded counts.
+
+Each instance is downloaded at run time from
+`benchmark-database.de/file/<hash>`, and its GBD hash is re-derived from the
+downloaded bytes before any solver sees it. `gbd_hash` was fuzz-tested against
+GBD's own `gbdc` 0.4.3 on 2,500 generated files. Every difference was a file
+that ends without trailing whitespace and contains a skipped comment or header
+line: gbdc's buffer re-alignment then drops the final token. Such a file fails
+the check here; it never passes. The hash also rejects a SATLIB `%` trailer, as
+gbdc does, so GBD instances need no trailer normalizer.
+
+Every arm and drat-trim get the formula without its comment lines, and
+`cnf_preservation` checks that nothing else went. That formula is read-only,
+and its SHA-256 is checked again after every run and every proof check. An arm
+that changes it stops the run.
+
+**Arms.** These run in one harness:
+- Kissat 4.0.4 and CaDiCaL 3.0.1, the latest releases, built from pinned
+  commits;
+- MiniSat 2.2.1, from Ubuntu 24.04's `1:2.2.1-8build1` package; EigenMiniSat
+  follows its design. The workflow installs exactly that version and fails on
+  any other;
+- EigenMiniSat `--cdcl` with its regime C defaults, on the VM built at the
+  EigenScript pin read from `ci.yml`;
+- Kissat a second time, as the A/A arm.
+
+Each instance runs its five arms back to back, so the arms are interleaved and
+never blocked. The instance order and each instance's arm order are SHA-256
+permutations of the seed, written to `order.tsv`. Before any timed run, EMS
+must reproduce the regime-C banks for 3x3 and 4x4 byte for byte. The AOT arm is
+not run yet (#135): the repo's AOT build path (`run_native_oracle.sh`) requires
+EigenScript v0.43.0, not the v0.47.0 pin.
+
+**Positive control.** Before any scored run, in the full run and in the smoke,
+every arm runs on the 3x3 odd torus (`tests/fixtures/tseitin_torus_3x3_odd.cnf`,
+UNSAT by construction), with 10 s per run and per check. Every proof-writing arm
+must return a drat-verified refutation, which also exercises drat-trim, and
+MiniSat must return an UNSAT those refutations confirm. If any arm, or
+drat-trim, fails completely, the run stops here with `FAIL`, `failure.json` and
+`control.csv`, before anything is scored. A broken binary, wrong flags or a
+broken checker therefore never read as an arm's score.
+
+**Metric.** Per arm, per stratum and per family: the solved count and PAR-2
+(total and mean) at 60 s of wall-clock time per run. The time runs from process
+launch to the exit of the launched process (`compare_native.run_process`), as a
+competition runner measures it. Each solver starts in its own session, and any
+process it leaves behind is killed when it exits and noted on its row. A run
+that reaches the limit is killed, with its whole session, and is charged 120 s.
+
+**Answers are checked, and only checked answers are solved.**
+- Every SAT model is checked against the formula. A partial model passes only
+  if it satisfies every clause; a formula with an empty clause has no model.
+- Every UNSAT answer from Kissat, CaDiCaL and EMS is checked by drat-trim. The
+  proof is written during the timed run, as in the competition.
+  - drat-trim verifies only if it exits 0 AND prints `s VERIFIED`, because
+    `drat-trim.c` also exits 0 on its own timeout and on memory exhaustion
+    (#134).
+  - A formula with an empty clause is UNSAT by itself. Its UNSAT answers are
+    verified without a proof (`empty-clause`), because the pinned drat-trim
+    prints `s VERIFIED` with exit 1 there.
+- drat-trim opens its first two arguments as formula and proof, so the files
+  come first and the format flag after them: `-i` (binary) for Kissat and
+  CaDiCaL, `-I` (ASCII) for EMS. With the flag first, drat-trim opens `-I` as
+  the formula. Its formula is comment-free: in binary mode, drat-trim reads a
+  comment after the header as an empty clause.
+- All answers are checked across the arms and against GBD's recorded result.
+  Odd tori are UNSAT by construction.
+
+As in the competition, an answer counts as solved, and its time enters PAR-2,
+only with a completed certificate: a verified model or a verified refutation.
+
+These are WRONG answers: the run exits 1 and the summary lists them.
+- A failed model.
+- A refutation that drat-trim rejects.
+- An answer that contradicts a certified answer, or GBD's recorded result when
+  no arm certified one.
+
+These stop the run:
+- A verified model together with a verified refutation.
+- Certified evidence that contradicts GBD's record.
+- Any arm reporting an answer with a non-answer exit status: Kissat or CaDiCaL
+  outside 10/20, MiniSat outside 10/20 with an answer in its output or result
+  file, EMS with a nonzero exit.
+- A proof-writing arm answering UNSAT without its proof.
+- A changed formula.
+
+An UNSAT answer that is not verified is never solved and is charged twice the
+limit. This covers MiniSat (it writes no proofs) and any drat-trim check that
+hits its cap or fails. A wrong answer that no certificate and no recorded result
+can refute is therefore not detected, but it can never be scored.
+
+**Departures from the competition.**
+- The time limit is 60 s, not 5,000 s. Every run must fit one 6-hour GitHub
+  job (see the arithmetic below).
+- The sample is 24 instances in equal strata, not a full set. Instances over
+  25 MB (GBD `bytes`) are excluded, because downloading, hashing, validating
+  and model-checking them do not fit the budget. The frame records each
+  stratum's exclusions.
+- The hardware is one GitHub-hosted ubuntu-24.04 runner, running one process at
+  a time, with a 12 GiB address-space cap per process (`prlimit --as`).
+- Each arm runs once per instance, as in the competition. The Kissat A/A pair
+  measures the noise floor in place of five replicates.
+- A drat-trim check is capped at 60 s per proof; the competition's proof
+  checking is allowed far longer.
+- A second, cross-checked score also credits an unverified UNSAT that another
+  arm's certificate or GBD's recorded result confirms (`+agrees` in
+  `results.csv`). The competition would not count it, so this score is
+  published beside the verified one, never instead of it. An unverified UNSAT
+  that nothing confirms (`+unchecked`) counts in neither score.
+- MiniSat writes no proof, so its timed runs include no proof logging. Kissat,
+  CaDiCaL and EMS write their DRAT proofs inside the timed window, as the
+  competition requires. Every comparison with MiniSat (P2, P5) carries this
+  asymmetry in MiniSat's favour: its wall times leave out work the other arms
+  pay for.
+
+**Arithmetic.** worst case = instances × (runs × limit + DRAT checks × check
+cap + 30 s overhead) = 31 × (5 × 60 + 4 × 60 + 30) = 17,670 s, for 24 GBD
+instances plus 7 ladder rungs. The positive control before it adds at most
+1 × (5 × 10 + 4 × 10 + 30) = 120 s, so 17,790 s (296.5 min) in all. The builds
+are estimated at 10 minutes, and the job cap is 355 minutes of GitHub's 360.
+The harness recomputes the worst case after the downloads and refuses to start
+if it does not fit what remains of its 19,800 s budget. It never shortens a run
+to make it fit. A test pins these numbers to the code's constants.
+
+**Reading the table.** Every table has a verified and a cross-checked column
+for each arm: the competition sample, each stratum, each family and the ladder.
+Any comparison involving MiniSat reads the cross-checked columns for both arms;
+`summary.md` states this rule at the top.
+
+The A/A pair (Kissat against itself, competition instances only) gives this
+device's resolution in two forms:
+- the sum over instances of |PAR-2 difference|, with its median;
+- the relative wall-time difference, as a median and a maximum. By a stated
+  rule, it uses only pairs in which both runs solved in at least 1 s. A
+  difference between millisecond solves measures process-launch jitter
+  (3.4 ms against 3.6 ms is already 5.5%). The figure over all solved pairs is
+  printed too, labelled as jitter, never as the resolution.
+
+Two arms are not resolved by one run when their PAR-2 totals differ by |D| less
+than that sum, or their wall times by less than that maximum. The signed sum is
+printed only as a diagnostic, since opposite differences cancel in it.
+
+**Outputs.** These go to `$RUNNER_TEMP/competition`, uploaded as the
+`competition-baseline` artifact:
+- `results.csv`: one row per run: verdict, certificate, verified and
+  cross-checked solved flags and PAR-2, wall time;
+- `summary.md` and `summary.json`: per arm, stratum, family and rung, plus A/A
+  and the smoke positive control;
+- `run.json`: seeds, limits, frame and manifest SHA-256, tool paths with SHA-256
+  and versions (`unknown: <why>` when a tool reports none), host, arithmetic;
+- `order.tsv`: the run order;
+- `control.csv`: the positive control's rows (never scored);
+- `work/runs/`: each run's stdout and stderr.
+
+**The pull-request smoke.** The workflow's pull request path filter lists
+exactly the files the harness reads. `test_competition.py` derives that set
+(files opened or handed to a child, local imports, the EigenScript files
+loaded, the files the workflow steps name) and fails if the list differs.
+
+A pull request that touches one of those files runs the smoke, after the same
+positive control. Its instances were picked from the frozen frame because
+MiniSat and EMS solved them well inside the 10 s smoke limit on the development
+host. In CI (run 40568851522) every arm solved them in under 0.11 s. `SMOKE` in
+`competition_run.py` records the measured times. The instances:
+- a SAT scheduling instance;
+- an UNSAT cover instance;
+- the 3x3 rung.
+
+The smoke fails unless:
+- every arm returns a verified model on the SAT instance;
+- every proof-writing arm returns a verified refutation on both UNSAT
+  instances;
+- MiniSat returns an UNSAT that those refutations confirm.
+
+The positive control stops a total failure first. The smoke's own check catches
+an arm that passes the control but misses a smoke instance.
+
+**The tests.** `test_competition.py` drives the harness with stub solvers that
+speak each arm's output contract, and a drat-trim stub that refuses any
+invocation the real one would misread. CI runs it with the other benchmark unit
+tests. Each of its plants turns a named check red:
+- Wrong answers: an invalid model; a model for a formula with an empty clause;
+  a rejected refutation; an unproven UNSAT that contradicts verified models; an
+  UNSAT lie nothing can check.
+- Certificates: drat-trim exiting 0 without `s VERIFIED`, or printing it with
+  exit 1; a refutation the checker cannot finish; a missing proof; two
+  contradicting certificates; certified evidence that contradicts GBD; a
+  trivially UNSAT formula.
+- Exit status: an answer with a non-answer exit, for each of Kissat, EMS and
+  MiniSat; an exit status that disagrees with its report.
+- Input: a commented formula; a formula an arm rewrites; a preparation that
+  changes more than comments, at both preparation sites.
+- Runs and scoring: a checker timeout; the PAR-2 charge for a timeout; a
+  process left behind; a formula changed during a proof check.
+- Positive control: a total failure of each of Kissat, CaDiCaL, MiniSat, EMS
+  and drat-trim stops the run before scoring.
+- Readout: every stratum and family row shows each arm's verified and
+  cross-checked figures, as `summary.json` holds them.
+- A/A: the magnitude in both directions, its cancellation and label-swap cases,
+  competition pairs only, the 1 s rule, and its rendered text.
+- Budget: a budget too small for the sample; a run that would need shortening;
+  the documented arithmetic.
+- Sample: a download whose hash differs; a malformed or relabelled manifest,
+  or one edited outside its instances; the frame's accounting; its design
+  fields against the code's constants; its archived-database check, for a
+  family moved out and for the seed, population and size cap edited together
+  with the manifest; a missing run.
+- Run order and the workflow: regime-C drift; the seeded schedule; the smoke
+  positive control and its failures; the strata rules; the family-spreading
+  draw; the workflow's path list; the MiniSat version pin.
 
 ## Native MiniSat differential oracle
 

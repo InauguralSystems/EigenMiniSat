@@ -2,6 +2,44 @@
 
 ## [Unreleased]
 
+### Benchmarks
+- **The SAT Competition is the baseline measurement device (#131).**
+  `benchmarks/competition_select.py` draws a seeded, stratified sample of
+  competition instances from the Global Benchmark Database (Tseitin, parity,
+  pigeonhole, random 3-SAT near the threshold, application, other; four each)
+  into `competition_manifest.json`. `benchmarks/competition_run.py` downloads
+  each instance by GBD hash, re-derives that hash, and runs Kissat (twice, the
+  A/A noise arm), CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM in a seeded
+  interleaved order, with the Tseitin ladder re-measured in the same run. It
+  scores solved count and PAR-2 at a declared 60 s limit, and, as in the
+  competition, counts an answer as solved only with a verified model or a
+  refutation drat-trim verified. An answer a certificate or GBD's record
+  refutes fails the run. A second, cross-checked score also credits an
+  unverified UNSAT that another arm's certificate or GBD's record confirms
+  (`+agrees`), a declared departure published beside the verified score; an
+  unverified UNSAT nothing confirms counts in neither; MiniSat, which writes no
+  proofs, is compared on the cross-checked score. Any arm reporting an answer
+  with a non-answer exit stops the run, and so does a formula changed by a run
+  (it is read-only and re-hashed after every run). A formula with an empty
+  clause is verified UNSAT by itself. The sampling frame is frozen in
+  `competition_frame.json`, so the draw re-derives offline (`--check`) after GBD
+  updates, and `--check-frame` rebuilds it from the GBD databases archived by
+  SHA-256. Five families are placed by structure, not label (`genurq` to
+  tseitin; `lights-out` to parity; `mutilated-chessboard`, `perfect-matching`
+  and `subset-cardinality` to pigeonhole). The A/A resolution, from competition
+  pairs only, is the sum of |PAR-2 difference| plus the relative wall
+  difference. The A/A relative wall difference counts only pairs whose two runs
+  both took at least 1 s; the all-pairs figure is printed too, labelled as launch
+  jitter. Before anything is scored, every arm must solve the 3x3 odd torus with
+  a completed certificate (the positive control). A total failure of any arm or
+  of drat-trim therefore stops the run instead of reading as that arm's score.
+  Every summary table, per stratum and per family too, shows the verified and
+  the cross-checked figures side by side, and any comparison involving MiniSat
+  reads the cross-checked ones for both arms. MiniSat is pinned to Ubuntu's
+  `1:2.2.1-8build1` package. The "Competition baseline" workflow runs it on
+  workflow_dispatch; a pull request touching what it reads runs a smoke whose
+  instances every arm must solve with a completed certificate.
+
 ### CDCL Solver
 - **The learnt DB is sized against the instance (#86).** `learnt_limit` started
   at a literal `4` and grew `+2` per reduce run, deleting `floor(active / 2)`

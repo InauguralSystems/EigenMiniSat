@@ -1,0 +1,138 @@
+name: Competition baseline
+
+# SAT Competition baseline (#131): solved count and PAR-2 for Kissat (twice, A/A),
+# CaDiCaL, MiniSat 2.2 and EigenMiniSat on the VM, on the committed GBD sample
+# plus the odd Tseitin ladder. benchmarks/README.md has the design and the
+# departures from the competition.
+#
+# workflow_dispatch runs the full measurement. Its worst case is
+#   31 instances x (5 runs x 60 s + 4 DRAT checks x 60 s + 30 s) = 17,670 s
+# plus the positive control every arm must pass before anything is scored,
+#   1 control x (5 runs x 10 s + 4 DRAT checks x 10 s + 30 s) = 120 s, so 17,790 s = 296.5 min
+# plus an estimated 10 min of builds, inside the 355-minute cap below (GitHub's job
+# limit is 360). The harness itself refuses to start if the worst case does not
+# fit what remains of its 19,800 s budget after the downloads.
+#
+# A pull request that touches what the harness reads runs a labelled smoke
+# through the same builds, solvers and positive control: two instances every arm
+# solved (a SAT and an UNSAT instance) and the 3x3 rung, 10 s each. The smoke
+# fails unless every arm solves all three with a completed certificate. The path
+# list is exactly the files the harness reads; test_competition.py derives that
+# set and fails if it differs.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ci.yml
+      - .github/workflows/competition.yml
+      - benchmarks/certificate_validation.py
+      - benchmarks/cnf_preservation.py
+      - benchmarks/compare_native.py
+      - benchmarks/competition_frame.json
+      - benchmarks/competition_manifest.json
+      - benchmarks/competition_run.py
+      - benchmarks/competition_select.py
+      - benchmarks/dump_tseitin_cnf.eigs
+      - benchmarks/normalize_cnf.awk
+      - benchmarks/oracle/regime-c-3x3.stdout
+      - benchmarks/oracle/regime-c-4x4.stdout
+      - benchmarks/oracle/tseitin_torus_4x4_odd.cnf
+      - benchmarks/torus_identity.awk
+      - lib/bench.eigs
+      - lib/dimacs.eigs
+      - lib/solver.eigs
+      - minisat.eigs
+      - tests/fixtures/tseitin_torus_3x3_odd.cnf
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Re-derive the sample from the frozen frame
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/competition_select.py --check
+
+      - name: Rebuild the frozen frame from the archived GBD databases
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 benchmarks/competition_select.py --check-frame
+
+      - name: Build EigenScript at the pin in ci.yml
+        run: |
+          pin=$(grep -oE 'git clone --branch v[0-9]+[.][0-9]+[.][0-9]+ --depth 1 https://github.com/InauguralSystems/EigenScript.git' .github/workflows/ci.yml | awk '{print $4}')
+          if [ "$(printf '%s\n' "$pin" | grep -c .)" != 1 ]; then echo "FAIL: need exactly one EigenScript pin in ci.yml, got '$pin'"; exit 1; fi
+          git clone --branch "$pin" --depth 1 https://github.com/InauguralSystems/EigenScript.git /tmp/eigenscript
+          make -C /tmp/eigenscript build
+          /tmp/eigenscript/src/eigenscript --version
+
+      - name: Install MiniSat 2.2.1 (Ubuntu package, pinned)
+        env:
+          MINISAT_VERSION: 1:2.2.1-8build1
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q "minisat=$MINISAT_VERSION"
+          installed=$(dpkg-query -W -f='${Version}' minisat)
+          if [ "$installed" != "$MINISAT_VERSION" ]; then
+            echo "::error::minisat $installed is installed; the measurement is pinned to $MINISAT_VERSION"
+            exit 1
+          fi
+          echo "minisat $installed (pinned)"
+
+      - name: Build Kissat rel-4.0.4 (latest release)
+        run: |
+          git clone --branch rel-4.0.4 --depth 1 https://github.com/arminbiere/kissat.git /tmp/kissat
+          test "$(git -C /tmp/kissat rev-parse HEAD)" = 8af8e56f174b778aef3aa45af9f739b2a5f492c2
+          cd /tmp/kissat && ./configure && make
+          test "$(/tmp/kissat/build/kissat --version)" = 4.0.4
+
+      - name: Build CaDiCaL rel-3.0.1 (latest release)
+        run: |
+          git clone --branch rel-3.0.1 --depth 1 https://github.com/arminbiere/cadical.git /tmp/cadical
+          test "$(git -C /tmp/cadical rev-parse HEAD)" = c60730422e758ef1cebe7aeddf2dda31c996bf04
+          cd /tmp/cadical && ./configure && make
+          test "$(/tmp/cadical/build/cadical --version)" = 3.0.1
+
+      - name: Build drat-trim (pinned commit)
+        run: |
+          git clone https://github.com/marijnheule/drat-trim.git /tmp/drat-trim
+          git -C /tmp/drat-trim checkout --detach 2e3b2dc0ecf938addbd779d42877b6ed69d9a985
+          cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c
+
+      - name: Run the competition baseline
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SUBSET: ${{ github.event_name == 'pull_request' && '--smoke --limit 10' || '' }}
+        run: |
+          # SUBSET is empty for workflow_dispatch: the full manifest, every rung, 60 s.
+          read -r -a subset <<< "$SUBSET"
+          python3 benchmarks/competition_run.py --output "$RUNNER_TEMP/competition" "${subset[@]}" \
+            --kissat /tmp/kissat/build/kissat --cadical /tmp/cadical/build/cadical \
+            --minisat /usr/bin/minisat --eigenscript /tmp/eigenscript/src/eigenscript \
+            --drat-trim /tmp/drat-trim/drat-trim
+
+      - name: Publish the summary table
+        if: always()
+        run: |
+          out="$RUNNER_TEMP/competition"
+          if [ -f "$out/summary.md" ]; then cat "$out/summary.md"; else echo "No summary: the run did not complete."; cat "$out/failure.json" 2>/dev/null || true; fi >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: competition-baseline
+          path: |
+            ${{ runner.temp }}/competition/
+            !${{ runner.temp }}/competition/work/instances/
+          if-no-files-found: error
