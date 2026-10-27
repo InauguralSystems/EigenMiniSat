@@ -40,7 +40,7 @@ GBDC = [
     (SAT, "4a2a81c6e15de07704f091753d10ba32"),
     (UNSAT, "673c3d2399f86574afca269499120ad5"),
 ]
-STUB = r'''#!/usr/bin/env python3
+STUB = r'''#!/usr/bin/env -S python3 -S
 import subprocess, sys, time
 from pathlib import Path
 role, mode, root, tmp = {role!r}, {mode!r}, {root!r}, {tmp!r}
@@ -72,6 +72,14 @@ if role == "eigenscript" and cnf.name.startswith("tseitin_torus_"):
 if mode == "fork":
     child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     Path(tmp, "forked.pid").write_text(str(child.pid))
+if mode == "unknown":
+    # A quick non-answer: no certificate, no timeout.
+    if role == "minisat":
+        print("conflicts             : 0              (0 /sec)\nCPU time              : 0.001 s\nINDETERMINATE")
+        sys.exit(0)
+    if role == "eigenscript":
+        sys.stderr.write("stub: gave up\n"); sys.exit(1)
+    print("s UNKNOWN"); sys.exit(0)
 sat = cnf.read_bytes().startswith(b"p cnf 2 1")
 if mode == "lie":
     sat = not sat
@@ -146,7 +154,7 @@ class CompetitionTests(unittest.TestCase):
         path.chmod(0o700)
         return path
 
-    def context(self, limit=3, proof_limit=None):
+    def context(self, limit=10, proof_limit=None):
         work = Path(tempfile.mkdtemp(dir=self.root))
         (work / "proofs").mkdir()
         (work / "runs").mkdir()
@@ -154,7 +162,7 @@ class CompetitionTests(unittest.TestCase):
                                environment=dict(os.environ), deadline=time.monotonic() + 120, order=0,
                                limited=lambda command: [str(x) for x in command])
 
-    def run_case(self, name, expected=None, limit=3, proof_limit=None, arms=runner.ARMS):
+    def run_case(self, name, expected=None, limit=10, proof_limit=None, arms=runner.ARMS):
         case = {"id": name, "kind": "competition", "stratum": "s", "family": "f",
                 "expected": expected or name, "cnf": self.cnf[name]}
         ctx = self.context(limit, proof_limit)
@@ -171,14 +179,14 @@ class CompetitionTests(unittest.TestCase):
         for r in [*sat.values(), *unsat.values()]:
             verified = r["certificate"] in runner.VERIFIED
             self.assertEqual((r["solved"], r["solved_crosschecked"]), (int(verified), 1))
-            self.assertEqual(r["par2_s"], r["wall_s"] if verified else 6)
+            self.assertEqual(r["par2_s"], r["wall_s"] if verified else 20)
             self.assertEqual(r["par2_crosschecked_s"], r["wall_s"])
 
     def test_wrong_model_is_a_wrong_answer(self):
         self.tools["kissat"] = self.stub("kissat", "bad-model")
         rows = self.run_case("sat")
         self.assertEqual((rows["kissat"]["verdict"], rows["kissat"]["certificate"]), ("WRONG-SAT", "model-invalid"))
-        self.assertEqual((rows["kissat"]["solved"], rows["kissat"]["solved_crosschecked"], rows["kissat"]["par2_s"]), (0, 0, 6))
+        self.assertEqual((rows["kissat"]["solved"], rows["kissat"]["solved_crosschecked"], rows["kissat"]["par2_s"]), (0, 0, 20))
 
     def test_unproven_unsat_contradicting_verified_models_is_wrong(self):
         self.tools["minisat"] = self.stub("minisat", "lie")
@@ -186,24 +194,24 @@ class CompetitionTests(unittest.TestCase):
 
     def test_an_unsat_lie_nothing_can_check_is_never_solved(self):
         # The critic's first plant: MiniSat claims UNSAT on a satisfiable formula,
-        # GBD records "unknown" and every other arm times out.
+        # GBD records "unknown" and no other arm answers.
         for role in ("kissat", "cadical", "eigenscript"):
-            self.tools[role] = self.stub(role, "slow")
+            self.tools[role] = self.stub(role, "unknown")
         self.tools["minisat"] = self.stub("minisat", "lie")
-        row = self.run_case("sat", expected="unknown", limit=1)["minisat"]
+        row = self.run_case("sat", expected="unknown")["minisat"]
         self.assertEqual((row["verdict"], row["certificate"]), ("UNSAT", "no-proof+unchecked"))
-        self.assertEqual((row["solved"], row["solved_crosschecked"], row["par2_s"], row["par2_crosschecked_s"]), (0, 0, 2, 2))
+        self.assertEqual((row["solved"], row["solved_crosschecked"], row["par2_s"], row["par2_crosschecked_s"]), (0, 0, 20, 20))
 
     def test_a_refutation_the_checker_cannot_finish_is_never_solved(self):
         # The critic's second plant: Kissat claims UNSAT on a satisfiable formula and
         # drat-trim reaches its cap.
         for role in ("cadical", "minisat", "eigenscript"):
-            self.tools[role] = self.stub(role, "slow")
+            self.tools[role] = self.stub(role, "unknown")
         self.tools["kissat"] = self.stub("kissat", "lie")
         self.tools["drat-trim"] = self.stub("drat-trim", "slow")
-        row = self.run_case("sat", expected="unknown", limit=1, arms=("kissat", "cadical", "minisat", "ems"))["kissat"]
+        row = self.run_case("sat", expected="unknown", proof_limit=1, arms=("kissat", "cadical", "minisat", "ems"))["kissat"]
         self.assertEqual((row["verdict"], row["certificate"], row["solved"], row["solved_crosschecked"], row["par2_s"]),
-                         ("UNSAT", "drat-timeout+unchecked", 0, 0, 2))
+                         ("UNSAT", "drat-timeout+unchecked", 0, 0, 20))
 
     def test_a_misparsed_refutation_is_not_verified(self):
         # drat-trim reading a comment as an empty clause prints "s VERIFIED" and exits 1.
@@ -220,7 +228,7 @@ class CompetitionTests(unittest.TestCase):
 
     def test_checker_timeout_is_unverified_not_wrong(self):
         self.tools["drat-trim"] = self.stub("drat-trim", "slow")
-        rows = self.run_case("unsat", limit=1)
+        rows = self.run_case("unsat", proof_limit=1)
         self.assertEqual({rows[arm]["certificate"] for arm in runner.PROOF_ARMS}, {"drat-timeout+agrees"})
         self.assertEqual({(rows[arm]["solved"], rows[arm]["solved_crosschecked"]) for arm in runner.ARMS}, {(0, 1)})
 
@@ -264,7 +272,7 @@ class CompetitionTests(unittest.TestCase):
 
     def test_timeout_is_unsolved_and_charged_twice_the_limit(self):
         self.tools["kissat"] = self.stub("kissat", "slow")
-        row = self.run_case("sat", limit=1)["kissat"]
+        row = self.run_case("sat", limit=1, arms=("kissat",))["kissat"]
         self.assertEqual((row["verdict"], row["solved"], row["timed_out"], row["par2_s"]), ("TIMEOUT", 0, 1, 2))
 
     def test_processes_left_behind_are_killed_and_reported(self):
@@ -299,20 +307,36 @@ class CompetitionTests(unittest.TestCase):
                 certificates.check_assignment(records, literals, complete=False)
 
     def test_summary_counts_and_par2_totals(self):
-        self.tools["kissat"] = self.stub("kissat", "slow")
-        self.tools["cadical"] = self.stub("cadical", "bad-model")
-        rows = [*self.run_case("sat", limit=1).values(), *self.run_case("unsat", limit=1).values()]
-        summary = runner.summarize(rows, runner.ARMS, [{"id": "sat"}, {"id": "unsat"}], 1)
-        block = summary["competition"]
-        wall = {arm: {r["instance"]: r["wall_s"] for r in rows if r["arm"] == arm} for arm in runner.ARMS}
-        self.assertEqual((block["kissat"]["timeouts"], block["kissat"]["solved"], block["kissat"]["par2_total_s"]), (2, 0, 4))
-        self.assertEqual((block["cadical"]["solved"], block["cadical"]["unsat"], block["cadical"]["par2_total_s"]),
-                         (1, 1, round(2 + wall["cadical"]["unsat"], 3)))
-        self.assertEqual([r["arm"] for r in summary["wrong"]], ["cadical"])
-        self.assertEqual((block["minisat"]["solved"], block["minisat"]["unsat_agrees"], block["minisat"]["solved_crosschecked"],
-                          block["minisat"]["par2_total_s"], block["minisat"]["par2_crosschecked_total_s"]),
-                         (1, 1, 2, round(wall["minisat"]["sat"] + 2, 3), round(wall["minisat"]["sat"] + wall["minisat"]["unsat"], 3)))
-        self.assertEqual((block["ems"]["solved"], block["ems"]["unsat_unchecked"], block["ems"]["unsat_agrees"]), (2, 0, 0))
+        # Rows as row() writes them (limit 10): every certificate class, exact sums.
+        spec = {  # arm: [(instance, verdict, certificate, wall)]
+            "kissat": [("a", "TIMEOUT", "", 10.5), ("b", "UNSAT", "drat-verified", 1.0), ("c", "UNKNOWN", "", 0.1)],
+            "kissat-aa": [("a", "SAT", "model-verified", 2.0), ("b", "UNSAT", "drat-timeout+agrees", 1.5),
+                          ("c", "UNKNOWN", "", 0.1)],
+            "cadical": [("a", "WRONG-SAT", "model-invalid", 0.5), ("b", "UNSAT", "drat-verified", 0.7),
+                        ("c", "UNKNOWN", "", 0.1)],
+            "minisat": [("a", "SAT", "model-verified", 0.3), ("b", "UNSAT", "no-proof+agrees", 0.4),
+                        ("c", "UNSAT", "no-proof+unchecked", 0.2)],
+            "ems": [("a", "ERROR", "", 0.2), ("b", "UNSAT", "drat-verified", 3.0), ("c", "TIMEOUT", "", 10.4)],
+        }
+        rows = []
+        for arm, runs in spec.items():
+            for instance, verdict, certificate, wall in runs:
+                solved = certificate in runner.VERIFIED and not verdict.startswith("WRONG")
+                crosschecked = solved or certificate.endswith("+agrees")
+                rows.append({"instance": instance, "kind": "competition", "stratum": "s", "family": "f", "arm": arm,
+                             "verdict": verdict, "certificate": certificate, "solved": int(solved), "wall_s": wall,
+                             "par2_s": wall if solved else 20, "solved_crosschecked": int(crosschecked),
+                             "par2_crosschecked_s": wall if crosschecked else 20})
+        summary = runner.summarize(rows, runner.ARMS, [{"id": "a"}, {"id": "b"}, {"id": "c"}], 10)
+        got = {arm: tuple(v[k] for k in ("solved", "sat", "unsat", "par2_total_s", "unsat_agrees", "solved_crosschecked",
+                                         "par2_crosschecked_total_s", "unsat_unchecked", "timeouts", "unknown_or_error"))
+               for arm, v in summary["competition"].items()}
+        self.assertEqual(got, {"kissat": (1, 0, 1, 41.0, 0, 1, 41.0, 0, 1, 1),
+                               "kissat-aa": (1, 1, 0, 42.0, 1, 2, 23.5, 0, 0, 1),
+                               "cadical": (1, 0, 1, 40.7, 0, 1, 40.7, 0, 0, 1),
+                               "minisat": (1, 1, 0, 40.3, 1, 2, 20.7, 1, 0, 0),
+                               "ems": (1, 0, 1, 43.0, 0, 1, 43.0, 0, 1, 1)})
+        self.assertEqual([(r["instance"], r["arm"]) for r in summary["wrong"]], [("a", "cadical")])
 
     def test_aa_resolution_is_a_magnitude(self):
         cases = {
@@ -362,7 +386,7 @@ class CompetitionTests(unittest.TestCase):
         manifest, frame, cache = self.manifest(rows)
         output = self.root / f"out{len(list(self.root.glob('out*')))}"
         argv = ["--output", str(output), "--manifest", str(manifest), "--frame", str(frame), "--cache", str(cache),
-                "--ladder", "", "--limit", "3", "--budget-seconds", "600", *extra]
+                "--ladder", "", "--limit", "10", "--budget-seconds", "900", *extra]
         for tool, path in self.tools.items():
             argv += ["--" + tool, str(path)]
         return runner.main(argv), output
