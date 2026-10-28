@@ -43,6 +43,7 @@ on:
       - lib/bench.eigs
       - lib/dimacs.eigs
       - lib/solver.eigs
+      - lib/xor.eigs
       - minisat.eigs
       - tests/fixtures/tseitin_torus_3x3_odd.cnf
 
