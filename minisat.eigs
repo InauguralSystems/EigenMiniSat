@@ -6,10 +6,11 @@ load_file of "lib/int_vector.eigs"
 load_file of "lib/dimacs.eigs"
 load_file of "lib/solver.eigs"
 load_file of "lib/bench.eigs"
+load_file of "lib/xor.eigs"
 
 define parse_args() as:
     argv is args of null
-    local cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": "", "show_model": 0, "compact_policy": "", "restart_policy": "", "phase_policy": ""}
+    local cfg is {"mode": "solve", "path": "", "size": 1, "solver": "scan", "corpus_manifest": "", "proof": "", "show_model": 0, "gf2": 0, "compact_policy": "", "restart_policy": "", "phase_policy": ""}
     i is 0
     loop while i < (len of argv):
         arg is argv[i]
@@ -47,6 +48,8 @@ define parse_args() as:
                 cfg.proof is argv[i]
         elif arg == "--model":
             cfg.show_model is 1
+        elif arg == "--gf2":
+            cfg.gf2 is 1
         elif arg == "--compact-policy":
             if i + 1 < (len of argv):
                 i += 1
@@ -101,6 +104,7 @@ define print_help() as:
     print of "  eigenscript minisat.eigs --proof-bench --size N"
     print of "  eigenscript minisat.eigs --cdcl --proof out.drat <file.cnf>"
     print of "  eigenscript minisat.eigs --cdcl --model <file.cnf>"
+    print of "  eigenscript minisat.eigs --gf2 [--watched|--persistent|--cdcl] <file.cnf>"
     print of "  eigenscript minisat.eigs --cdcl [--compact-policy eager|deferred|lazy]"
     print of "                                 [--restart-policy geometric|luby]"
     print of "                                 [--phase-policy saved|positive|negative|saved_negative] <file.cnf>"
@@ -144,6 +148,12 @@ elif cfg.path == "":
 else:
     parsed is parse_dimacs_file of cfg.path
     assert_dimacs_ok of parsed
+    # Part 1 only recognizes and reports parity structure.  The switch is off
+    # by default and deliberately does not alter solving until the separately
+    # registered Gauss--Jordan arm is implemented.
+    if cfg.gf2 != 0:
+        xor_census is detect_xors of parsed.clauses
+        print of f"c gf2=on xor_cap={xor_census.cap} xors={xor_census.xor_count} xor_clauses={xor_census.covered_clauses} clauses={xor_census.total_clauses} xor_coverage={xor_census.coverage}"
     t0 is monotonic_ns of null
     # Dispatch once. This used to run the scan solver unconditionally and then
     # overwrite its result with the selected solver's, so every --watched /

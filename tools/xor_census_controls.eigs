@@ -1,0 +1,17 @@
+load_file of "lib/int_vector.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+load_file of "lib/xor.eigs"
+
+define print_control(name, clauses) as:
+    census is detect_xors of clauses
+    print of f"| {name} | {census.xor_count} | {census.covered_clauses}/{census.total_clauses} | {census.coverage} |"
+    return null
+
+tseitin_odd is tseitin_torus_case of [3, 3, 1]
+tseitin_even is tseitin_torus_case of [3, 3, 0]
+random_control is gen_random_3sat of [30, 128, 133]
+
+print_control of ["control-tseitin-torus-3x3-odd", tseitin_odd.clauses]
+print_control of ["control-tseitin-torus-3x3-even", tseitin_even.clauses]
+print_control of ["control-random-3sat-n30-seed133", random_control.clauses]

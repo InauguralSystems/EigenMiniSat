@@ -33,6 +33,7 @@ checker is reported as `SKIP: drat-trim not installed` with exit status 3.
 ../EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
 ../EigenScript/src/eigenscript minisat.eigs --persistent tests/fixtures/simple_sat.cnf
 ../EigenScript/src/eigenscript minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
+../EigenScript/src/eigenscript minisat.eigs --gf2 tests/corpus/xor_ladder_sat.cnf
 ../EigenScript/src/eigenscript minisat.eigs --bench --size 1
 ../EigenScript/src/eigenscript minisat.eigs --restart-bench --size 1
 ../EigenScript/src/eigenscript minisat.eigs --phase-bench --size 1
@@ -62,6 +63,12 @@ variable count, clause count, decisions, propagations, and conflicts. The CDCL
 line also reports learnt clauses, backjumps, conflict-resolution steps, variable
 activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
+The experimental GF(2) arm is off by default. `--gf2` enables CMS09-style
+recognition of complete XOR clause sets through arity 8 and prints the number
+of XORs and their clause coverage; part 1 only detects them and intentionally
+does not yet perform Gauss--Jordan elimination. `tools/xor_census.sh` reports
+the manifest-derived corpus population and the registered positive and
+negative controls.
 Clause-store counters show store-to-list copies, store-native conflict-analysis
 scans, any remaining analysis list rebuilds, and direct compaction copies.
 Compaction counters show when deleted learnt clauses are deferred or physically
