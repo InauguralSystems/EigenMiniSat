@@ -118,6 +118,10 @@ The default corpus covers comments, multiline clauses, multi-clause lines,
 graph coloring, pigeonhole, wide clauses, and parity/XOR SAT/UNSAT instances.
 It also includes a small vendored structural corpus under
 `tests/corpus/vendor/` with provenance notes for larger self-contained pressure.
+`tests/check_corpus_diversity.py` normalizes every manifest formula and rejects
+identical clause sets assigned to different families.  The two odd-wheel
+coloring fixtures are regenerated with
+`python3 tests/generate_graph_coloring_corpus.py`.
 For each case it compares split/trim parsing, character scanning,
 integer-aware token spans, and the C-backed `scan_ints` path before solving
 with CDCL.

@@ -1,0 +1,1 @@
+- The manifest corpus now rejects cross-family duplicate formulas and uses non-complete odd-wheel graph-coloring fixtures. (#64).

@@ -49,9 +49,9 @@ tests/fixtures/unit_unsat.cnf
 tests/corpus/multi_clause_line_unsat.cnf
 tests/corpus/xor_contradiction_unsat.cnf
 tests/corpus/pigeonhole_4_3.cnf
-tests/corpus/k4_3color_unsat.cnf
+tests/corpus/odd_wheel_6_3color_unsat.cnf
 tests/corpus/vendor/satlib_style_pigeonhole_5_4.cnf
-tests/corpus/vendor/satlib_style_k5_4color.cnf
+tests/corpus/vendor/satlib_style_odd_wheel_8_3color.cnf
 tests/fixtures/tseitin_torus_3x3_odd.cnf
 "
 

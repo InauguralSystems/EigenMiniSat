@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EIGS="${EIGENSCRIPT_BIN:-$(command -v eigenscript || echo ../EigenScript/src/eigenscript)}"
 
 cd "$ROOT"
+python3 tests/check_corpus_diversity.py --selftest
 "$EIGS" tests/test_solver.eigs
 "$EIGS" tests/test_active_learnts.eigs
 "$EIGS" tests/test_tseitin_invariant.eigs
