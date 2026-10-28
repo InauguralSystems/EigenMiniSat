@@ -1,0 +1,1 @@
+- Synthetic benchmark self-tests no longer let loaded-host interpreter startup mask planted diagnostics as process timeouts (#137).

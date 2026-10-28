@@ -16,12 +16,15 @@ import compare_native as runner
 import certificate_validation as certificate
 
 
+SYNTHETIC_PROCESS_TIMEOUT = 30
+SYNTHETIC_SUITE_BUDGET = 300
 STUB = '''#!/usr/bin/env python3
 from pathlib import Path
 import sys, time
 arm, mode = {arm!r}, {mode!r}
 if mode == "timeout":
-    time.sleep(2)
+    while True:
+        time.sleep(3600)
 if arm == "checker":
     if mode == "exit0-timeout":
         print("s TIMEOUT")
@@ -88,7 +91,8 @@ class CertificateTests(unittest.TestCase):
         self.case = {"name": "synthetic", "cnf": self.cnf, "sha256": runner.sha256(self.cnf),
                      "verdict": "UNSATISFIABLE", "validation": "certificate", "extra_rung": True}
         self.commands = {arm: self.stub(arm) for arm in ("aot", "native")}
-        self.args = SimpleNamespace(drat_trim=self.stub("checker"), timeout=1, pilot_only=False, extra_rung=[])
+        self.args = SimpleNamespace(drat_trim=self.stub("checker"), timeout=SYNTHETIC_PROCESS_TIMEOUT,
+                                    pilot_only=False, extra_rung=[])
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -101,19 +105,23 @@ class CertificateTests(unittest.TestCase):
 
     def certify(self):
         certificate.certify_case(runner, self.args, self.output, dict(os.environ),
-                                 time.monotonic() + 5, self.case, self.commands)
+                                 time.monotonic() + SYNTHETIC_SUITE_BUDGET, self.case, self.commands)
 
     def rejected(self, arm, mode, message):
         if arm == "checker":
             self.args.drat_trim = self.stub(arm, mode)
         else:
             self.commands[arm] = self.stub(arm, mode)
-        with self.assertRaisesRegex((runner.Failure, ValueError), message):
+        with self.assertRaises((runner.Failure, ValueError)) as raised:
             self.certify()
+        if "process timeout/interruption" in str(raised.exception) and "process timeout" not in message:
+            self.fail(f"infrastructure failure: synthetic child exceeded {self.args.timeout}s cap while testing {mode}")
+        self.assertRegex(str(raised.exception), message)
 
     def test_valid_unsat_and_proof_off_five_samples(self):
         self.certify()
-        rows = runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 10)
+        rows = runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                              SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
         self.assertEqual(rows[0]["validation"], "certificate")
         samples = [json.loads(x) for x in (self.output / "samples.jsonl").read_text().splitlines()]
         self.assertEqual(len(samples), 10)
@@ -196,7 +204,8 @@ class CertificateTests(unittest.TestCase):
         self.certify()
         del self.case["certificate_evidence"]
         with self.assertRaisesRegex(runner.Failure, "missing certificate evidence"):
-            runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 5)
+            runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                           SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
 
     def test_certificate_counter_change_fails_vm_anchor(self):
         self.case["reference"] = b"s UNSATISFIABLE\nc vars=1 clauses=2 conflicts=2 decisions=1\n"
@@ -206,13 +215,15 @@ class CertificateTests(unittest.TestCase):
         self.commands["aot"] = self.stub("aot", "wrong-count")
         self.certify()
         with self.assertRaisesRegex(runner.Failure, "AOT output differs from certificate reference"):
-            runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 5)
+            runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                           SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
 
     def test_unexpected_proof_off_output_is_not_filtered(self):
         self.commands["aot"] = self.stub("aot", "extra-output")
         self.certify()
         with self.assertRaisesRegex(runner.Failure, "AOT output differs from certificate reference"):
-            runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 5)
+            runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                           SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
 
     def sat(self):
         self.cnf.write_text("p cnf 1 1\n1 0\n")
@@ -221,7 +232,8 @@ class CertificateTests(unittest.TestCase):
     def test_valid_sat_and_native_model_checks(self):
         self.sat()
         self.certify()
-        rows = runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 10)
+        rows = runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                              SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
         self.assertEqual(rows[0]["n"], 5)
         self.assertNotIn(b"v ", self.case["reference"])
 
@@ -250,7 +262,8 @@ class CertificateTests(unittest.TestCase):
         self.assertTrue((self.output / "certificates/synthetic/candidate-checker/process.json").is_file())
         self.case["certificate_evidence"]["arms"].remove("candidate")
         with self.assertRaisesRegex(runner.Failure, "timed arm lacks a certificate"):
-            runner.measure([self.case], self.commands, self.output, dict(os.environ), 1, time.monotonic() + 5, "synthetic")
+            runner.measure([self.case], self.commands, self.output, dict(os.environ),
+                           SYNTHETIC_PROCESS_TIMEOUT, time.monotonic() + SYNTHETIC_SUITE_BUDGET, "synthetic")
 
     def test_missing_vm_anchor_is_rejected(self):
         with self.assertRaisesRegex(runner.Failure, "requires both VM regime anchors"):
