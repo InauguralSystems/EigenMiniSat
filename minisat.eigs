@@ -148,20 +148,35 @@ elif cfg.path == "":
 else:
     parsed is parse_dimacs_file of cfg.path
     assert_dimacs_ok of parsed
-    # Part 1 only recognizes and reports parity structure.  The switch is off
-    # by default and deliberately does not alter solving until the separately
-    # registered Gauss--Jordan arm is implemented.
+    t0 is monotonic_ns of null
+    solving_clauses is parsed.clauses
+    elimination_unsat is 0
+    gf2_rank is 0
+    gf2_xors is 0
     if cfg.gf2 != 0:
         xor_census is detect_xors of parsed.clauses
-        print of f"c gf2=on xor_cap={xor_census.cap} xors={xor_census.xor_count} xor_clauses={xor_census.covered_clauses} clauses={xor_census.total_clauses} xor_coverage={xor_census.coverage}"
-    t0 is monotonic_ns of null
+        gf2_xors is xor_census.xor_count
+        reduction is gf2_reduce_xors of xor_census.xors
+        gf2_rank is reduction.rank
+        elimination_unsat is reduction.inconsistent
+        if elimination_unsat == 0:
+            # Preserve the parsed/original clauses for model verification and
+            # append consequences to a private top-level list.
+            solving_clauses is []
+            for original_clause in parsed.clauses:
+                append of [solving_clauses, original_clause]
+            for derived_clause in reduction.derived_clauses:
+                append of [solving_clauses, derived_clause]
+        print of f"c gf2=on xor_cap={xor_census.cap} xors={xor_census.xor_count} rank={reduction.rank} units={reduction.units} equivalences={reduction.equivalences} xor_clauses={xor_census.covered_clauses} clauses={xor_census.total_clauses} xor_coverage={xor_census.coverage}"
     # Dispatch once. This used to run the scan solver unconditionally and then
     # overwrite its result with the selected solver's, so every --watched /
     # --persistent / --cdcl run paid for a full DPLL solve it discarded.
-    if cfg.solver == "watched":
-        result is solve_cnf_watched of [parsed.nvars, parsed.clauses]
+    if elimination_unsat != 0:
+        result is {"status": "UNSAT", "decisions": 0, "propagations": 0, "conflicts": 0}
+    elif cfg.solver == "watched":
+        result is solve_cnf_watched of [parsed.nvars, solving_clauses]
     elif cfg.solver == "persistent":
-        result is solve_cnf_persistent of [parsed.nvars, parsed.clauses]
+        result is solve_cnf_persistent of [parsed.nvars, solving_clauses]
     elif cfg.solver == "cdcl":
         # Build options from the CLI so the reduction/compaction/restart
         # machinery is reachable without writing bench code. Before this, the
@@ -176,13 +191,15 @@ else:
             cdcl_opts.restart_policy is cfg.restart_policy
         if cfg.phase_policy != "":
             cdcl_opts.phase_policy is cfg.phase_policy
-        result is solve_cnf_cdcl_with_options of [parsed.nvars, parsed.clauses, cdcl_opts]
+        result is solve_cnf_cdcl_with_options of [parsed.nvars, solving_clauses, cdcl_opts]
     else:
-        result is solve_cnf of [parsed.nvars, parsed.clauses]
+        result is solve_cnf of [parsed.nvars, solving_clauses]
     t1 is monotonic_ns of null
     ms is (t1 - t0) / 1000000
 
     if result.status == "SAT":
+        if cfg.gf2 != 0:
+            assert of [model_satisfies of [parsed.nvars, parsed.clauses, result.model], "GF(2) SAT model does not satisfy original CNF"]
         print of "s SATISFIABLE"
         # DIMACS v-lines. Without these a SAT answer is not externally
         # checkable -- the mirror of the gap --proof closes for UNSAT. Gated on
@@ -197,8 +214,13 @@ else:
             print of (model_line + " 0")
     else:
         print of "s UNSATISFIABLE"
+    if cfg.gf2 != 0:
+        certificate is "certified"
+        if elimination_unsat != 0:
+            certificate is "uncertified"
+        print of f"c gf2_result xors={gf2_xors} rank={gf2_rank} verdict={result.status} certificate={certificate} wall_ms={ms}"
     counters is f"c vars={parsed.nvars} clauses={len of parsed.clauses} decisions={result.decisions} propagations={result.propagations} conflicts={result.conflicts}"
-    if cfg.solver == "cdcl":
+    if cfg.solver == "cdcl" and elimination_unsat == 0:
         # An f-string past ~62 interpolations exceeds the compiler's
         # 128-level expression-depth limit: the lexer desugars one into a `+`
         # chain, about two levels per interpolation. This line was already at
@@ -214,6 +236,8 @@ else:
     if cfg.proof != "":
         if cfg.solver != "cdcl":
             print of "c --proof needs --cdcl (only the CDCL path records a refutation); no proof written"
+        elif elimination_unsat != 0:
+            print of "c UNCERTIFIED: GF(2) elimination found 0 = 1; no DRAT proof written"
         elif result.status != "UNSAT":
             print of "c satisfiable: no refutation to write (check the model instead)"
         else:

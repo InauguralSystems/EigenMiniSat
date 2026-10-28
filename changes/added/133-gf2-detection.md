@@ -1,1 +1,1 @@
-- Add an opt-in `--gf2` switch that detects complete CNF encodings of XOR constraints and reports their clause coverage (#133).
+- Add an opt-in `--gf2` switch that detects complete CNF XOR encodings, reduces them over GF(2), and feeds implied units and equivalences to the solver (#133).
