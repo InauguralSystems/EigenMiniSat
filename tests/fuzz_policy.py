@@ -16,6 +16,8 @@ reason-pointer remapping path.
 import random, subprocess, sys, os, tempfile
 
 ROOT = os.environ.get("EIGENMINISAT_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "benchmarks"))
+import drat_verdict
 EIGS = os.environ.get("EIGENSCRIPT_BIN") or os.path.join(ROOT, "..", "EigenScript", "src", "eigenscript")
 DTRIM = os.environ.get("DRAT_TRIM") or "drat-trim"
 
@@ -125,8 +127,9 @@ def main():
                 if st2 != "UNSAT" or not os.path.exists(proof):
                     fails.append((i, f"{name} proof run mismatch", cnf)); continue
                 r = subprocess.run([DTRIM, cnf, proof], capture_output=True, text=True, timeout=600)
-                if r.returncode != 0:
-                    fails.append((i, f"{name} DRAT REJECTED (exit {r.returncode})", cnf))
+                verified, reason = drat_verdict.classify(r.returncode, (r.stdout + r.stderr).encode())
+                if not verified:
+                    fails.append((i, f"{name} DRAT NOT VERIFIED ({reason}, exit {r.returncode})", cnf))
                 else:
                     nver += 1
         u = set(verdicts.values())

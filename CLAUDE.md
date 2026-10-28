@@ -54,6 +54,7 @@ $EIGS minisat.eigs --cdcl                tests/fixtures/simple_sat.cnf  # CDCL
 ./tests/run_smoke.sh
 
 # External oracle for UNSAT: emit DRAT refutations and have drat-trim check them
+# Prerequisite: drat-trim on PATH, or set DRAT_TRIM. Missing tool exits 3.
 DRAT_TRIM=/path/to/drat-trim ./tests/run_proof_check.sh
 
 # Trend logs into benchmarks/runs/ (ignored)
@@ -121,11 +122,11 @@ own CI step.
   the restart policy is not only a perf knob — CDCL *with* restarts
   p-simulates general resolution while without them it is weaker. Changing
   restart behavior changes which proof system is being measured.
-- **Never gate a DRAT check on grepping `s VERIFIED`.** drat-trim prefixes
-  that line with a carriage return, so `grep "^s VERIFIED"` never matches
-  and the check passes unconditionally. Gate on the exit code (0 verified,
-  1 not verified), and keep the planted-fault case in
-  `run_proof_check.sh` — it is what proves the checker is gating at all.
+- **A DRAT check requires exit 0 AND exactly one `s VERIFIED` verdict.** Parse
+  status lines after splitting on both carriage returns and newlines; do not
+  use a line-anchored grep because drat-trim prefixes the verdict with a CR.
+  `s TIMEOUT`, any `MEMOUT`, `s NOT VERIFIED`, or a missing/ambiguous verdict
+  is not verification. Keep the planted-fault cases in `run_proof_check.sh`.
 - **`xor_triangle_case` is the easy XOR regime**, not a hardness probe: it is
   SAT and closes with zero conflicts. The hard parity family is
   `tseitin_torus_case` (odd charge). Keep both — the matched odd/even pair at

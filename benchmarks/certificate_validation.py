@@ -10,6 +10,7 @@ import re
 import shutil
 
 import cnf_preservation
+import drat_verdict
 
 
 def check_model(cnf, data, native=False):
@@ -156,10 +157,11 @@ def certify_case(api, args, output, environment, deadline, case, commands):
             api.require(proof.is_file() and proof.stat().st_size > 0, "UNSAT certificate proof missing or empty")
             proof_hash = api.sha256(proof)
             files[str(proof)] = proof_hash
-            # drat-trim's EXIT STATUS is the oracle. Its CR-prefixed VERIFIED
-            # text is retained but never grepped as a correctness gate.
-            checked_process(api, [args.drat_trim, cnf, proof], directory / (arm + "-checker"),
-                            args, environment, deadline)
+            checker_dir = directory / (arm + "-checker")
+            record = api.run_process([str(args.drat_trim), str(cnf), str(proof)], checker_dir,
+                                     api.remaining(deadline, args.timeout), environment)
+            verified, reason = drat_verdict.classify(record["returncode"], (checker_dir / "stdout").read_bytes())
+            api.require(verified, f"drat-trim did not verify: {reason} (rc={record['returncode']})")
             api.require(api.sha256(proof) == proof_hash, "proof changed during verification")
         else:
             api.require(not proof.exists(), "SAT run unexpectedly wrote a refutation")

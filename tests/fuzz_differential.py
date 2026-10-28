@@ -16,6 +16,8 @@ unused variables, repeated clauses.
 import random, subprocess, sys, os, tempfile
 
 ROOT = os.environ.get("EIGENMINISAT_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "benchmarks"))
+import drat_verdict
 EIGS = os.environ.get("EIGENSCRIPT_BIN") or os.path.join(ROOT, "..", "EigenScript", "src", "eigenscript")
 DTRIM = os.environ.get("DRAT_TRIM") or "drat-trim"
 MODES = [([], "scan"), (["--watched"], "watched"), (["--persistent"], "persistent"), (["--cdcl"], "cdcl")]
@@ -177,8 +179,9 @@ def main():
                 fails.append((i, kind, "proof run disagreed or no proof file", cnf, ""))
                 continue
             r = subprocess.run([DTRIM, cnf, proof], capture_output=True, text=True, timeout=300)
-            if r.returncode != 0:
-                fails.append((i, kind, "DRAT REJECTED the refutation", cnf, r.stdout[-400:]))
+            verified, reason = drat_verdict.classify(r.returncode, (r.stdout + r.stderr).encode())
+            if not verified:
+                fails.append((i, kind, f"DRAT NOT VERIFIED ({reason}, exit {r.returncode})", cnf, r.stdout[-400:]))
             else:
                 stats["verified"] += 1
 

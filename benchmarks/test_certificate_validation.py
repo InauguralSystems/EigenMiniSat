@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import time
@@ -22,6 +23,18 @@ arm, mode = {arm!r}, {mode!r}
 if mode == "timeout":
     time.sleep(2)
 if arm == "checker":
+    if mode == "exit0-timeout":
+        print("s TIMEOUT")
+        sys.exit(0)
+    if mode == "exit0-memout":
+        print("c MEMOUT allocating proof")
+        sys.exit(0)
+    if mode == "exit0-missing":
+        print("c no verdict")
+        sys.exit(0)
+    if mode == "not-verified":
+        print("s NOT VERIFIED")
+        sys.exit(1)
     print("\\rs VERIFIED")
     if mode == "rewrite-proof":
         Path(sys.argv[-1]).write_text("changed\\n")
@@ -109,10 +122,20 @@ class CertificateTests(unittest.TestCase):
         self.assertIn("checker.py", " ".join(self.case["certificate_evidence"]["files"]))
 
     def test_checker_exit_beats_forged_verified_text(self):
-        self.rejected("checker", "reject", "certificate command failed rc=1")
+        self.rejected("checker", "reject", "VERIFIED with nonzero exit status 1")
+
+    def test_checker_exit_zero_without_verification_is_rejected_by_named_reason(self):
+        for mode, reason in (("exit0-timeout", "TIMEOUT"), ("exit0-memout", "MEMOUT"),
+                             ("exit0-missing", "missing verdict line")):
+            with self.subTest(mode=mode):
+                shutil.rmtree(self.output / "certificates", ignore_errors=True)
+                self.rejected("checker", mode, reason)
+
+    def test_checker_not_verified_is_rejected_by_named_reason(self):
+        self.rejected("checker", "not-verified", "NOT VERIFIED")
 
     def test_corrupt_proof_is_rejected(self):
-        self.rejected("aot", "bad-proof", "certificate command failed rc=1")
+        self.rejected("aot", "bad-proof", "VERIFIED with nonzero exit status 1")
 
     def test_missing_proof_is_rejected(self):
         self.rejected("aot", "missing-proof", "proof missing or empty")
