@@ -21,6 +21,8 @@ import compare_native as runner
 
 
 EMS = b"s UNSATISFIABLE\nc vars=1 clauses=2 conflicts=2 compact_policy=deferred\n"
+SYNTHETIC_PROCESS_TIMEOUT = 30
+SYNTHETIC_SUITE_BUDGET = 300
 STUB = '''#!/usr/bin/env python3
 import os
 from pathlib import Path
@@ -30,11 +32,13 @@ import time
 mode = {mode!r}
 arm = {arm!r}
 if mode == "timeout":
-    time.sleep(2)
+    while True:
+        time.sleep(3600)
 if mode == "descendant":
-    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(2)"])
+    child = subprocess.Popen([sys.executable, "-c", "import time\\nwhile True: time.sleep(3600)"])
     Path(sys.argv[-1] + ".pid").write_text(str(child.pid))
-    time.sleep(2)
+    while True:
+        time.sleep(3600)
 time.sleep(0.01)
 if arm == "aot":
     output = {ems!r}[:-1] + b" ms=0.000001\\n"
@@ -80,14 +84,17 @@ class ProcessTests(unittest.TestCase):
         path.chmod(0o700)
         return path
 
-    def run_samples(self, timeout=1):
+    def run_samples(self, timeout=SYNTHETIC_PROCESS_TIMEOUT):
         return runner.measure([self.case], self.commands, self.output, dict(os.environ),
-                              timeout, time.monotonic() + 10)
+                              timeout, time.monotonic() + SYNTHETIC_SUITE_BUDGET)
 
-    def rejected(self, arm, mode, evidence, timeout=1):
+    def rejected(self, arm, mode, evidence, timeout=SYNTHETIC_PROCESS_TIMEOUT):
         self.commands[arm] = self.stub(arm, mode)
-        with self.assertRaisesRegex(runner.Failure, evidence):
+        with self.assertRaises(runner.Failure) as raised:
             self.run_samples(timeout)
+        if "process timeout/interruption" in str(raised.exception) and "process timeout" not in evidence:
+            self.fail(f"infrastructure failure: synthetic child exceeded {timeout}s cap while testing {mode}")
+        self.assertRegex(str(raised.exception), evidence)
         self.assertFalse((self.output / "summary.json").exists())
 
     def test_real_processes_five_samples_each(self):
@@ -120,8 +127,8 @@ class ProcessTests(unittest.TestCase):
         candidate.write_text(STUB.format(mode="clean", arm="aot", ems=EMS))
         candidate.chmod(0o700)
         commands = {"aot": self.commands["aot"], "candidate": candidate, "native": self.commands["native"]}
-        rows = runner.measure([self.case], commands, self.output, dict(os.environ), 1,
-                              time.monotonic() + 10, "timing-only synthetic ceiling")
+        rows = runner.measure([self.case], commands, self.output, dict(os.environ), SYNTHETIC_PROCESS_TIMEOUT,
+                              time.monotonic() + SYNTHETIC_SUITE_BUDGET, "timing-only synthetic ceiling")
         samples = [json.loads(line) for line in (self.output / "samples.jsonl").read_text().splitlines()]
         self.assertEqual(len(samples), 15)
         self.assertEqual([sample["arm"] for sample in samples[:9]],
@@ -139,8 +146,8 @@ class ProcessTests(unittest.TestCase):
         candidate.chmod(0o700)
         commands = {"aot": self.commands["aot"], "candidate": candidate, "native": self.commands["native"]}
         with self.assertRaisesRegex(runner.Failure, "repetition=0 arm=candidate: AOT output differs"):
-            runner.measure([self.case], commands, self.output, dict(os.environ), 1,
-                           time.monotonic() + 10, "timing-only broken ceiling")
+            runner.measure([self.case], commands, self.output, dict(os.environ), SYNTHETIC_PROCESS_TIMEOUT,
+                           time.monotonic() + SYNTHETIC_SUITE_BUDGET, "timing-only broken ceiling")
         self.assertEqual((self.output / "samples.jsonl").read_text(), "")
 
     def test_wrong_verdict_is_red(self):
@@ -177,7 +184,7 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(record["returncode"], -9)
 
     def test_timeout_kills_process_group(self):
-        self.rejected("aot", "descendant", "arm=aot: process timeout", timeout=0.2)
+        self.rejected("aot", "descendant", "arm=aot: process timeout", timeout=10)
         pid = int(Path(str(self.case["cnf"]) + ".pid").read_text())
         state = Path(f"/proc/{pid}/stat")
         for _ in range(20):
@@ -191,11 +198,11 @@ class ProcessTests(unittest.TestCase):
         child = self.root / "timeout-child.py"
         pidfile = self.root / "timeout-child.pid"
         child.write_text("import os,time\nfrom pathlib import Path\nPath(" + repr(str(pidfile))
-                         + ").write_text(str(os.getpid()))\ntime.sleep(10)\n")
+                         + ").write_text(str(os.getpid()))\nwhile True: time.sleep(3600)\n")
         try:
             with self.assertRaisesRegex(runner.Failure, "process timeout/interruption"):
-                runner.run_process(["bash", "-c", 'timeout 10 "$1" "$2"; true', "probe", sys.executable, str(child)],
-                                   self.output / "timeout-process", 0.4, dict(os.environ))
+                runner.run_process(["bash", "-c", 'timeout 120 "$1" "$2"; true', "probe", sys.executable, str(child)],
+                                   self.output / "timeout-process", 10, dict(os.environ))
             pid = int(pidfile.read_text())
             self.assertFalse(self.alive(pid), "GNU timeout child escaped the runner's deadline cleanup")
         finally:
