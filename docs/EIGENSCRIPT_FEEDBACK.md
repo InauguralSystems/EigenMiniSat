@@ -161,16 +161,14 @@ reference remapping, locked-clause scans, watch rebuilds, and trail replay. The
 CDCL path now uses the clause-store adapter for propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction. It also
 reports store-to-list copies, store-native conflict-analysis scans, remaining
-analysis rebuild literals, deferred compaction checks, pending deleted clauses,
-targeted watch-detach scans/removals, and direct compaction-copy literals.
+analysis rebuild literals, deferred compaction checks, pending deleted clauses, watch-table rebuilds, and direct compaction-copy
+literals.
 `--copy-bench` now puts those counters under conflict-heavy generated cases with
 tight restart and polarity policies, with lazy no-physical-compaction variants
 beside the default deferred policy and larger evidence cases that emit
 deferred-vs-lazy delta summaries. Store-native conflict analysis removes the
-hot list rebuild path locally. Deferred physical compaction removes the hot
-clause-copy path in small conflict cases; targeted watch detaching keeps the
-solve path from shifting that cost into full watch-table pruning, full watch
-rebuilds, or trail replays until larger cases cross the compaction thresholds.
+hot list rebuild path locally. Deferred physical compaction removes the hot clause-copy path in small conflict
+cases; larger cases expose its full watch-table rebuild and trail-replay costs.
 The lazy policy is an evidence knob for that larger-case tradeoff, not a root
 language ask by itself. The
 copy-pressure cases also exposed a watched-propagation invariant bug: a
@@ -196,13 +194,10 @@ compaction copies (14,092 literals, 16 watch rebuilds, 380 replays saved at
 size 3) but is slower in all six measured policy/case pairs: +1.3–3.2% at
 size 2, compounding to 2.4×–5.3× at size 3 (pigeonhole-7-6-larger: deferred
 18.6s/30.9s vs lazy 45.0s/163.9s), because 1,990 pending deleted clauses
-bloat the store and propagation pays the skip on every encounter. Two
-supporting facts: watch-detach scan debt was zero under both policies at both
-sizes, so targeted detaching is not a cost center; and compaction-copy
-literals on the largest case (~6.6K) are dwarfed by conflict-analysis literal
-traffic (~97K), so compaction is not the dominant copy pressure anyway. The
-old size-2 checkpoint (3,820 avoided literals / 780 detach scans, recorded on
-an earlier runtime and host) is superseded. The lazy policy remains a
+bloat the store and propagation pays the skip on every encounter. A further
+supporting fact is that compaction-copy literals on the largest case (~6.6K) are dwarfed by conflict-analysis literal
+traffic (~97K), so compaction is not the dominant copy pressure anyway. The old size-2 checkpoint, recorded on an earlier runtime and host, is
+superseded. The lazy policy remains a
 comparison knob, and `physical_compaction_pressure` / `lazy_debt_pressure`
 flags will stay active in summaries by construction (they are zero-threshold)
 — they no longer indicate an open decision.
@@ -214,9 +209,8 @@ corpus parse totals are `split=26.689ms`, `scan=37.823ms`,
 errors; storage adapter scans total `9.816ms` versus `5.849ms` flat scans; and
 the storage overhead summary breaks that into `3.967ms` adapter scan overhead,
 `2.559ms` adapter watch-seeding overhead, `0.649ms` adapter compaction
-overhead, and `1.639ms` flat-vs-list compaction overhead. Metadata churn
-reports 996 compacted literals, 5 watch rebuilds, 227 watch detaches, and 168
-trail replays. These activate diagnostic-tokenizer, validated-scan,
+overhead, and `1.639ms` flat-vs-list compaction overhead. Metadata churn reports 996 compacted literals, 5 watch rebuilds, and 168 trail
+replays. These activate diagnostic-tokenizer, validated-scan,
 storage-adapter, and compact-vector pressure flags without turning them into
 final root requests.
 
@@ -290,8 +284,8 @@ Compact integer vectors and token spans are higher-value root candidates today.
   `decision_candidate` rows are the current scoped next actions, not final
   EigenScript requests.
 - Deferred/lazy compaction is settled as algorithm-local: lazy loses on wall
-  clock in every measured pair and targeted watch-detach churn never
-  materialized (zero detach-scan debt at both sizes).
+  clock in every measured pair; pending-deleted propagation debt outweighed the
+  avoided compaction work.
 - Expand the checked-in corpus only with small, provenance-clear cases before
   relying on any single generated family.
 - Keep root issues in EigenScript, but do not block EigenMiniSat-local
