@@ -1,0 +1,1 @@
+- Add an opt-in `--gf2` switch that detects complete CNF encodings of XOR constraints and reports their clause coverage (#133).

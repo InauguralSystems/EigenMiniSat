@@ -1,0 +1,45 @@
+load_file of "lib/xor.eigs"
+
+define check(label, condition) as:
+    if not condition:
+        print of f"FAIL: {label}"
+        assert of [0, label]
+    print of f"PASS: {label}"
+    return 1
+
+define xor_fault_missing_one(clauses, expected) as:
+    # Test-only mutation: the historical off-by-one acceptance bug.
+    return (len of clauses) >= (expected - 1)
+
+print of "=== XOR detector tests (CMS09 complete-clause criterion) ==="
+
+eq2 is [[-1, 2], [1, -2]]
+eq2_result is detect_xors of eq2
+check of ["k=2 equivalence is XOR=0", eq2_result.xor_count == 1 and eq2_result.xors[0].rhs == 0]
+
+xor3 is [[1, 2, 3], [-1, -2, 3], [-1, 2, -3], [1, -2, -3]]
+xor3_result is detect_xors of xor3
+check of ["hand k=3 XOR=1", xor3_result.xor_count == 1 and xor3_result.xors[0].rhs == 1]
+
+xor4 is [
+    [-1, 2, 3, 4], [1, -2, 3, 4], [1, 2, -3, 4], [1, 2, 3, -4],
+    [-1, -2, -3, 4], [-1, -2, 3, -4], [-1, 2, -3, -4], [1, -2, -3, -4]
+]
+xor4_result is detect_xors of xor4
+check of ["hand k=4 XOR=0", xor4_result.xor_count == 1 and xor4_result.xors[0].rhs == 0]
+
+missing3 is [[1, 2, 3], [-1, -2, 3], [-1, 2, -3]]
+check of ["clean control: complete k=3 accepted", xor3_result.xor_count == 1]
+check of ["missing one clause rejected", (detect_xors of missing3).xor_count == 0]
+check of ["planted missing-one fault is exercised", xor_fault_missing_one of [missing3, 4]]
+
+wrong_parity3 is [[1, 2, 3], [-1, -2, 3], [-1, 2, -3], [-1, 2, 3]]
+check of ["mixed/wrong parity rejected", (detect_xors of wrong_parity3).xor_count == 0]
+
+permuted_duplicate is [[2, -1], [-2, 1], [-1, 2], [8, 9]]
+mixed_result is detect_xors of permuted_duplicate
+check of ["permuted literals and duplicate clauses", mixed_result.xor_count == 1 and mixed_result.covered_clauses == 3]
+check of ["mixed formula leaves unrelated clause uncovered", mixed_result.total_clauses == 4 and mixed_result.covered_clauses == 3]
+
+too_wide is [[1, 2, 3, 4, 5, 6, 7, 8, 9]]
+check of ["stated cap is eight variables", (detect_xors of too_wide).cap == 8 and (detect_xors of too_wide).xor_count == 0]

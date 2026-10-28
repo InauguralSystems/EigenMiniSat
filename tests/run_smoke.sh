@@ -11,6 +11,17 @@ python3 tests/check_corpus_diversity.py --selftest
 "$EIGS" tests/test_solver.eigs
 "$EIGS" tests/test_active_learnts.eigs
 "$EIGS" tests/test_tseitin_invariant.eigs
+"$EIGS" tests/test_xor_detection.eigs
+gf2_off_out="$("$EIGS" minisat.eigs tests/corpus/xor_ladder_sat.cnf)"
+case "$gf2_off_out" in
+    *"gf2=on"*) echo "FAIL: GF(2) arm is not off by default" >&2; exit 1 ;;
+    *) echo "GF(2) arm: off by default" ;;
+esac
+gf2_on_out="$("$EIGS" minisat.eigs --gf2 tests/corpus/xor_ladder_sat.cnf)"
+case "$gf2_on_out" in
+    *"c gf2=on "*" xors="*) echo "GF(2) arm: opt-in switch reports census" ;;
+    *) echo "FAIL: --gf2 did not report its census" >&2; exit 1 ;;
+esac
 "$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/simple_sat.cnf
