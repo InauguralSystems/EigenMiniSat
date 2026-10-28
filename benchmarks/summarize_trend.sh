@@ -51,10 +51,9 @@ stop != 0 {
     delta_compact_lits = field_value("delta_compact_lits")
     delta_watch_rebuilds = field_value("delta_watch_rebuilds")
     delta_pending_deleted = field_value("delta_pending_deleted")
-    delta_watch_detach_scans = field_value("delta_watch_detach_scans")
     delta_compact_replays = field_value("delta_compact_replays")
 
-    printf "copy_delta case=%s delta_compact_lits=%d delta_watch_rebuilds=%d delta_pending_deleted=%d delta_watch_detach_scans=%d delta_compact_replays=%d\n", case_name, delta_compact_lits, delta_watch_rebuilds, delta_pending_deleted, delta_watch_detach_scans, delta_compact_replays
+    printf "copy_delta case=%s delta_compact_lits=%d delta_watch_rebuilds=%d delta_pending_deleted=%d delta_compact_replays=%d\n", case_name, delta_compact_lits, delta_watch_rebuilds, delta_pending_deleted, delta_compact_replays
 
     cases += 1
     if (delta_compact_lits < 0) {
@@ -69,15 +68,11 @@ stop != 0 {
     if (delta_pending_deleted > 0) {
         pending_deleted_debt += delta_pending_deleted
     }
-    if (delta_watch_detach_scans > 0) {
-        watch_detach_scan_debt += delta_watch_detach_scans
-    }
 }
 
 /^metadata compaction / {
     metadata_compact_clause_lits += field_value("compact_clause_lits")
     metadata_watch_rebuilds += field_value("watch_rebuilds")
-    metadata_watch_detaches += field_value("watch_detaches")
     metadata_compact_replays += field_value("compact_replays")
     metadata_rows += 1
 }
@@ -85,7 +80,6 @@ stop != 0 {
 /^metadata churn summary / {
     metadata_compact_clause_lits += field_value("compact_clause_lits")
     metadata_watch_rebuilds += field_value("watch_rebuilds")
-    metadata_watch_detaches += field_value("watch_detaches")
     metadata_compact_replays += field_value("compact_replays")
     metadata_locked_kept += field_value("locked_kept")
     metadata_rows += 1
@@ -207,8 +201,8 @@ END {
     flat_compact_overhead_ms = storage_flat_compact_ms - storage_list_compact_ms
     text_builder_overhead_ms = build_text_builder_ms - build_concat_ms
 
-    printf "copy_delta_totals cases=%d compact_lit_savings=%d watch_rebuild_savings=%d replay_savings=%d pending_deleted_debt=%d watch_detach_scan_debt=%d\n", cases, compact_lit_savings, watch_rebuild_savings, replay_savings, pending_deleted_debt, watch_detach_scan_debt
-    printf "metadata_totals rows=%d compact_clause_lits=%d watch_rebuilds=%d watch_detaches=%d compact_replays=%d locked_kept=%d\n", metadata_rows, metadata_compact_clause_lits, metadata_watch_rebuilds, metadata_watch_detaches, metadata_compact_replays, metadata_locked_kept
+    printf "copy_delta_totals cases=%d compact_lit_savings=%d watch_rebuild_savings=%d replay_savings=%d pending_deleted_debt=%d\n", cases, compact_lit_savings, watch_rebuild_savings, replay_savings, pending_deleted_debt
+    printf "metadata_totals rows=%d compact_clause_lits=%d watch_rebuilds=%d compact_replays=%d locked_kept=%d\n", metadata_rows, metadata_compact_clause_lits, metadata_watch_rebuilds, metadata_compact_replays, metadata_locked_kept
     printf "text_build_totals generated_cases=%d concat_ms=%.3f text_builder_ms=%.3f text_builder_overhead_ms=%.3f\n", build_rows, build_concat_ms, build_text_builder_ms, text_builder_overhead_ms
     printf "storage_totals rows=%d list_scan_ms=%.3f flat_scan_ms=%.3f adapter_scan_ms=%.3f arena_build_ms=%.3f reconstruct_ms=%.3f list_compact_ms=%.3f flat_compact_ms=%.3f adapter_compact_ms=%.3f remap_ms=%.3f\n", storage_rows, storage_list_scan_ms, storage_flat_scan_ms, storage_adapter_scan_ms, storage_arena_build_ms, storage_reconstruct_ms, storage_list_compact_ms, storage_flat_compact_ms, storage_adapter_compact_ms, storage_remap_ms
     printf "storage_overhead_totals rows=%d inline_rows=%d adapter_scan_overhead_ms=%.3f inline_scan_overhead_ms=%.3f helper_scan_overhead_ms=%.3f adapter_watch_overhead_ms=%.3f inline_watch_overhead_ms=%.3f helper_watch_overhead_ms=%.3f adapter_compact_overhead_ms=%.3f flat_compact_overhead_ms=%.3f\n", storage_rows, storage_inline_rows, adapter_scan_overhead_ms, inline_scan_overhead_ms, helper_scan_overhead_ms, adapter_watch_overhead_ms, inline_watch_overhead_ms, helper_watch_overhead_ms, adapter_compact_overhead_ms, flat_compact_overhead_ms
@@ -218,7 +212,7 @@ END {
     } else {
         physical_compaction_pressure = 0
     }
-    if (pending_deleted_debt > 0 || watch_detach_scan_debt > 0) {
+    if (pending_deleted_debt > 0) {
         lazy_debt_pressure = 1
     } else {
         lazy_debt_pressure = 0

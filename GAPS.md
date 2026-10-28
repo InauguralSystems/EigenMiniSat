@@ -98,8 +98,7 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   all six policy/case pairs despite avoiding every compaction copy: +1.3–3.2%
   at size 2, 2.4×–5.3× at size 3 (pigeonhole-7-6-larger deferred 18.6s/30.9s
   vs lazy 45.0s/163.9s). Pending-deleted debt (1,990 clauses at size 3) makes
-  propagation pay skip costs on every encounter, and watch-detach scan debt
-  was zero under both policies. Compaction copies (~6.6K literals) are also
+  propagation pay skip costs on every encounter. Compaction copies (~6.6K literals) are also
   small next to conflict-analysis traffic (~97K literals), so no EigenScript
   root arena/reference request comes from this pressure. The lazy policy stays
   as a comparison knob.
@@ -296,8 +295,8 @@ Root EigenScript issues should be fixed upstream instead of worked around here.
   in one run instead of requiring separate restart and phase comparisons.
 - The copy-pressure benchmark now includes larger generated pigeonhole,
   graph-coloring, and parity cases. Delta summaries compare deferred and lazy
-  maxima for compaction copies, watch rebuilds, pending deleted clauses,
-  watch-detach scans, and trail replays.
+  maxima for compaction copies, watch rebuilds, pending deleted clauses, and
+  trail replays.
 - The Luby restart benchmark adds small but repeated `floor`, modulo, and
   integer-power schedule calculations around CDCL conflicts. If larger restart
   sweeps make schedule overhead visible, EigenScript may need cheaper integer

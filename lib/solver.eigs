@@ -861,61 +861,6 @@ define append_active_watch_tail(kept, old, start, state, stats) as:
                 append of [kept, ci]
     return null
 
-define detach_watch_bucket(state, wi, ci, stats) as:
-    old is state.watches[wi]
-    kept is []
-    scanned is 0
-    removed is 0
-    for ref in old:
-        scanned += 1
-        if ref == ci:
-            removed += 1
-        else:
-            append of [kept, ref]
-    state.watches[wi] is kept
-    stats.watch_detach_scans += scanned
-    stats.watch_detach_removed += removed
-    return removed
-
-define detach_clause_watches(store, state, ci, stats) as:
-    if not (has_key of [state, "watches"]):
-        return 0
-    if not (has_key of [state, "watch_a"]):
-        return 0
-    if not (has_key of [state, "watch_b"]):
-        return 0
-    if ci < 0:
-        return 0
-    if ci >= (len of state.watch_a):
-        return 0
-    if (clause_store_size of [store, ci]) < 2:
-        return 0
-
-    wa is state.watch_a[ci]
-    wb is state.watch_b[ci]
-    wi_a is lit_index of (clause_store_lit of [store, ci, wa])
-    wi_b is lit_index of (clause_store_lit of [store, ci, wb])
-    removed is detach_watch_bucket of [state, wi_a, ci, stats]
-    if wi_b != wi_a:
-        removed += detach_watch_bucket of [state, wi_b, ci, stats]
-    stats.watch_detaches += 1
-    return removed
-
-define find_low_activity_learnt(store, state, stats) as:
-    best is -1
-    best_activity is 1000000000
-    for ci in range of (clause_store_len of store):
-        if state.clause_learnt[ci] != 0:
-            if state.clause_deleted[ci] == 0:
-                if (clause_store_size of [store, ci]) > 2:
-                    if (clause_locked of [store, state, ci]) != 0:
-                        stats.learnt_kept_locked += 1
-                    elif state.clause_activity[ci] < best_activity:
-                        best_activity is state.clause_activity[ci]
-                        best is ci
-    stats.reduce_scans += 1
-    return best
-
 # #85: deletion order for reduce_learnt_db.
 #
 # The original key packed both terms into one scalar:
@@ -1033,25 +978,6 @@ define rebuild_watches(nvars, store, state, stats) as:
     stats.watch_rebuilds += 1
     stats.compact_replays += len of state.trail
     return null
-
-define prune_deleted_watches(state, stats) as:
-    removed is 0
-    scanned is 0
-    for wi in range of (len of state.watches):
-        old is state.watches[wi]
-        kept is []
-        for ci in old:
-            scanned += 1
-            if state.clause_deleted[ci] != 0:
-                removed += 1
-            else:
-                append of [kept, ci]
-        state.watches[wi] is kept
-
-    stats.watch_prunes += 1
-    stats.watch_prune_scans += scanned
-    stats.watch_prune_removed += removed
-    return removed
 
 define compact_deleted_clauses(nvars, store, state, stats) as:
     delete_mask is []
@@ -1807,12 +1733,6 @@ define cdcl_result(status, model, stats, state) as:
         "compact_clause_copies": stats.compact_clause_copies,
         "compact_clause_lits": stats.compact_clause_lits,
         "watch_rebuilds": stats.watch_rebuilds,
-        "watch_detaches": stats.watch_detaches,
-        "watch_detach_scans": stats.watch_detach_scans,
-        "watch_detach_removed": stats.watch_detach_removed,
-        "watch_prunes": stats.watch_prunes,
-        "watch_prune_scans": stats.watch_prune_scans,
-        "watch_prune_removed": stats.watch_prune_removed,
         "compact_replays": stats.compact_replays,
         "restarts": stats.restarts,
         "restart_cancels": stats.restart_cancels,
@@ -1889,12 +1809,6 @@ define cdcl_empty_stats() as:
         "compact_clause_copies": 0,
         "compact_clause_lits": 0,
         "watch_rebuilds": 0,
-        "watch_detaches": 0,
-        "watch_detach_scans": 0,
-        "watch_detach_removed": 0,
-        "watch_prunes": 0,
-        "watch_prune_scans": 0,
-        "watch_prune_removed": 0,
         "compact_replays": 0,
         "restarts": 0,
         "restart_cancels": 0,

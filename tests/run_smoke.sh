@@ -13,7 +13,18 @@ cd "$ROOT"
 "$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/simple_sat.cnf
-"$EIGS" minisat.eigs --cdcl tests/fixtures/simple_sat.cnf
+cdcl_out="$("$EIGS" minisat.eigs --cdcl tests/fixtures/simple_sat.cnf)"
+printf '%s\n' "$cdcl_out"
+for telemetry_field in minimize_checks minimize_removed minimize_steps lbd_improved peak_learnts max_level; do
+    case "$cdcl_out" in
+        *" $telemetry_field="*) ;;
+        *)
+            echo "FAIL: --cdcl counters line omitted $telemetry_field" >&2
+            exit 1
+            ;;
+    esac
+done
+echo "cdcl counters: all computed telemetry is visible"
 "$EIGS" minisat.eigs tests/fixtures/unit_unsat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/unit_unsat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/unit_unsat.cnf

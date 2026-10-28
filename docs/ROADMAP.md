@@ -53,8 +53,8 @@ seeding, and deletion-compaction mapping. CDCL propagation, conflict analysis,
 learnt insertion, reduction scans, and deleted-clause compaction now use that
 adapter. Compaction copies kept clauses directly store-to-store, and CDCL now
 reports store-to-list copies, store-native conflict-analysis scans, remaining
-analysis rebuild literals, deferred compaction checks, pending deleted clauses,
-targeted watch-detach scans/removals, and compaction-copy literals. A focused
+analysis rebuild literals, deferred compaction checks, pending deleted clauses, watch-table rebuilds,
+trail replays, and compaction-copy literals. A focused
 copy-pressure benchmark now runs conflict-heavy generated cases under tight
 restart and polarity policies, including larger evidence cases and lazy
 no-physical-compaction variants. It also emits deferred-vs-lazy delta summaries
@@ -96,8 +96,7 @@ also runs repeated
 learnt-churn waves with pinned reason references to expose locked-clause scans
 and repeated reason remapping. That decision closed on 2026-07-03: size-2/3
 evidence runs show deferred compaction beating lazy on wall clock in every
-policy/case pair, with zero watch-detach scan debt, so compaction stays an
-EigenMiniSat-local algorithm choice and the helper-call component moved
+policy/case pair, so compaction stays an EigenMiniSat-local algorithm choice and the helper-call component moved
 upstream as EigenScript #366. The corpus now includes small vendored structural
 fixtures with provenance notes; true third-party CNF imports should wait until
 the provenance and size constraints are clear. Scanner token-span pressure

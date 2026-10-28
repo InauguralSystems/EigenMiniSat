@@ -1,0 +1,1 @@
+- Removed structurally-zero watch-maintenance counters and exposed the remaining computed CDCL telemetry on the CLI counters line (#87).

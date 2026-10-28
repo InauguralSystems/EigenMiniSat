@@ -65,8 +65,7 @@ counters. CDCL output also includes restart and phase-saving counters.
 Clause-store counters show store-to-list copies, store-native conflict-analysis
 scans, any remaining analysis list rebuilds, and direct compaction copies.
 Compaction counters show when deleted learnt clauses are deferred or physically
-removed, how many deleted clauses remain pending, and when watch lists are
-rebuilt, detached, or pruned.
+removed, how many deleted clauses remain pending, and when watch lists are rebuilt.
 `--restart-bench` compares the default geometric CDCL restart schedule with a
 Luby schedule on the same generated cases and reports restart budgets, restart
 indexes, cancellations, compaction, and elapsed milliseconds.
@@ -78,13 +77,13 @@ pigeonhole, complete-graph coloring, and XOR pressure cases, then prints
 per-policy counters plus per-case decision/conflict/restart ranges.
 `--copy-bench` runs conflict-heavy generated cases through tight restart and
 polarity policies, then reports store-to-list copy, store-native analysis scan,
-remaining analysis rebuild, deferred compaction, targeted watch detaching, and
-direct compaction-copy counters for deciding whether clause references should
+remaining analysis rebuild, deferred compaction, watch-table rebuild, and direct
+compaction-copy counters for deciding whether clause references should
 stay local or become an EigenScript root primitive. It includes larger evidence
 cases and lazy no-physical-compaction variants beside the default deferred
 policy so larger cases can expose the copy/rebuild tradeoff directly. Summary
 delta lines compare deferred and lazy maxima for compaction copies, watch
-rebuilds, pending deleted clauses, watch-detach scans, and trail replays.
+rebuilds, pending deleted clauses, and trail replays.
 `--storage-bench` builds a solver-local clause-store adapter beside the
 existing list-of-lists representation and compares list scanning, arena build,
 flat scanning, adapter-mediated access, CDCL-style watch seeding,
@@ -212,7 +211,7 @@ Current:
 - CDCL propagation, conflict analysis, learnt insertion, reduction, and
   compaction over the solver-local clause-store adapter
 - store-native CDCL conflict analysis over clause references
-- deferred CDCL clause-store compaction with targeted watch detaching
+- deferred CDCL clause-store compaction with watch-table rebuild and trail replay
 - lazy CDCL compaction policy for no-physical-compaction benchmark comparisons
 - clause-store copy/native-scan/rebuild counters for conflict analysis and
   direct compaction-copy pressure
@@ -265,7 +264,7 @@ This repo is expected to stress:
 - combined restart/polarity option sweeps across branch-heavy cases
 - conflict-heavy copy pressure across tight restart and polarity policies
 - restart schedule arithmetic and option plumbing for geometric/Luby comparison
-- clause compaction and targeted watch-detach overhead
+- clause compaction, watch-table rebuild, and trail-replay overhead
 - no-physical-compaction comparison pressure
 - flat clause arena build/scan/reconstruct/watch-seeding/compaction pressure
 - clause-store adapter lookup, watch seeding, and compaction mapping overhead
@@ -275,8 +274,7 @@ This repo is expected to stress:
 - CDCL clause-store propagation and conflict-analysis access patterns
 - store-to-list copy counts, store-native analysis scans, remaining
   conflict-analysis rebuild literals, and direct compaction-copy literals
-- deferred deleted-clause pressure, pending deleted clauses, and watch-detach
-  churn
+- deferred deleted-clause pressure and pending deleted clauses
 - synthetic learnt-clause allocation, deletion, compaction, and churn pressure
 - generated DIMACS string throughput and parse-token allocation
 - temp-file write/read/remove overhead around parser throughput
