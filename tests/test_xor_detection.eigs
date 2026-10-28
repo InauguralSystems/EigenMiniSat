@@ -43,3 +43,35 @@ check of ["mixed formula leaves unrelated clause uncovered", mixed_result.total_
 
 too_wide is [[1, 2, 3, 4, 5, 6, 7, 8, 9]]
 check of ["stated cap is eight variables", (detect_xors of too_wide).cap == 8 and (detect_xors of too_wide).xor_count == 0]
+
+print of "=== GF(2) Gauss--Jordan tests ==="
+
+consistent is gf2_reduce_xors of [
+    [{"vars": [1, 2], "rhs": 0}, {"vars": [2], "rhs": 1}]
+]
+check of ["consistent system has full rank", consistent.inconsistent == 0 and consistent.rank == 2]
+check of ["consistent system derives two units", consistent.units == 2 and (len of consistent.derived_clauses) == 2]
+
+inconsistent is gf2_reduce_xors of [
+    [{"vars": [1, 2], "rhs": 0}, {"vars": [1, 2], "rhs": 1}]
+]
+check of ["inconsistent system exposes 0 = 1", inconsistent.inconsistent == 1 and inconsistent.rank == 1]
+
+rank_deficient is gf2_reduce_xors of [
+    [{"vars": [1, 2, 3], "rhs": 1}, {"vars": [2, 3], "rhs": 0}]
+]
+check of ["rank-deficient system derives a unit", rank_deficient.inconsistent == 0 and rank_deficient.rank == 2 and rank_deficient.units == 1]
+check of ["rank-deficient system derives an equivalence", rank_deficient.equivalences == 1]
+
+duplicated is gf2_reduce_xors of [
+    [{"vars": [4, 5], "rhs": 0}, {"vars": [4, 5], "rhs": 0}]
+]
+check of ["duplicated row does not increase rank", duplicated.inconsistent == 0 and duplicated.rank == 1 and duplicated.equivalences == 1]
+
+# Planted test-only wrong pivot: flipping the second equation's RHS makes the
+# clean consistent control appear contradictory.  The assertion names that
+# exact false 0=1, rather than passing through an unrelated/vacuous guard.
+clean_pivot is gf2_reduce_xors of [[{"vars": [7], "rhs": 1}, {"vars": [7], "rhs": 1}]]
+wrong_pivot is gf2_reduce_xors of [[{"vars": [7], "rhs": 1}, {"vars": [7], "rhs": 0}]]
+check of ["wrong-pivot clean control is consistent", clean_pivot.inconsistent == 0]
+check of ["planted wrong pivot creates the caught false 0=1", wrong_pivot.inconsistent == 1]

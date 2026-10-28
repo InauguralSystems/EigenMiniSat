@@ -1,0 +1,39 @@
+load_file of "lib/int_vector.eigs"
+load_file of "lib/solver.eigs"
+load_file of "lib/bench.eigs"
+load_file of "lib/xor.eigs"
+
+define check(label, condition) as:
+    if not condition:
+        print of f"FAIL: {label}"
+        assert of [0, label]
+    print of f"PASS: {label}"
+    return null
+
+define check_torus(side, odd) as:
+    formula is tseitin_torus_case of [side, side, odd]
+    start is monotonic_ns of null
+    census is detect_xors of formula.clauses
+    reduced is gf2_reduce_xors of census.xors
+    expected_unsat is odd != 0
+    check of [f"{side}x{side} charge={odd}: closed-form verdict", (reduced.inconsistent != 0) == expected_unsat]
+    verdict is "UNSAT"
+    certificate is "uncertified"
+    if reduced.inconsistent == 0:
+        augmented is []
+        for clause in formula.clauses:
+            append of [augmented, clause]
+        for clause in reduced.derived_clauses:
+            append of [augmented, clause]
+        solved is solve_cnf_cdcl of [formula.nvars, augmented]
+        check of [f"{side}x{side} charge={odd}: consistent system is SAT", solved.status == "SAT"]
+        check of [f"{side}x{side} charge={odd}: model checks against original", model_satisfies of [formula.nvars, formula.clauses, solved.model]]
+        verdict is solved.status
+        certificate is "model-verified"
+    elapsed_ms is ((monotonic_ns of null) - start) / 1000000
+    print of f"REPORT: torus={side}x{side} charge={odd} xors={census.xor_count} rank={reduced.rank} verdict={verdict} certificate={certificate} wall_ms={elapsed_ms}"
+    return null
+
+for side in [3, 4, 6]:
+    check_torus of [side, 0]
+    check_torus of [side, 1]

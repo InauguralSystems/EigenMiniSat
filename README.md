@@ -65,8 +65,11 @@ activity bumps/decays, heap operation counters, and learnt-clause database
 counters. CDCL output also includes restart and phase-saving counters.
 The experimental GF(2) arm is off by default. `--gf2` enables CMS09-style
 recognition of complete XOR clause sets through arity 8 and prints the number
-of XORs and their clause coverage; part 1 only detects them and intentionally
-does not yet perform Gauss--Jordan elimination. `tools/xor_census.sh` reports
+of XORs and their clause coverage. It reduces those XORs to RREF, immediately
+answers on `0 = 1`, and otherwise adds implied units and equivalences before
+the existing solver runs. Elimination-only UNSAT answers are explicitly
+`uncertified` and never produce a DRAT file; SAT models are checked against the
+original clauses. `tools/xor_census.sh` reports
 the manifest-derived corpus population and the registered positive and
 negative controls.
 Clause-store counters show store-to-list copies, store-native conflict-analysis

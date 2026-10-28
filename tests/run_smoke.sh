@@ -12,6 +12,8 @@ python3 tests/check_corpus_diversity.py --selftest
 "$EIGS" tests/test_active_learnts.eigs
 "$EIGS" tests/test_tseitin_invariant.eigs
 "$EIGS" tests/test_xor_detection.eigs
+"$EIGS" tests/test_gf2_elimination.eigs
+bash tests/run_gf2_corpus.sh
 gf2_off_out="$("$EIGS" minisat.eigs tests/corpus/xor_ladder_sat.cnf)"
 case "$gf2_off_out" in
     *"gf2=on"*) echo "FAIL: GF(2) arm is not off by default" >&2; exit 1 ;;
@@ -22,6 +24,18 @@ case "$gf2_on_out" in
     *"c gf2=on "*" xors="*) echo "GF(2) arm: opt-in switch reports census" ;;
     *) echo "FAIL: --gf2 did not report its census" >&2; exit 1 ;;
 esac
+gf2_proof="${TMPDIR:-/tmp}/eigenminisat-gf2-proof.$$"
+rm -f "$gf2_proof"
+gf2_unsat_out="$("$EIGS" minisat.eigs --gf2 --cdcl --proof "$gf2_proof" tests/corpus/xor_contradiction_unsat.cnf)"
+case "$gf2_unsat_out" in
+    *"certificate=uncertified"*"UNCERTIFIED:"*) ;;
+    *) echo "FAIL: elimination UNSAT was not explicitly uncertified" >&2; exit 1 ;;
+esac
+if [ -e "$gf2_proof" ]; then
+    echo "FAIL: elimination UNSAT emitted a fake DRAT file" >&2
+    exit 1
+fi
+echo "GF(2) elimination UNSAT: uncertified and no fake DRAT"
 "$EIGS" minisat.eigs tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --watched tests/fixtures/simple_sat.cnf
 "$EIGS" minisat.eigs --persistent tests/fixtures/simple_sat.cnf

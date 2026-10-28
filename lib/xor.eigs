@@ -135,3 +135,127 @@ define detect_xors(clauses) as:
     if (len of clauses) > 0:
         fraction is covered / (len of clauses)
     return {"xors": xors, "xor_count": len of xors, "covered_clauses": covered, "total_clauses": len of clauses, "coverage": fraction, "cap": cap}
+
+# Reduce recognized parity equations over GF(2), then expose only consequences
+# that CNF can express cheaply: units and binary equivalences.  Columns are
+# limited to variables actually present in an XOR, rather than nvars, so a
+# sparse high-numbered DIMACS variable cannot allocate a huge matrix.
+define _gf2_find_var(vars, wanted) as:
+    i is 0
+    loop while i < (len of vars):
+        if vars[i] == wanted:
+            return i
+        i += 1
+    return -1
+
+define _gf2_xor_row(target, source) as:
+    i is 0
+    loop while i < (len of target):
+        target[i] is (target[i] + source[i]) % 2
+        i += 1
+    return null
+
+define gf2_reduce_xors(xors) as:
+    vars is []
+    for equation in xors:
+        for v in equation.vars:
+            if (_gf2_find_var of [vars, v]) < 0:
+                append of [vars, v]
+
+    rows is []
+    for equation in xors:
+        row is []
+        for unused in range of ((len of vars) + 1):
+            append of [row, 0]
+        for v in equation.vars:
+            col is _gf2_find_var of [vars, v]
+            row[col] is (row[col] + 1) % 2
+        row[len of vars] is equation.rhs % 2
+        append of [rows, row]
+
+    pivot_cols is []
+    pivot_row is 0
+    col is 0
+    loop while col < (len of vars) and pivot_row < (len of rows):
+        found is -1
+        scan is pivot_row
+        loop while scan < (len of rows):
+            if rows[scan][col] != 0:
+                found is scan
+                break
+            scan += 1
+        if found >= 0:
+            if found != pivot_row:
+                tmp is rows[pivot_row]
+                rows[pivot_row] is rows[found]
+                rows[found] is tmp
+            r is 0
+            loop while r < (len of rows):
+                if r != pivot_row and rows[r][col] != 0:
+                    _gf2_xor_row of [rows[r], rows[pivot_row]]
+                r += 1
+            append of [pivot_cols, col]
+            pivot_row += 1
+        col += 1
+
+    inconsistent is 0
+    for row in rows:
+        nonzero is 0
+        for c in range of (len of vars):
+            nonzero += row[c]
+        if nonzero == 0 and row[len of vars] != 0:
+            inconsistent is 1
+
+    # Each variable is represented as rhs XOR a bit-vector over free columns.
+    # Equal bit-vectors imply a unit (empty vector) or an equivalence.
+    signatures is []
+    constants is []
+    for c in range of (len of vars):
+        sig is []
+        for unused in range of (len of vars):
+            append of [sig, 0]
+        append of [signatures, sig]
+        append of [constants, 0]
+    for c in range of (len of vars):
+        pr is _gf2_find_var of [pivot_cols, c]
+        if pr >= 0:
+            constants[c] is rows[pr][len of vars]
+            for free_col in range of (len of vars):
+                if (_gf2_find_var of [pivot_cols, free_col]) < 0:
+                    signatures[c][free_col] is rows[pr][free_col]
+        else:
+            signatures[c][c] is 1
+
+    derived is []
+    units is 0
+    equivalences is 0
+    for c in range of (len of vars):
+        weight is 0
+        for bit in signatures[c]:
+            weight += bit
+        if weight == 0:
+            lit is vars[c]
+            if constants[c] == 0:
+                lit is 0 - lit
+            append of [derived, [lit]]
+            units += 1
+        other is c + 1
+        loop while weight > 0 and other < (len of vars):
+            same is 1
+            bit is 0
+            loop while bit < (len of vars):
+                if signatures[c][bit] != signatures[other][bit]:
+                    same is 0
+                bit += 1
+            if same != 0:
+                parity is (constants[c] + constants[other]) % 2
+                if parity == 0:
+                    append of [derived, [0 - vars[c], vars[other]]]
+                    append of [derived, [vars[c], 0 - vars[other]]]
+                else:
+                    append of [derived, [vars[c], vars[other]]]
+                    append of [derived, [0 - vars[c], 0 - vars[other]]]
+                equivalences += 1
+            other += 1
+
+    return {"inconsistent": inconsistent, "rank": len of pivot_cols, "variables": len of vars, "rows": rows, "derived_clauses": derived, "units": units, "equivalences": equivalences}
