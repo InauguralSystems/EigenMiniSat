@@ -33,6 +33,7 @@ on:
       - benchmarks/competition_manifest.json
       - benchmarks/competition_run.py
       - benchmarks/competition_select.py
+      - benchmarks/drat_verdict.py
       - benchmarks/dump_tseitin_cnf.eigs
       - benchmarks/normalize_cnf.awk
       - benchmarks/oracle/regime-c-3x3.stdout

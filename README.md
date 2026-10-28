@@ -22,6 +22,12 @@ variable ordering, learnt clauses, and database reduction have since landed
 
 ## Usage
 
+**Prerequisite for proof checks:** `tests/run_proof_check.sh` requires
+`drat-trim`. Install it with
+`git clone --depth 1 https://github.com/marijnheule/drat-trim /tmp/drat-trim && cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c`,
+then put it on `PATH` or set `DRAT_TRIM=/tmp/drat-trim/drat-trim`. A missing
+checker is reported as `SKIP: drat-trim not installed` with exit status 3.
+
 ```bash
 ../EigenScript/src/eigenscript minisat.eigs tests/fixtures/simple_sat.cnf
 ../EigenScript/src/eigenscript minisat.eigs --watched tests/fixtures/simple_sat.cnf
@@ -138,7 +144,7 @@ answer has nothing to check it, so a bug that over-prunes the search reports
 
 ```bash
 ../EigenScript/src/eigenscript minisat.eigs --cdcl --proof out.drat problem.cnf
-drat-trim problem.cnf out.drat        # exit 0 = verified, 1 = not verified
+drat-trim problem.cnf out.drat        # require rc 0 AND its s VERIFIED verdict
 ```
 
 The emitted DRAT proof is one line per learnt clause plus a final empty clause,
@@ -151,9 +157,11 @@ misconfigured checker would pass everything.
 Proof recording is additions-only, with no `d` deletion lines. Deletions are a
 checker-speed optimization and never a soundness requirement: withholding them
 leaves the checker with a superset of our clauses, which can only make a RUP
-check succeed, never fail. Gate on `drat-trim`'s exit code — it prefixes its
-`s VERIFIED` line with a carriage return, so line-anchored greps silently never
-match and a check written that way passes no matter what the solver emitted.
+check succeed, never fail. Verification requires exit status 0 and exactly one
+`s VERIFIED` status after splitting output on both CR and LF. `s TIMEOUT`, any
+`MEMOUT`, `s NOT VERIFIED`, and missing or ambiguous verdicts all fail closed.
+The CR split matters because line-anchored greps do not see drat-trim's
+CR-prefixed verdict.
 
 [`benchmarks/compare_native.py`](benchmarks/NATIVE_TIMING.md) compares a prebuilt
 EMS AOT executable with native MiniSat on validated identical CNFs: five external

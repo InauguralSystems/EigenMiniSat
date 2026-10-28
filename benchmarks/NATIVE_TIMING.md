@@ -61,7 +61,8 @@ alongside pigeonhole and the two anchors. It never runs a larger-rung VM solve
 and never reports VM parity for that rung. The default oracle remains strict.
 
 Every baseline and optional candidate executable runs once with `--cdcl --model
---proof FILE`. UNSAT requires a nonempty proof and **drat-trim exit 0**. SAT
+--proof FILE`. UNSAT requires a nonempty proof and **drat-trim exit 0 plus
+exactly one `s VERIFIED` verdict**. SAT
 requires one complete assignment that satisfies every input clause; native SAT
 result models are checked too. Native MiniSat independently agrees on every
 verdict. The runner removes only the exact requested proof-report line, a

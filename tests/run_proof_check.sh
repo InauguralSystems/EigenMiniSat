@@ -8,13 +8,10 @@
 # hole: --cdcl --proof emits a DRAT refutation and drat-trim, which shares no
 # code with this solver, verifies it independently.
 #
-# drat-trim signals its verdict in the exit code: 0 verified, NONZERO not.
-# Test for zero, never for a specific failure code -- an invalid proof can exit
-# 1 or 255 (255 observed on a corrupted refutation), so `-eq 1` would let a
-# rejected proof through.
-# And do NOT grep for "s VERIFIED": drat-trim prefixes that line with a
-# carriage return, so line-anchored patterns silently never match and the check
-# passes no matter what the solver emitted.
+# A proof verifies only when drat-trim exits zero AND emits exactly one
+# `s VERIFIED` status line. benchmarks/drat_verdict.py owns that shared rule
+# and splits on both CR and LF. TIMEOUT, MEMOUT, NOT VERIFIED, a missing status,
+# or an ambiguous status is never verification.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,12 +21,22 @@ DRAT_TRIM="${DRAT_TRIM:-$(command -v drat-trim || true)}"
 cd "$ROOT"
 
 if [ -z "$DRAT_TRIM" ]; then
-    echo "proof-check: drat-trim not found."
+    echo "SKIP: drat-trim not installed"
     echo "  Set DRAT_TRIM=/path/to/drat-trim, or build it:"
     echo "    git clone --depth 1 https://github.com/marijnheule/drat-trim /tmp/drat-trim"
     echo "    cc -O2 -o /tmp/drat-trim/drat-trim /tmp/drat-trim/drat-trim.c"
-    exit 1
+    exit 3
 fi
+
+check_drat() {
+    log=$1
+    shift
+    set +e
+    "$@" >"$log" 2>&1
+    checker_rc=$?
+    set -e
+    python3 "$ROOT/benchmarks/drat_verdict.py" "$checker_rc" "$log"
+}
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -60,11 +67,11 @@ for cnf in $CASES; do
         continue
     fi
 
-    if "$DRAT_TRIM" "$cnf" "$proof" >"$WORK/$name.log" 2>&1; then
+    if reason="$(check_drat "$WORK/$name.log" "$DRAT_TRIM" "$cnf" "$proof")"; then
         lemmas="$(wc -l <"$proof" | tr -d ' ')"
         echo "ok   $name: refutation verified ($lemmas proof lines)"
     else
-        echo "FAIL $name: drat-trim rejected the refutation"
+        echo "FAIL $name: drat-trim did not verify ($reason)"
         sed -n '1,20p' "$WORK/$name.log"
         fail=1
     fi
@@ -78,10 +85,10 @@ reg_cnf="tests/fixtures/pigeonhole_6_5.cnf"
 reg_proof="$WORK/pigeonhole_6_5_eager.drat"
 "$EIGS" minisat.eigs --cdcl --compact-policy eager --restart-policy luby \
     --proof "$reg_proof" "$reg_cnf" >/dev/null
-if "$DRAT_TRIM" "$reg_cnf" "$reg_proof" >/dev/null 2>&1; then
+if reason="$(check_drat "$WORK/regression.log" "$DRAT_TRIM" "$reg_cnf" "$reg_proof")"; then
     echo "ok   pigeonhole_6_5 under eager compaction: refutation verified"
 else
-    echo "FAIL pigeonhole_6_5 under eager compaction: drat-trim rejected"
+    echo "FAIL pigeonhole_6_5 under eager compaction: drat-trim did not verify ($reason)"
     echo "     a learnt clause still in use as a reason was deleted (see clause_locked)"
     fail=1
 fi
@@ -94,7 +101,7 @@ src="$WORK/pigeonhole_5_4.drat"
 "$EIGS" minisat.eigs --cdcl --proof "$src" tests/corpus/vendor/satlib_style_pigeonhole_5_4.cnf >/dev/null
 head -1 "$src" >"$planted"
 tail -1 "$src" >>"$planted"
-if "$DRAT_TRIM" tests/corpus/vendor/satlib_style_pigeonhole_5_4.cnf "$planted" >/dev/null 2>&1; then
+if reason="$(check_drat "$WORK/planted.log" "$DRAT_TRIM" tests/corpus/vendor/satlib_style_pigeonhole_5_4.cnf "$planted")"; then
     echo "FAIL planted-fault: drat-trim accepted a proof with lemmas removed"
     echo "     the checker is not actually gating anything -- every ok above is meaningless"
     fail=1

@@ -282,15 +282,15 @@ def check_proof(arm, cnf, proof, directory, ctx):
     detection, overriding it; the formula is comment-free (strip_comments)."""
     record = base.run_process(ctx.limited([ctx.tools["drat-trim"], cnf, proof, "-I" if arm == "ems" else "-i"]),
                               directory, ctx.proof_limit, ctx.environment, allow_timeout=True)
-    status = [line.strip() for line in re.split(rb"[\r\n]", (directory / "stdout").read_bytes())
-              if line.strip().startswith(b"s ")]
+    output = (directory / "stdout").read_bytes()
     if record["timed_out"]:
         return "drat-timeout", f"after {ctx.proof_limit}s"
-    if record["returncode"] == 0 and status == [b"s VERIFIED"]:
+    verified, reason = certificates.drat_verdict.classify(record["returncode"], output)
+    if verified:
         return "drat-verified", ""
-    if record["returncode"] == 1 and status == [b"s NOT VERIFIED"]:
+    if record["returncode"] == 1 and reason == "NOT VERIFIED":
         return "drat-rejected", ""
-    return "drat-error", f"rc={record['returncode']} status={[line.decode(errors='replace') for line in status]}"
+    return "drat-error", f"rc={record['returncode']} reason={reason}"
 
 
 def schedule(cases, arms, seed):

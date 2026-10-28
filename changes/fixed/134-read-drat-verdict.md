@@ -1,0 +1,1 @@
+- Proof checks now require drat-trim's `s VERIFIED` verdict and clearly report a missing checker prerequisite (#134, #114).
