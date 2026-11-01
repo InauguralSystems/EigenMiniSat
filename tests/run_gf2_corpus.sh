@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# --gf2 against the WHOLE tracked corpus manifest (hq#58 EMS-GF2-1/-2).
+# --gf2 against the WHOLE tracked corpus manifest (#150; hq#58 EMS-GF2-1/-2).
 #
 # Each row is solved with --gf2 off and on. Both verdicts must equal the
 # manifest's expected column -- not merely each other -- and each run must
@@ -19,7 +19,12 @@ mkdir -p "$tmp"
 cd "$ROOT"
 
 manifest=tests/corpus/manifest.txt
-# Derive the population from the tracked manifest, never a hand list.
+# The population is derived from the tracked manifest, never a hand list, and
+# its census is also PINNED here so that deleting rows cannot shrink what this
+# gate examines without a visible edit to this line. A manifest change that
+# moves the census updates the pin in the same diff.
+PINNED_ROWS=11
+PINNED_SAT_EQUIV_ROWS=1
 awk -F '|' '!/^#/ && NF { print $1 "|" $2 "|" $3 }' "$manifest" > "$tmp/rows"
 want_rows="$(wc -l < "$tmp/rows" | tr -d ' ')"
 if [ "$want_rows" -eq 0 ]; then
@@ -62,8 +67,10 @@ while IFS='|' read -r name path expected; do
     fi
     echo "PASS: $name: --gf2 on/off verdicts match the manifest ($on_verdict)"
     equivalences="$(awk '/^c gf2=on / { for (i = 1; i <= NF; i++) if ($i ~ /^equivalences=/) { sub(/^equivalences=/, "", $i); print $i } }' "$tmp/on")"
-    if [ -z "$equivalences" ]; then
-        echo "FAIL: $name: --gf2 printed no census line"
+    # Exactly one census line with a numeric count; anything else fails loudly
+    # instead of reaching a `[ -gt ]` that would error inside an `if`.
+    if ! [[ "$equivalences" =~ ^[0-9]+$ ]]; then
+        echo "FAIL: $name: --gf2 census must print exactly one numeric equivalences= field, got '$equivalences'"
         exit 1
     fi
     if [ "$on_verdict" = SATISFIABLE ]; then
@@ -91,6 +98,10 @@ if [ "$examined" -ne "$want_rows" ]; then
 fi
 if [ "$sat_equiv_rows" -lt 1 ]; then
     echo "FAIL: no SAT row derived equivalence clauses; --gf2's derived clauses went unexamined"
+    exit 1
+fi
+if [ "$examined" -ne "$PINNED_ROWS" ] || [ "$sat_equiv_rows" -ne "$PINNED_SAT_EQUIV_ROWS" ]; then
+    echo "FAIL: census rows=$examined sat_equiv_rows=$sat_equiv_rows, pinned rows=$PINNED_ROWS sat_equiv_rows=$PINNED_SAT_EQUIV_ROWS (update the pin in the same diff as the manifest change)"
     exit 1
 fi
 echo "PASS: gf2 corpus examined $examined manifest rows ($sat_equiv_rows SAT row(s) with derived equivalences)"

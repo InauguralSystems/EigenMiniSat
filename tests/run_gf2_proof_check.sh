@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # --gf2 --cdcl answers checked by an oracle that shares no code with GF(2)
-# elimination (hq#58 EMS-GF2-1)
+# elimination (#150; hq#58 EMS-GF2-1)
 # ============================================================
 # Every tracked manifest row is solved with `--gf2 --cdcl --model --proof`.
 # The verdict is never trusted on its own:
@@ -33,6 +33,11 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 manifest=tests/corpus/manifest.txt
+# The population comes from the tracked manifest; the per-class census is also
+# PINNED, so deleting rows (say, the only xor-bearing refutation) cannot shrink
+# what this gate examines without a visible edit to this line. A manifest or
+# solver change that moves the census updates the pin in the same diff.
+PINNED_CENSUS="examined=11 sat_models=5 drat_verified=5 drat_verified_xors=1 uncertified=1"
 awk -F '|' '!/^#/ && NF { print $1 "|" $2 "|" $3 }' "$manifest" > "$WORK/rows"
 want_rows="$(wc -l < "$WORK/rows" | tr -d ' ')"
 if [ "$want_rows" -eq 0 ]; then
@@ -58,7 +63,13 @@ while IFS='|' read -r name path expected; do
         continue
     fi
     verdict="$(awk '/^s / { print $2 }' "$out")"
-    result_line="$(grep '^c gf2_result ' "$out" || true)"
+    if [ "$(grep -c '^c gf2_result ' "$out" || true)" != 1 ]; then
+        echo "FAIL $name: expected exactly one 'c gf2_result' line"
+        grep '^c gf2' "$out" || true
+        fail=1
+        continue
+    fi
+    result_line="$(grep '^c gf2_result ' "$out")"
     xors="$(printf '%s\n' "$result_line" | sed -n 's/.* xors=\([0-9][0-9]*\) .*/\1/p')"
     if [ -z "$xors" ]; then
         echo "FAIL $name: no 'c gf2_result ... xors=N' line"
@@ -147,6 +158,11 @@ if [ "$uncertified" -lt 1 ]; then
 fi
 if [ "$sat_models" -lt 1 ]; then
     echo "FAIL: no SAT model was checked"
+    fail=1
+fi
+census="examined=$examined sat_models=$sat_models drat_verified=$drat_verified drat_verified_xors=$drat_verified_xors uncertified=$uncertified"
+if [ "$census" != "$PINNED_CENSUS" ]; then
+    echo "FAIL: census '$census' != pinned '$PINNED_CENSUS' (update the pin in the same diff as the manifest change)"
     fail=1
 fi
 if [ "$fail" -ne 0 ]; then
