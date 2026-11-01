@@ -13,6 +13,7 @@ python3 tests/check_corpus_diversity.py --selftest
 "$EIGS" tests/test_tseitin_invariant.eigs
 "$EIGS" tests/test_xor_detection.eigs
 "$EIGS" tests/test_gf2_elimination.eigs
+"$EIGS" tests/test_gf2_equivalence_signs.eigs
 bash tests/run_gf2_corpus.sh
 gf2_off_out="$("$EIGS" minisat.eigs tests/corpus/xor_ladder_sat.cnf)"
 case "$gf2_off_out" in

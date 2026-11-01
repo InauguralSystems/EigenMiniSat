@@ -35,6 +35,21 @@ jobs:
       - name: Verify UNSAT refutations (DRAT)
         run: tests/run_proof_check.sh
 
+      # Every manifest row through --gf2 --cdcl: SAT models checked against the
+      # original CNF, certified UNSAT refutations through drat-trim, and
+      # elimination UNSAT must stay uncertified (hq#58 EMS-GF2-1).
+      - name: Verify --gf2 answers (model / DRAT)
+        run: tests/run_gf2_proof_check.sh
+
+      # The randomized soundness oracle CLAUDE.md lists under "what actually
+      # gates it": all four paths must agree, SAT models are checked and UNSAT
+      # proofs go through drat-trim. Fixed seeds, so a red run reproduces with
+      # the same command (hq#58 EMS-FUZZ-1).
+      - name: Differential fuzz (seeds 0..59)
+        env:
+          EIGENSCRIPT_BIN: /tmp/eigenscript/src/eigenscript
+        run: python3 tests/fuzz_differential.py 0 60
+
       # Kept out of run_smoke.sh on purpose: the hard families cost seconds per
       # solve and would push the smoke suite well past its runtime baseline.
       # Running it here keeps the mode from rotting.
